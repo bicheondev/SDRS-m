@@ -136,6 +136,7 @@
   --logo-filter: none;
   --screen-width: 390px;
   --screen-height: 844px;
+  --db-scrollbar-gutter: 0px;
   font-family:
     'Pretendard GOV Variable',
     'Pretendard GOV',
@@ -404,6 +405,18 @@ body,
   overflow: hidden;
 }
 
+*,
+*::before,
+*::after {
+  -webkit-tap-highlight-color: transparent;
+}
+
+*:focus,
+*:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
 body {
   margin: 0;
   background: var(--color-bg-body);
@@ -471,6 +484,27 @@ input {
   z-index: 1;
 }
 
+.pressable-control--with-overlay::after {
+  content: none;
+}
+
+.pressable-control > .pressable-control__overlay {
+  position: absolute;
+  inset: var(--press-overlay-inset, 0);
+  border-radius: var(--press-radius, inherit);
+  background: var(--press-overlay-color, var(--color-state-layer-neutral));
+  opacity: 0;
+  transition:
+    opacity var(--motion-duration-fast) var(--motion-ease-standard),
+    background-color var(--motion-duration-fast) var(--motion-ease-standard);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.pressable-control > .pressable-control__overlay--active {
+  opacity: 1;
+}
+
 .pressable-control:active::after {
   opacity: 1;
 }
@@ -478,7 +512,7 @@ input {
 .pressable-control:focus-visible,
 .interaction-reset:focus-visible {
   outline: none;
-  box-shadow: var(--shadow-focus);
+  box-shadow: none;
 }
 
 .pressable-control:disabled::after,
@@ -1067,15 +1101,32 @@ img {
   padding-bottom: 64px;
 }
 
-.main-content::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
 .vessel-results-mode {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+}
+
+.top-bar--scrollbar-gutter::before,
+.search-top-bar--scrollbar-gutter::before,
+.top-bar--scrollbar-gutter .top-bar__frost-layer,
+.search-top-bar--scrollbar-gutter .top-bar__frost-layer {
+  right: var(--db-scrollbar-gutter);
+}
+
+.top-bar--scrollbar-gutter .top-bar__filters::before,
+.search-top-bar--scrollbar-gutter .top-bar__filters::before,
+.top-bar--scrollbar-gutter .top-bar__filters-frost,
+.search-top-bar--scrollbar-gutter .top-bar__filters-frost {
+  right: calc(-18px + var(--db-scrollbar-gutter));
+}
+
+.bottom-tab-shell--scrollbar-gutter .bottom-tab__backdrop {
+  right: var(--db-scrollbar-gutter);
+}
+
+.search-top-bar--scrollbar-gutter .search-top-bar__main {
+  margin-right: var(--db-scrollbar-gutter);
 }
 
 .vessel-empty-state {

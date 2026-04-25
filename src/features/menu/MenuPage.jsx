@@ -1,54 +1,114 @@
-import { motion } from 'framer-motion';
+import { StyleSheet, View } from 'react-native';
 
-import { getPressMotion } from '../../motion.js';
 import { colorModeLabels } from '../../assets/assets.js';
 import { AppIcon } from '../../components/Icons.jsx';
+import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
+import { AppScreenShell, screenLayoutStyles } from '../../components/layout/ScreenLayout.jsx';
+import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
+import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 
-function MenuRow({ children, detail, onClick, showArrow = false }) {
+function MenuRow({ children, detail, onPress, showArrow = false }) {
   return (
-    <motion.button
+    <InteractivePressable
+      accessibilityRole="button"
       className="menu-row pressable-control pressable-control--surface"
-      type="button"
-      onClick={onClick}
-      {...getPressMotion('row')}
+      onPress={onPress}
+      pressGuideVariant="row"
+      style={({ focused, pressed }) => [
+        interactiveStyles.base,
+        styles.row,
+        focused && interactiveStyles.focus,
+        { transform: [{ scale: pressed ? getInteractiveScale('row') : 1 }] },
+      ]}
     >
-      <span className="menu-row__label">{children}</span>
+      <Text style={styles.rowLabel}>{children}</Text>
       {detail || showArrow ? (
-        <span className="menu-row__detail-group">
-          {detail ? <span className="menu-row__detail">{detail}</span> : null}
+        <View style={styles.detailGroup}>
+          {detail ? <Text style={styles.detailText}>{detail}</Text> : null}
           <AppIcon
             className="menu-row__arrow"
             name="arrow_forward_ios"
             preset="iosArrow"
             tone="muted"
           />
-        </span>
+        </View>
       ) : null}
-    </motion.button>
+    </InteractivePressable>
   );
 }
 
 export function MenuPage({ colorMode, onColorModeOpen, onInfoOpen, onLogout }) {
   return (
-    <main className="app-shell">
-      <section className="phone-screen phone-screen--menu">
-        <h1 className="menu-screen__title">메뉴</h1>
+    <AppScreenShell screenStyle={screenLayoutStyles.screenColumn}>
+      <Text style={screenLayoutStyles.title}>메뉴</Text>
 
-        <div className="menu-screen__content">
-          <MenuRow detail={colorModeLabels[colorMode]} onClick={onColorModeOpen}>
+      <View style={styles.content}>
+        <MenuRow detail={colorModeLabels[colorMode]} onPress={onColorModeOpen}>
             화면 모드
           </MenuRow>
 
-          <div className="menu-screen__divider" />
+        <View style={styles.divider} />
 
-          <div className="menu-screen__group">
-            <MenuRow showArrow onClick={onInfoOpen}>
-              앱 정보
-            </MenuRow>
-            <MenuRow onClick={onLogout}>로그아웃</MenuRow>
-          </div>
-        </div>
-      </section>
-    </main>
+        <View style={styles.group}>
+          <MenuRow showArrow onPress={onInfoOpen}>
+            앱 정보
+          </MenuRow>
+          <MenuRow onPress={onLogout}>로그아웃</MenuRow>
+        </View>
+      </View>
+    </AppScreenShell>
   );
 }
+
+const styles = StyleSheet.create({
+  content: {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    paddingTop: 28,
+    paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+  },
+  group: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  divider: {
+    height: 16,
+    backgroundColor: 'var(--color-bg-divider)',
+  },
+  row: {
+    width: '100%',
+    minHeight: 52,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  rowLabel: {
+    color: 'var(--slate-500)',
+    fontSize: 18,
+    lineHeight: 20,
+    fontWeight: '500',
+    letterSpacing: -0.36,
+  },
+  detailGroup: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  detailText: {
+    color: 'var(--color-text-tertiary)',
+    fontSize: 18,
+    lineHeight: 20,
+    fontWeight: '400',
+    letterSpacing: -0.36,
+  },
+});

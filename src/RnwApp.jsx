@@ -6,12 +6,20 @@ import { useReducedMotionSafe } from './hooks/useReducedMotionSafe.js';
 import { getMotionCssVariables } from './motion.js';
 import { RnwAuthScreen } from './auth/RnwAuthScreen.jsx';
 import { RnwAuthRouteStage } from './auth/RnwAuthRouteStage.jsx';
-import { preloadRnwAppBootstrap } from './app/useRnwAppBootstrap.js';
 
 const RnwMainAppShell = lazy(() => import('./app/RnwMainAppShell.jsx'));
+let rnwAppBootstrapModulePromise = null;
 
 function preloadRnwMainAppShell() {
   return import('./app/RnwMainAppShell.jsx');
+}
+
+function preloadRnwAppBootstrap() {
+  if (!rnwAppBootstrapModulePromise) {
+    rnwAppBootstrapModulePromise = import('./app/useRnwAppBootstrap.js');
+  }
+
+  void rnwAppBootstrapModulePromise.then((module) => module.preloadRnwAppBootstrap());
 }
 
 export function RnwApp() {
@@ -30,7 +38,6 @@ export function RnwApp() {
 
     const warmLoginSuccessPath = () => {
       preloadRnwMainAppShell();
-      preloadRnwAppBootstrap();
     };
 
     if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {

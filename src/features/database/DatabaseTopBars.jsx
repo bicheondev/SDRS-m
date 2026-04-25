@@ -1,9 +1,29 @@
-import { motion } from 'framer-motion';
 import { memo, useEffect, useRef } from 'react';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 
-import { getPressMotion } from '../../motion.js';
 import { AppIcon } from '../../components/Icons.jsx';
+import { AppText as Text, AppTextInput as TextInput } from '../../components/primitives/AppTypography.jsx';
+import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
+import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
 import logo from '../../assets/ui/logo.svg';
+
+function FrostBackground({ filterSheet = false, scrollbarGutter = false }) {
+  return (
+    <>
+      <View
+        className="top-bar__frost-layer"
+        style={[
+          styles.frostLayer,
+          scrollbarGutter && styles.scrollbarGutterRight,
+          styles.pointerEventsNone,
+        ]}
+      />
+      {filterSheet ? (
+        <View className="top-bar__filter-sheet-layer" style={[styles.filterSheetLayer, styles.pointerEventsNone]} />
+      ) : null}
+    </>
+  );
+}
 
 function FiltersRow({
   blurViewOptions = false,
@@ -11,83 +31,107 @@ function FiltersRow({
   harborLabel = '전체 항포구',
   harborButtonRef,
   harborLabelWidth,
-  harborLabelRef,
   inFilterSheet = false,
+  onHarborClick,
+  onHarborLabelLayout,
+  onToggleCompact,
+  onVesselTypeClick,
+  onVesselTypeLabelLayout,
   openState = 'closed',
+  scrollbarGutter = false,
   vesselTypeLabel = '전체 선박',
   vesselTypeButtonRef,
   vesselTypeLabelWidth,
-  vesselTypeLabelRef,
-  onHarborClick,
-  onToggleCompact,
-  onVesselTypeClick,
 }) {
-  const anyDropdownOpen = openState !== 'closed';
-  const dropdownIconName = anyDropdownOpen ? 'keyboard_arrow_up' : 'keyboard_arrow_down';
+  const dropdownIconName = openState !== 'closed' ? 'keyboard_arrow_up' : 'keyboard_arrow_down';
 
   return (
-    <div className={`top-bar__filters ${inFilterSheet ? 'top-bar__filters--filter-sheet' : ''}`}>
-      <div className="filter-group">
-        <motion.button
+    <View
+      className={`top-bar__filters ${inFilterSheet ? 'top-bar__filters--filter-sheet' : ''}`.trim()}
+      style={[styles.filters, inFilterSheet && styles.filtersInSheet]}
+    >
+      <View
+        className="top-bar__filters-frost"
+        style={[
+          styles.filtersFrost,
+          scrollbarGutter && styles.filtersFrostScrollbarGutter,
+          styles.pointerEventsNone,
+        ]}
+      />
+      <View className="filter-group" style={[styles.filterGroup, inFilterSheet && styles.filterGroupInSheet]}>
+        <InteractivePressable
+          accessibilityRole="button"
           className="filter-button pressable-control pressable-control--pill"
+          onPress={onHarborClick}
+          pressGuideColor="var(--color-press-overlay-slate-100-50)"
+          pressGuideVariant="pill"
           ref={harborButtonRef}
-          type="button"
-          onClick={onHarborClick}
-          {...getPressMotion('button')}
+          style={({ focused, pressed }) => [
+            interactiveStyles.base,
+            styles.filterButton,
+            focused && interactiveStyles.focus,
+            { transform: [{ scale: pressed ? getInteractiveScale('button') : 1 }] },
+          ]}
         >
-          <span
+          <Text
             className="filter-button__label"
-            ref={harborLabelRef}
-            style={
-              inFilterSheet && harborLabelWidth ? { width: `${harborLabelWidth}px` } : undefined
-            }
+            onLayout={onHarborLabelLayout}
+            style={[styles.filterLabel, harborLabelWidth ? { width: harborLabelWidth } : null]}
           >
             {harborLabel}
-          </span>
-          <AppIcon
-            className="filter-button__icon"
-            name={dropdownIconName}
-            preset="disclosure"
-            tone="slate-400"
-          />
-        </motion.button>
-        <motion.button
+          </Text>
+          <AppIcon className="filter-button__icon" name={dropdownIconName} preset="disclosure" tone="slate-400" />
+        </InteractivePressable>
+
+        <InteractivePressable
+          accessibilityRole="button"
           className="filter-button pressable-control pressable-control--pill"
+          onPress={onVesselTypeClick}
+          pressGuideColor="var(--color-press-overlay-slate-100-50)"
+          pressGuideVariant="pill"
           ref={vesselTypeButtonRef}
-          type="button"
-          onClick={onVesselTypeClick}
-          {...getPressMotion('button')}
+          style={({ focused, pressed }) => [
+            interactiveStyles.base,
+            styles.filterButton,
+            focused && interactiveStyles.focus,
+            { transform: [{ scale: pressed ? getInteractiveScale('button') : 1 }] },
+          ]}
         >
-          <span
+          <Text
             className="filter-button__label"
-            ref={vesselTypeLabelRef}
-            style={
-              inFilterSheet && vesselTypeLabelWidth
-                ? { width: `${vesselTypeLabelWidth}px` }
-                : undefined
-            }
+            onLayout={onVesselTypeLabelLayout}
+            style={[styles.filterLabel, vesselTypeLabelWidth ? { width: vesselTypeLabelWidth } : null]}
           >
             {vesselTypeLabel}
-          </span>
-          <AppIcon
-            className="filter-button__icon"
-            name={dropdownIconName}
-            preset="disclosure"
-            tone="slate-400"
-          />
-        </motion.button>
-      </div>
+          </Text>
+          <AppIcon className="filter-button__icon" name={dropdownIconName} preset="disclosure" tone="slate-400" />
+        </InteractivePressable>
+      </View>
 
-      <div
-        className={`view-options ${blurViewOptions ? 'view-options--blurred' : ''}`}
-        aria-label="보기 옵션"
+      <View
+        accessibilityLabel="보기 옵션"
+        className={`view-options ${blurViewOptions ? 'view-options--blurred' : ''}`.trim()}
+        style={[
+          styles.viewOptions,
+          blurViewOptions && styles.viewOptionsBlurred,
+          blurViewOptions ? styles.pointerEventsNone : styles.pointerEventsAuto,
+        ]}
       >
-        <motion.button
-          className={`icon-button pressable-control pressable-control--icon ${compact ? 'icon-button--active' : ''}`}
-          type="button"
-          aria-label="요약 보기"
-          onClick={() => onToggleCompact(true)}
-          {...getPressMotion('icon')}
+        <InteractivePressable
+          accessibilityLabel="요약 보기"
+          accessibilityRole="button"
+          className={`icon-button pressable-control pressable-control--icon ${
+            compact ? 'icon-button--active' : ''
+          }`.trim()}
+          onPress={() => onToggleCompact(true)}
+          pressGuideColor="var(--color-press-overlay-slate-100-50)"
+          pressGuideVariant="icon"
+          style={({ focused, pressed }) => [
+            interactiveStyles.base,
+            styles.iconButton,
+            focused && interactiveStyles.focus,
+            { transform: [{ scale: pressed ? getInteractiveScale('icon') : 1 }] },
+          ]}
         >
           <AppIcon
             className="view-option-icon"
@@ -95,13 +139,22 @@ function FiltersRow({
             preset="viewMode"
             tone={compact ? 'slate-500' : 'slate-300'}
           />
-        </motion.button>
-        <motion.button
-          className={`icon-button pressable-control pressable-control--icon ${compact ? '' : 'icon-button--active'}`}
-          type="button"
-          aria-label="카드 보기"
-          onClick={() => onToggleCompact(false)}
-          {...getPressMotion('icon')}
+        </InteractivePressable>
+        <InteractivePressable
+          accessibilityLabel="카드 보기"
+          accessibilityRole="button"
+          className={`icon-button pressable-control pressable-control--icon ${
+            compact ? '' : 'icon-button--active'
+          }`.trim()}
+          onPress={() => onToggleCompact(false)}
+          pressGuideColor="var(--color-press-overlay-slate-100-50)"
+          pressGuideVariant="icon"
+          style={({ focused, pressed }) => [
+            interactiveStyles.base,
+            styles.iconButton,
+            focused && interactiveStyles.focus,
+            { transform: [{ scale: pressed ? getInteractiveScale('icon') : 1 }] },
+          ]}
         >
           <AppIcon
             className="view-option-icon"
@@ -109,9 +162,9 @@ function FiltersRow({
             preset="viewMode"
             tone={compact ? 'slate-300' : 'slate-500'}
           />
-        </motion.button>
-      </div>
-    </div>
+        </InteractivePressable>
+      </View>
+    </View>
   );
 }
 
@@ -121,53 +174,88 @@ export const TopBar = memo(function TopBar({
   harborFilter,
   harborButtonRef,
   harborLabelWidth,
-  harborLabelRef,
   hidden,
   inFilterSheet = false,
-  openState = 'closed',
   onHarborFilterOpen,
+  onHarborLabelLayout,
   onSearchOpen,
   onToggleCompact,
   onVesselTypeFilterOpen,
+  onVesselTypeLabelLayout,
+  openState = 'closed',
+  scrollbarGutter = false,
+  vesselTypeFilter,
   vesselTypeButtonRef,
   vesselTypeLabelWidth,
-  vesselTypeLabelRef,
-  vesselTypeFilter,
 }) {
+  const topBarTransform = hidden
+    ? [{ translateX: '-50%' }, { translateY: '-100%' }]
+    : [{ translateX: '-50%' }, { translateY: 0 }];
+
   return (
-    <header
-      className={`top-bar ${hidden ? 'top-bar--hidden' : ''} ${inFilterSheet ? 'top-bar--filter-sheet' : ''}`}
+    <View
+      className={`top-bar ${hidden ? 'top-bar--hidden' : ''} ${
+        inFilterSheet ? 'top-bar--filter-sheet' : ''
+      } ${scrollbarGutter ? 'top-bar--scrollbar-gutter' : ''}`.trim()}
+      style={[
+        styles.topBar,
+        inFilterSheet && styles.topBarInSheet,
+        { transform: topBarTransform },
+      ]}
     >
-      <div className="top-bar__main">
-        <img className="top-bar__logo" src={logo} alt="SDRS" />
-        <motion.button
+      <FrostBackground filterSheet={inFilterSheet} scrollbarGutter={scrollbarGutter} />
+
+      <View
+        className="top-bar__main"
+        style={[
+          styles.topBarMain,
+          inFilterSheet ? styles.pointerEventsNone : styles.pointerEventsAuto,
+        ]}
+      >
+        <Image accessibilityLabel="SDRS" source={{ uri: logo }} style={styles.logo} />
+        <InteractivePressable
+          accessibilityLabel="검색"
+          accessibilityRole="button"
           className="icon-button pressable-control pressable-control--icon"
-          type="button"
-          aria-label="검색"
-          onClick={onSearchOpen}
-          {...getPressMotion('icon')}
+          onPress={onSearchOpen}
+          pressGuideColor="var(--color-press-overlay-slate-100-50)"
+          pressGuideVariant="icon"
+          style={({ focused, pressed }) => [
+            interactiveStyles.base,
+            styles.iconButton,
+            focused && interactiveStyles.focus,
+            { transform: [{ scale: pressed ? getInteractiveScale('icon') : 1 }] },
+          ]}
         >
-          <AppIcon className="top-bar__action-icon" name="search" preset="search" tone="muted" />
-        </motion.button>
-      </div>
+          <AppIcon
+            className="top-bar__action-icon"
+            name="search"
+            preset="search"
+            tone="muted"
+            weight={700}
+          />
+        </InteractivePressable>
+      </View>
+
       <FiltersRow
         blurViewOptions={blurViewOptions}
         compact={compact}
         harborLabel={harborFilter}
         harborButtonRef={harborButtonRef}
         harborLabelWidth={harborLabelWidth}
-        harborLabelRef={harborLabelRef}
         inFilterSheet={inFilterSheet}
+        onHarborClick={onHarborFilterOpen}
+        onHarborLabelLayout={onHarborLabelLayout}
+        onToggleCompact={onToggleCompact}
+        onVesselTypeClick={onVesselTypeFilterOpen}
+        onVesselTypeLabelLayout={onVesselTypeLabelLayout}
         openState={openState}
+        scrollbarGutter={scrollbarGutter}
         vesselTypeLabel={vesselTypeFilter}
         vesselTypeButtonRef={vesselTypeButtonRef}
         vesselTypeLabelWidth={vesselTypeLabelWidth}
-        vesselTypeLabelRef={vesselTypeLabelRef}
-        onHarborClick={onHarborFilterOpen}
-        onToggleCompact={onToggleCompact}
-        onVesselTypeClick={onVesselTypeFilterOpen}
       />
-    </header>
+    </View>
   );
 });
 
@@ -175,6 +263,7 @@ export const SearchTopBar = memo(function SearchTopBar({
   compact,
   harborFilter,
   query,
+  scrollbarGutter = false,
   vesselTypeFilter,
   onBack,
   onClear,
@@ -186,73 +275,294 @@ export const SearchTopBar = memo(function SearchTopBar({
   const inputRef = useRef(null);
 
   useEffect(() => {
-    const focusInput = () => {
-      inputRef.current?.focus({ preventScroll: true });
-    };
+    const frameId = requestAnimationFrame(() => {
+      inputRef.current?.focus?.();
+    });
 
-    const frameId = window.requestAnimationFrame(focusInput);
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
+    return () => cancelAnimationFrame(frameId);
   }, []);
 
   return (
-    <header className="search-top-bar">
-      <div className="search-top-bar__main">
-        <motion.button
+    <View
+      className={`search-top-bar ${scrollbarGutter ? 'search-top-bar--scrollbar-gutter' : ''}`.trim()}
+      style={[styles.searchTopBar, styles.screenAligned]}
+    >
+      <FrostBackground scrollbarGutter={scrollbarGutter} />
+
+      <View
+        className="search-top-bar__main"
+        style={[styles.searchMain, scrollbarGutter && styles.searchMainScrollbarGutter]}
+      >
+        <InteractivePressable
+          accessibilityLabel="뒤로가기"
+          accessibilityRole="button"
           className="search-top-bar__back pressable-control pressable-control--icon"
-          type="button"
-          aria-label="뒤로가기"
-          onClick={onBack}
-          {...getPressMotion('icon')}
+          onPress={onBack}
+          pressGuideColor="var(--slate-50)"
+          pressGuideVariant="icon"
+          style={({ focused, pressed }) => [
+            interactiveStyles.base,
+            styles.iconButton,
+            focused && interactiveStyles.focus,
+            { transform: [{ scale: pressed ? getInteractiveScale('icon') : 1 }] },
+          ]}
         >
           <AppIcon
             className="search-top-bar__back-icon"
             name="arrow_back_ios_new"
             preset="iosArrow"
             tone="secondary"
+            weight={700}
           />
-        </motion.button>
-        <input
+        </InteractivePressable>
+
+        <TextInput
           ref={inputRef}
           autoFocus
-          className={`search-top-bar__input ${query ? 'search-top-bar__input--filled' : ''}`}
-          type="search"
-          inputMode="search"
+          autoCorrect={false}
           enterKeyHint="search"
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
+          inputMode="search"
+          onChangeText={onQueryChange}
           placeholder="검색"
+          placeholderTextColor="var(--color-text-muted)"
           spellCheck={false}
+          style={[styles.searchInput, query ? styles.searchInputFilled : null]}
+          value={query}
         />
+
         {query ? (
-          <motion.button
+          <InteractivePressable
+            accessibilityLabel="검색 지우기"
+            accessibilityRole="button"
             className="search-top-bar__cancel pressable-control pressable-control--icon"
-            type="button"
-            aria-label="검색 지우기"
-            onClick={onClear}
-            {...getPressMotion('icon')}
+            onPress={onClear}
+            pressGuideColor="var(--slate-50)"
+            pressGuideVariant="icon"
+            style={({ focused, pressed }) => [
+              interactiveStyles.base,
+              styles.iconButton,
+              focused && interactiveStyles.focus,
+              { transform: [{ scale: pressed ? getInteractiveScale('icon') : 1 }] },
+            ]}
           >
-            <AppIcon
-              className="search-top-bar__cancel-icon"
-              name="cancel"
-              preset="closeChip"
-              tone="muted"
-            />
-          </motion.button>
+            <AppIcon name="cancel" preset="closeChip" tone="muted" />
+          </InteractivePressable>
         ) : (
-          <div className="search-top-bar__cancel-placeholder" />
+          <View style={styles.cancelPlaceholder} />
         )}
-      </div>
+      </View>
+
       <FiltersRow
         compact={compact}
         harborLabel={harborFilter}
-        vesselTypeLabel={vesselTypeFilter}
         onHarborClick={onHarborFilterOpen}
         onToggleCompact={onToggleCompact}
         onVesselTypeClick={onVesselTypeFilterOpen}
+        openState="closed"
+        scrollbarGutter={scrollbarGutter}
+        vesselTypeLabel={vesselTypeFilter}
       />
-    </header>
+    </View>
   );
+});
+
+const styles = StyleSheet.create({
+  topBar: {
+    position: 'fixed',
+    left: '50%',
+    top: 0,
+    width: 'min(100%, var(--screen-width))',
+    zIndex: 2,
+    height: 136,
+    overflow: 'hidden',
+    isolation: 'isolate',
+    transitionDuration: 'var(--motion-duration-fast)',
+    transitionProperty: 'transform',
+    transitionTimingFunction: 'var(--motion-ease-standard)',
+    willChange: 'transform',
+    backgroundColor: 'transparent',
+    WebkitBackfaceVisibility: 'hidden',
+    backfaceVisibility: 'hidden',
+  },
+  topBarInSheet: {
+    height: 108,
+    zIndex: 4,
+  },
+  frostLayer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'transparent',
+    backgroundImage: 'var(--gradient-top-bar-frost)',
+    backdropFilter: 'blur(22px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(22px) saturate(160%)',
+    maskImage:
+      'linear-gradient(180deg, rgb(0 0 0 / 1) 0%, rgb(0 0 0 / 1) 52%, rgb(0 0 0 / 0.78) 72%, rgb(0 0 0 / 0) 100%)',
+    WebkitMaskImage:
+      'linear-gradient(180deg, rgb(0 0 0 / 1) 0%, rgb(0 0 0 / 1) 52%, rgb(0 0 0 / 0.78) 72%, rgb(0 0 0 / 0) 100%)',
+    zIndex: 0,
+  },
+  filterSheetLayer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'transparent',
+    backgroundImage: 'var(--gradient-filter-backdrop)',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
+    zIndex: 2,
+  },
+  pointerEventsNone: {
+    pointerEvents: 'none',
+  },
+  pointerEventsAuto: {
+    pointerEvents: 'auto',
+  },
+  topBarMain: {
+    position: 'relative',
+    zIndex: 1,
+    height: 64,
+    paddingHorizontal: 18,
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'transparent',
+  },
+  searchTopBar: {
+    position: 'fixed',
+    left: '50%',
+    top: 0,
+    width: 'min(100%, var(--screen-width))',
+    zIndex: 2,
+    height: 136,
+    overflow: 'hidden',
+    isolation: 'isolate',
+    backgroundColor: 'transparent',
+  },
+  screenAligned: {
+    transform: [{ translateX: '-50%' }],
+  },
+  searchMain: {
+    position: 'relative',
+    zIndex: 1,
+    height: 64,
+    paddingHorizontal: 18,
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'var(--slate-50)',
+  },
+  iconButton: {
+    width: 24,
+    height: 24,
+    padding: 0,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  cancelPlaceholder: {
+    width: 24,
+    height: 24,
+    flexShrink: 0,
+  },
+  searchInput: {
+    flex: 1,
+    minWidth: 0,
+    padding: 0,
+    color: 'var(--color-text-muted)',
+    fontSize: 18,
+    lineHeight: 20,
+    fontWeight: '500',
+    letterSpacing: -0.36,
+    outlineStyle: 'none',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+  },
+  searchInputFilled: {
+    color: 'var(--color-text-secondary)',
+  },
+  logo: {
+    width: 62.637,
+    height: 18,
+    filter: 'var(--logo-filter)',
+  },
+  filters: {
+    position: 'relative',
+    zIndex: 1,
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+  },
+  filtersFrost: {
+    position: 'absolute',
+    top: -12,
+    right: -18,
+    bottom: 0,
+    left: -18,
+    backgroundColor: 'transparent',
+    backgroundImage: 'var(--gradient-top-bar-frost-soft)',
+    backdropFilter: 'blur(10px) saturate(145%)',
+    WebkitBackdropFilter: 'blur(10px) saturate(145%)',
+    maskImage:
+      'linear-gradient(180deg, rgb(0 0 0 / 0) 0%, rgb(0 0 0 / 0.94) 24%, rgb(0 0 0 / 0.9) 74%, rgb(0 0 0 / 0) 100%)',
+    WebkitMaskImage:
+      'linear-gradient(180deg, rgb(0 0 0 / 0) 0%, rgb(0 0 0 / 0.94) 24%, rgb(0 0 0 / 0.9) 74%, rgb(0 0 0 / 0) 100%)',
+    zIndex: 0,
+  },
+  filtersInSheet: {
+    zIndex: 3,
+    paddingBottom: 0,
+  },
+  filterGroup: {
+    position: 'relative',
+    zIndex: 1,
+    display: 'flex',
+    flexDirection: 'row',
+    gap: 24,
+  },
+  filterGroupInSheet: {
+    zIndex: 3,
+  },
+  filterButton: {
+    display: 'inline-flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 0,
+    padding: 0,
+    backgroundColor: 'transparent',
+  },
+  filterLabel: {
+    display: 'inline-block',
+    color: 'var(--color-text-secondary)',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: -0.36,
+    textAlign: 'left',
+    whiteSpace: 'nowrap',
+    transitionDuration: 'var(--motion-duration-normal)',
+    transitionProperty: 'width',
+    transitionTimingFunction: 'var(--motion-ease-standard)',
+  },
+  viewOptions: {
+    position: 'relative',
+    zIndex: 1,
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  viewOptionsBlurred: {
+    opacity: 0.32,
+    filter: 'blur(6px)',
+  },
 });

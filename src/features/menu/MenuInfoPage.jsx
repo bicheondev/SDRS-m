@@ -1,24 +1,81 @@
+import { Image, StyleSheet, View } from 'react-native';
+
 import menuInfoLogo from '../../assets/ui/menuInfoLogo.svg';
 import menuInfoMark from '../../assets/ui/menuInfoMark.svg';
+import { AppScreenShell, screenLayoutStyles } from '../../components/layout/ScreenLayout.jsx';
+import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 import { MenuSubpageTopBar } from './MenuShared.jsx';
 
 export function MenuInfoPage({ onBack }) {
   return (
-    <main className="app-shell">
-      <section className="phone-screen phone-screen--menu-subpage">
+    <AppScreenShell screenStyle={screenLayoutStyles.screenColumn}>
         <MenuSubpageTopBar title="앱 정보" onBack={onBack} />
 
-        <div className="menu-info">
-          <div className="menu-info__background" />
-          <div className="menu-info__content">
-            <img className="menu-info__mark" src={menuInfoMark} alt="" />
-            <div className="menu-info__logo-wrap">
-              <img className="menu-info__logo" src={menuInfoLogo} alt="SDRS 선박DB조회체계" />
-            </div>
-            <p className="menu-info__version">버전 1.0</p>
-          </div>
-        </div>
-      </section>
-    </main>
+      <View style={styles.info}>
+        <View style={[styles.background, styles.pointerEventsNone]} />
+        <View style={styles.content}>
+          <Image accessibilityLabel="" source={{ uri: menuInfoMark }} style={styles.mark} />
+          <View style={styles.logoWrap}>
+            <Image
+              accessibilityLabel="SDRS 선박DB조회체계"
+              source={{ uri: menuInfoLogo }}
+              style={styles.logo}
+            />
+          </View>
+          <Text style={styles.version}>버전 1.0</Text>
+        </View>
+      </View>
+    </AppScreenShell>
   );
 }
+
+const styles = StyleSheet.create({
+  info: {
+    position: 'relative',
+    flex: 1,
+    marginTop: 28,
+    overflow: 'hidden',
+  },
+  background: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'var(--color-bg-surface-muted)',
+  },
+  pointerEventsNone: {
+    pointerEvents: 'none',
+  },
+  content: {
+    position: 'relative',
+    alignSelf: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 36,
+    width: 233,
+    marginTop: 94,
+  },
+  mark: {
+    width: 73.901,
+    height: 64,
+  },
+  logoWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 120,
+    height: 48,
+  },
+  version: {
+    margin: 0,
+    color: 'var(--color-text-muted)',
+    fontSize: 15,
+    lineHeight: 15,
+    fontWeight: '500',
+    letterSpacing: -0.3,
+  },
+});

@@ -11,6 +11,7 @@ import {
 
 import { buildDisplayVessels, buildHarborOptions } from '../../domain/databaseState.js';
 import { filterVessels } from '../../domain/ships.js';
+import { motionDurationsMs } from '../../motion.js';
 import { applySearchQuery } from './useVesselSearch.js';
 
 export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
@@ -28,6 +29,7 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
   const scrollShowDistanceRef = useRef(0);
   const topBarHiddenRef = useRef(false);
   const revealLockScrollTopRef = useRef(0);
+  const filterCloseTimeoutRef = useRef(null);
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const displayVessels = useMemo(() => buildDisplayVessels(shipRecords), [shipRecords]);
@@ -63,13 +65,36 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
       return;
     }
 
+    if (typeof mainContentRef.current.scrollTo === 'function') {
+      mainContentRef.current.scrollTo({
+        y: mainScrollPositionRef.current,
+        animated: false,
+      });
+      return;
+    }
+
     mainContentRef.current.scrollTop = mainScrollPositionRef.current;
   }, [activeTab, databaseView, isAppVisible]);
+
+  useEffect(
+    () => () => {
+      if (filterCloseTimeoutRef.current) {
+        clearTimeout(filterCloseTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   const resetTransientUi = useCallback(() => {
     topBarHiddenRef.current = false;
     revealLockScrollTopRef.current = 0;
     setTopBarHidden(false);
+
+    if (filterCloseTimeoutRef.current) {
+      clearTimeout(filterCloseTimeoutRef.current);
+      filterCloseTimeoutRef.current = null;
+    }
+
     setFilterSheet(null);
   }, []);
 
@@ -92,7 +117,8 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
         return;
       }
 
-      const currentScrollTop = event.currentTarget.scrollTop;
+      const currentScrollTop =
+        event?.nativeEvent?.contentOffset?.y ?? event?.currentTarget?.scrollTop ?? 0;
       const lastScrollTop = lastScrollTopRef.current;
 
       mainScrollPositionRef.current = currentScrollTop;
@@ -162,7 +188,11 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
     setTopBarHidden(false);
 
     if (mainContentRef.current) {
-      mainContentRef.current.scrollTop = 0;
+      if (typeof mainContentRef.current.scrollTo === 'function') {
+        mainContentRef.current.scrollTo({ y: 0, animated: false });
+      } else {
+        mainContentRef.current.scrollTop = 0;
+      }
     }
   }, []);
 
@@ -210,6 +240,7 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
       resetTransientUi();
       setFilterSheet({
         mode,
+        phase: 'open',
         sourceView: databaseView,
       });
     },
@@ -217,7 +248,25 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
   );
 
   const closeFilter = useCallback(() => {
-    setFilterSheet(null);
+    setFilterSheet((current) => {
+      if (!current || current.phase === 'closing') {
+        return current;
+      }
+
+      return {
+        ...current,
+        phase: 'closing',
+      };
+    });
+
+    if (filterCloseTimeoutRef.current) {
+      clearTimeout(filterCloseTimeoutRef.current);
+    }
+
+    filterCloseTimeoutRef.current = setTimeout(() => {
+      filterCloseTimeoutRef.current = null;
+      setFilterSheet((current) => (current?.phase === 'closing' ? null : current));
+    }, motionDurationsMs.normal);
   }, []);
 
   const handleFilterSearchOpen = useCallback(() => {

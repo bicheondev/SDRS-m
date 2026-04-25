@@ -1,8 +1,13 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { forwardRef, memo, useCallback, useLayoutEffect, useRef } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { getPressMotion, motionTokens } from '../../motion.js';
+import { motionTokens } from '../../motion.js';
 import { AppIcon } from '../../components/Icons.jsx';
+import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
+import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
+import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
+import { measureNodeInWindow } from '../../utils/layout.js';
 
 function getViewModeMotion(reducedMotion) {
   if (reducedMotion) {
@@ -30,47 +35,104 @@ function getViewModeMotion(reducedMotion) {
 
 function InfoTable({ vessel }) {
   return (
-    <div className="info-table">
-      <div className="info-table__row">
-        <div className="info-table__cell info-table__cell--label">항포구</div>
-        <div className="info-table__cell info-table__cell--value">{vessel.port}</div>
-      </div>
-      <div className="info-table__row">
-        <div className="info-table__cell info-table__cell--label">업종</div>
-        <div className="info-table__cell info-table__cell--value">{vessel.business}</div>
-      </div>
-      <div className="info-table__row">
-        <div className="info-table__cell info-table__cell--label">총톤수</div>
-        <div className="info-table__cell info-table__cell--value">{vessel.tonnage}</div>
-      </div>
-    </div>
+    <View style={styles.table}>
+      <View style={styles.tableRow}>
+        <View
+          style={[
+            styles.infoCell,
+            styles.tableLabelCell,
+            styles.infoLabelCell,
+            styles.infoBorderRight,
+          ]}
+        >
+          <Text style={[styles.tableText, styles.tableLabelText]}>항포구</Text>
+        </View>
+        <View style={[styles.infoCell, styles.tableValueCell, styles.infoValueCell]}>
+          <Text style={[styles.tableText, styles.tableValueText]}>{vessel.port}</Text>
+        </View>
+      </View>
+      <View style={styles.tableRow}>
+        <View
+          style={[
+            styles.infoCell,
+            styles.tableLabelCell,
+            styles.infoLabelCell,
+            styles.infoBorderRight,
+            styles.infoTopBorder,
+          ]}
+        >
+          <Text style={[styles.tableText, styles.tableLabelText]}>업종</Text>
+        </View>
+        <View
+          style={[styles.infoCell, styles.tableValueCell, styles.infoValueCell, styles.infoTopBorder]}
+        >
+          <Text style={[styles.tableText, styles.tableValueText]}>{vessel.business}</Text>
+        </View>
+      </View>
+      <View style={styles.tableRow}>
+        <View
+          style={[
+            styles.infoCell,
+            styles.tableLabelCell,
+            styles.infoLabelCell,
+            styles.infoBorderRight,
+            styles.infoTopBorder,
+          ]}
+        >
+          <Text style={[styles.tableText, styles.tableLabelText]}>총톤수</Text>
+        </View>
+        <View
+          style={[styles.infoCell, styles.tableValueCell, styles.infoValueCell, styles.infoTopBorder]}
+        >
+          <Text style={[styles.tableText, styles.tableValueText]}>{vessel.tonnage}</Text>
+        </View>
+      </View>
+    </View>
   );
 }
 
 function EquipmentTable({ vessel }) {
   return (
-    <div className="equipment-table">
-      <div className="equipment-table__row">
-        <div className="equipment-table__cell equipment-table__cell--label">소나</div>
-        <div
-          className={`equipment-table__cell equipment-table__cell--icon ${
-            vessel.sonar ? 'equipment-table__cell--icon-active' : ''
-          }`}
+    <View style={[styles.table, styles.equipmentTable]}>
+      <View style={styles.tableRow}>
+        <View
+          style={[
+            styles.equipmentCell,
+            styles.tableLabelCell,
+            styles.equipmentLabelCell,
+            styles.equipmentBorderRight,
+          ]}
         >
+          <Text style={[styles.tableText, styles.equipmentLabelText]}>소나</Text>
+        </View>
+        <View style={[styles.equipmentCell, styles.tableValueCell, styles.equipmentValueCell]}>
           <AppIcon
             className="status-icon status-icon--equipment-small"
             name={vessel.sonar ? 'check' : 'close'}
             preset="statusSmall"
             tone="violet"
           />
-        </div>
-      </div>
-      <div className="equipment-table__row">
-        <div className="equipment-table__cell equipment-table__cell--label">어군 탐지기</div>
-        <div
-          className={`equipment-table__cell equipment-table__cell--icon ${
-            vessel.detector ? 'equipment-table__cell--icon-active' : ''
-          }`}
+        </View>
+      </View>
+      <View style={styles.tableRow}>
+        <View
+          style={[
+            styles.equipmentCell,
+            styles.tableLabelCell,
+            styles.equipmentLabelCell,
+            styles.equipmentBorderRight,
+            styles.equipmentTopBorder,
+          ]}
+        >
+          <Text style={[styles.tableText, styles.equipmentLabelText]}>어군 탐지기</Text>
+        </View>
+        <View
+          style={[
+            styles.equipmentCell,
+            styles.tableValueCell,
+            styles.equipmentValueCell,
+            styles.equipmentTopBorder,
+          ]}
         >
           <AppIcon
             className="status-icon status-icon--equipment-small"
@@ -78,153 +140,179 @@ function EquipmentTable({ vessel }) {
             preset="statusSmall"
             tone="violet"
           />
-        </div>
-      </div>
-    </div>
+        </View>
+      </View>
+    </View>
   );
 }
 
-export const VesselCard = memo(function VesselCard({ vessel, onImageClick }) {
+async function handleImagePress(buttonRef, vessel, onImageClick) {
+  const sourceThumbnail = buttonRef.current;
+
+  if (typeof HTMLElement !== 'undefined' && sourceThumbnail instanceof HTMLElement) {
+    onImageClick(vessel, sourceThumbnail);
+    return;
+  }
+
+  const rect = await measureNodeInWindow(sourceThumbnail);
+
+  onImageClick(vessel, rect
+    ? {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      }
+    : null);
+}
+
+export const VesselCard = memo(function VesselCard({ hiddenThumbnail = false, vessel, onImageClick }) {
+  const imageButtonRef = useRef(null);
+
   return (
-    <article className="vessel-card">
-      <motion.button
+    <View style={styles.vesselCard}>
+      <InteractivePressable
+        ref={imageButtonRef}
+        accessibilityLabel={`${vessel.name} 이미지 확대`}
+        accessibilityRole="button"
         className="vessel-card__image-button pressable-control pressable-control--media"
-        type="button"
-        data-vessel-thumb-id={vessel.id}
-        aria-label={`${vessel.name} 이미지 확대`}
-        onClick={(event) => onImageClick(vessel, event.currentTarget)}
-        {...getPressMotion('card')}
+        dataSet={{ vesselThumbId: String(vessel.id) }}
+        onPress={() => handleImagePress(imageButtonRef, vessel, onImageClick)}
+        pressGuideVariant="media"
+        style={({ focused, pressed }) => [
+          interactiveStyles.base,
+          styles.cardImageButton,
+          hiddenThumbnail && styles.hiddenThumbnail,
+          focused && interactiveStyles.focus,
+          { transform: [{ scale: pressed ? getInteractiveScale('card') : 1 }] },
+        ]}
       >
-        <img
-          className="vessel-card__image"
-          src={vessel.imageWide}
-          alt=""
-          loading="lazy"
-          decoding="async"
-        />
-      </motion.button>
+        <Image source={{ uri: vessel.imageWide }} style={styles.vesselCardImage} />
+      </InteractivePressable>
 
-      <div className="vessel-card__body">
-        <div className="vessel-card__header">
-          <h2>{vessel.name}</h2>
-          <p>{vessel.registration}</p>
-        </div>
+      <View style={styles.vesselCardBody}>
+        <View style={styles.vesselCardHeader}>
+          <Text style={styles.vesselName}>{vessel.name}</Text>
+          <Text style={styles.registration}>{vessel.registration}</Text>
+        </View>
 
-        <div className="vessel-card__tables">
+        <View style={styles.vesselTables}>
           <InfoTable vessel={vessel} />
           <EquipmentTable vessel={vessel} />
-        </div>
-      </div>
-    </article>
+        </View>
+      </View>
+    </View>
   );
 });
 
 function CompactRow({ label, value }) {
   return (
-    <div className="compact-detail__row">
-      <div className="compact-detail__label">{label}</div>
-      <div className="compact-detail__value">{value}</div>
-    </div>
+    <View style={styles.compactDetailRow}>
+      <Text style={styles.compactDetailLabel}>{label}</Text>
+      <Text style={styles.compactDetailValue}>{value}</Text>
+    </View>
   );
 }
 
 function CompactEquipment({ active, label }) {
   return (
-    <div className={`compact-equipment__item ${active ? 'compact-equipment__item--active' : ''}`}>
-      <div
-        className={`compact-equipment__label ${active ? 'compact-equipment__label--active' : ''}`}
-      >
+    <View style={styles.compactEquipmentItem}>
+      <Text style={[styles.compactEquipmentLabel, active && styles.compactEquipmentLabelActive]}>
         {label}
-      </div>
+      </Text>
       <AppIcon
         className="status-icon status-icon--compact"
         name={active ? 'check' : 'close'}
         preset="statusCompact"
         tone={active ? 'violet' : 'violet-muted'}
       />
-    </div>
+    </View>
   );
 }
 
-export const CompactVesselCard = memo(function CompactVesselCard({ vessel, onImageClick }) {
-  return (
-    <article className="compact-card">
-      <div className="compact-card__summary">
-        <div className="compact-card__title-group">
-          <h2>{vessel.name}</h2>
-          <p>{vessel.registration}</p>
-        </div>
-        <motion.button
-          className="compact-card__image-button pressable-control pressable-control--media"
-          type="button"
-          data-vessel-thumb-id={vessel.id}
-          aria-label={`${vessel.name} 이미지 확대`}
-          onClick={(event) => onImageClick(vessel, event.currentTarget)}
-          {...getPressMotion('card')}
-        >
-          <img
-            className="compact-card__image"
-            src={vessel.imageCompact}
-            alt=""
-            loading="lazy"
-            decoding="async"
-          />
-        </motion.button>
-      </div>
+export const CompactVesselCard = memo(function CompactVesselCard({
+  hiddenThumbnail = false,
+  vessel,
+  onImageClick,
+}) {
+  const imageButtonRef = useRef(null);
 
-      <div className="compact-card__details">
+  return (
+    <View style={styles.compactCard}>
+      <View style={styles.compactSummary}>
+        <View style={styles.compactTitleGroup}>
+          <Text style={styles.vesselName}>{vessel.name}</Text>
+          <Text style={styles.registration}>{vessel.registration}</Text>
+        </View>
+        <InteractivePressable
+          ref={imageButtonRef}
+          accessibilityLabel={`${vessel.name} 이미지 확대`}
+          accessibilityRole="button"
+          className="compact-card__image-button pressable-control pressable-control--media"
+          dataSet={{ vesselThumbId: String(vessel.id) }}
+          onPress={() => handleImagePress(imageButtonRef, vessel, onImageClick)}
+          pressGuideVariant="media"
+          style={({ focused, pressed }) => [
+            interactiveStyles.base,
+            styles.compactImageButton,
+            hiddenThumbnail && styles.hiddenThumbnail,
+            focused && interactiveStyles.focus,
+            { transform: [{ scale: pressed ? getInteractiveScale('card') : 1 }] },
+          ]}
+        >
+          <Image source={{ uri: vessel.imageCompact }} style={styles.compactImage} />
+        </InteractivePressable>
+      </View>
+
+      <View style={styles.compactDetails}>
         <CompactRow label="항포구" value={vessel.port} />
         <CompactRow label="업종" value={vessel.business} />
         <CompactRow label="총톤수" value={vessel.tonnage} />
-      </div>
+      </View>
 
-      <div className="compact-card__divider" />
+      <View style={styles.compactDivider} />
 
-      <div className="compact-equipment">
+      <View style={styles.compactEquipment}>
         <CompactEquipment label="소나" active={vessel.sonar} />
         <CompactEquipment label="어군 탐지기" active={vessel.detector} />
-      </div>
-    </article>
+      </View>
+    </View>
   );
 });
 
 export function VesselEmptyState() {
   return (
-    <div className="vessel-empty-state">
+    <View style={styles.emptyState}>
       <AppIcon
         className="vessel-empty-state__icon"
         name="sticky_note_2"
         preset="emptyState"
         tone="muted"
       />
-      <p className="vessel-empty-state__text">조건에 맞는 선박을 찾지 못했어요.</p>
-    </div>
+      <Text style={styles.emptyStateText}>조건에 맞는 선박을 찾지 못했어요.</Text>
+    </View>
   );
 }
 
 export const VesselResults = forwardRef(function VesselResults(
   {
-    className = 'main-content',
+    chromeScrollbar = false,
     compact,
-    vessels,
+    hiddenThumbnailId = null,
     onImageClick,
+    onScroll,
     scrollResetKey,
-    ...contentProps
+    style,
+    vessels,
   },
   ref,
 ) {
   const reducedMotion = useReducedMotion() ?? false;
   const viewModeMotion = getViewModeMotion(reducedMotion);
-  const contentRef = useRef(null);
-  const handleImageClick = useCallback(
-    (selectedVessel, sourceThumbnail) => {
-      onImageClick(selectedVessel, vessels, sourceThumbnail);
-    },
-    [onImageClick, vessels],
-  );
-  const setContentRef = useCallback(
+  const scrollRef = useRef(null);
+  const setScrollRef = useCallback(
     (node) => {
-      contentRef.current = node;
+      scrollRef.current = node;
 
       if (typeof ref === 'function') {
         ref(node);
@@ -238,14 +326,61 @@ export const VesselResults = forwardRef(function VesselResults(
     [ref],
   );
 
+  const handleImageClick = useCallback(
+    (selectedVessel, sourceRect) => {
+      onImageClick(selectedVessel, vessels, sourceRect);
+    },
+    [onImageClick, vessels],
+  );
+
   useLayoutEffect(() => {
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
+    scrollRef.current?.scrollTo?.({ y: 0, animated: false });
   }, [scrollResetKey]);
 
+  useLayoutEffect(() => {
+    if (!chromeScrollbar || typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const scrollNode = scrollRef.current;
+
+    if (!scrollNode) {
+      return undefined;
+    }
+
+    const updateScrollbarGutter = () => {
+      const measuredGutter = Math.max(0, Math.ceil(scrollNode.offsetWidth - scrollNode.clientWidth));
+      const isScrollable = scrollNode.scrollHeight > scrollNode.clientHeight + 1;
+      const fallbackGutter = isScrollable ? 8 : 0;
+      const gutter = Math.max(measuredGutter, fallbackGutter);
+
+      document.documentElement.style.setProperty('--db-scrollbar-gutter', `${gutter}px`);
+    };
+
+    updateScrollbarGutter();
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateScrollbarGutter);
+
+    resizeObserver?.observe(scrollNode);
+    window.addEventListener('resize', updateScrollbarGutter);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateScrollbarGutter);
+    };
+  }, [chromeScrollbar, vessels.length]);
+
   return (
-    <div className={className} ref={setContentRef} {...contentProps}>
+    <ScrollView
+      className={`main-content ${chromeScrollbar ? 'main-content--chrome-scrollbar' : ''}`.trim()}
+      ref={setScrollRef}
+      contentContainerStyle={styles.mainContentContainer}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
+      showsVerticalScrollIndicator
+      style={[styles.mainContent, style]}
+    >
       <AnimatePresence initial={false} mode="wait">
         <motion.div
           key={compact ? 'compact' : 'card'}
@@ -256,21 +391,276 @@ export const VesselResults = forwardRef(function VesselResults(
             <VesselEmptyState />
           ) : compact ? (
             vessels.map((vessel, index) => (
-              <div key={vessel.id}>
-                <CompactVesselCard vessel={vessel} onImageClick={handleImageClick} />
-                {index < vessels.length - 1 ? <div className="section-divider" /> : null}
-              </div>
+              <View key={vessel.id}>
+                <CompactVesselCard
+                  hiddenThumbnail={hiddenThumbnailId === vessel.id}
+                  vessel={vessel}
+                  onImageClick={handleImageClick}
+                />
+                {index < vessels.length - 1 ? <View style={styles.sectionDivider} /> : null}
+              </View>
             ))
           ) : (
             vessels.map((vessel, index) => (
-              <div key={vessel.id}>
-                <VesselCard vessel={vessel} onImageClick={handleImageClick} />
-                {index < vessels.length - 1 ? <div className="section-divider" /> : null}
-              </div>
+              <View key={vessel.id}>
+                <VesselCard
+                  hiddenThumbnail={hiddenThumbnailId === vessel.id}
+                  vessel={vessel}
+                  onImageClick={handleImageClick}
+                />
+                {index < vessels.length - 1 ? <View style={styles.sectionDivider} /> : null}
+              </View>
             ))
           )}
         </motion.div>
       </AnimatePresence>
-    </div>
+    </ScrollView>
   );
+});
+
+const styles = StyleSheet.create({
+  mainContent: {
+    flex: 1,
+    minHeight: 0,
+    overflowX: 'hidden',
+    overflowY: 'auto',
+    msOverflowStyle: 'auto',
+    scrollbarWidth: 'auto',
+    backgroundColor: 'var(--color-bg-card)',
+    paddingTop: 88,
+    paddingBottom: 64,
+  },
+  mainContentContainer: {
+    flexGrow: 1,
+  },
+  emptyState: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 15,
+    paddingVertical: 24,
+    paddingHorizontal: 18,
+    paddingBottom: 96,
+  },
+  emptyStateText: {
+    color: 'var(--color-text-muted)',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: -0.36,
+    textAlign: 'center',
+  },
+  sectionDivider: {
+    height: 16,
+    backgroundColor: 'var(--color-bg-divider)',
+  },
+  hiddenThumbnail: {
+    opacity: 0,
+  },
+  vesselCard: {
+    paddingVertical: 36,
+    paddingHorizontal: 24,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 24,
+  },
+  cardImageButton: {
+    width: '100%',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  vesselCardImage: {
+    width: '100%',
+    height: 180,
+    objectFit: 'cover',
+    borderRadius: 6,
+  },
+  vesselCardBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 16,
+  },
+  vesselCardHeader: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  vesselName: {
+    color: 'var(--slate-700)',
+    fontSize: 24,
+    fontWeight: '600',
+    letterSpacing: -0.72,
+  },
+  registration: {
+    color: 'var(--color-text-tertiary)',
+    fontSize: 15,
+    fontWeight: '400',
+  },
+  vesselTables: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+  },
+  table: {
+    overflow: 'hidden',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'var(--color-text-tertiary)',
+  },
+  equipmentTable: {
+    borderColor: 'var(--color-text-violet)',
+  },
+  tableRow: {
+    display: 'flex',
+    flexDirection: 'row',
+  },
+  infoCell: {
+    height: 38,
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    color: 'var(--color-text-tertiary)',
+  },
+  equipmentCell: {
+    height: 38,
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    color: 'var(--color-text-violet)',
+  },
+  tableLabelCell: {
+    width: 120,
+  },
+  infoLabelCell: {
+    backgroundColor: 'var(--slate-50)',
+  },
+  infoValueCell: {
+    backgroundColor: 'var(--color-bg-surface-elevated)',
+  },
+  equipmentLabelCell: {
+    backgroundColor: 'var(--color-bg-violet-soft)',
+  },
+  equipmentValueCell: {
+    backgroundColor: 'var(--color-bg-surface-elevated)',
+  },
+  tableValueCell: {
+    flex: 1,
+  },
+  infoBorderRight: {
+    borderRightWidth: 1,
+    borderRightColor: 'var(--color-text-tertiary)',
+  },
+  equipmentBorderRight: {
+    borderRightWidth: 1,
+    borderRightColor: 'var(--color-text-violet)',
+  },
+  infoTopBorder: {
+    borderTopWidth: 1,
+    borderTopColor: 'var(--color-text-tertiary)',
+  },
+  equipmentTopBorder: {
+    borderTopWidth: 1,
+    borderTopColor: 'var(--color-text-violet)',
+  },
+  tableText: {
+    fontSize: 15,
+    textAlign: 'left',
+  },
+  tableLabelText: {
+    color: 'var(--color-text-tertiary)',
+    fontWeight: '600',
+  },
+  tableValueText: {
+    color: 'var(--color-text-tertiary)',
+    fontWeight: '500',
+  },
+  equipmentLabelText: {
+    color: 'var(--color-text-violet)',
+    fontWeight: '600',
+  },
+  compactCard: {
+    paddingVertical: 36,
+    paddingHorizontal: 24,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 24,
+  },
+  compactSummary: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  compactTitleGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  compactImageButton: {
+    width: 150,
+    flexShrink: 0,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  compactImage: {
+    width: 150,
+    height: 90,
+    borderRadius: 6,
+    objectFit: 'cover',
+  },
+  compactDetails: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 16,
+  },
+  compactDetailRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  compactDetailLabel: {
+    width: 126,
+    color: 'var(--color-text-tertiary)',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  compactDetailValue: {
+    color: 'var(--color-text-tertiary)',
+    fontSize: 18,
+    fontWeight: '500',
+  },
+  compactDivider: {
+    height: 1,
+    width: '100%',
+    backgroundColor: 'var(--color-border-subtle)',
+  },
+  compactEquipment: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  compactEquipmentItem: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  compactEquipmentLabel: {
+    width: 126,
+    color: 'var(--color-text-violet-muted)',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  compactEquipmentLabelActive: {
+    color: 'var(--color-text-violet)',
+  },
 });

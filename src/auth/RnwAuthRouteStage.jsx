@@ -1,5 +1,5 @@
 import { Animated, Easing, StyleSheet } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import {
   getScreenMotionState,
@@ -91,7 +91,7 @@ export function RnwAuthRouteStage({
     [],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let cancelled = false;
 
     if (frameRef.current !== null) {
@@ -194,11 +194,11 @@ export function RnwAuthRouteStage({
 
   return (
     <Animated.View
-      pointerEvents={isActive ? 'auto' : 'none'}
       style={[
         styles.screen,
         !isVisible && styles.screenHidden,
         {
+          pointerEvents: isActive ? 'auto' : 'none',
           zIndex,
           opacity: animatedState.opacity,
           transform: [{ translateY: animatedState.translateY }, { scale: animatedState.scale }],
@@ -220,6 +220,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   screenHidden: {
-    display: 'none',
+    visibility: 'hidden',
   },
 });

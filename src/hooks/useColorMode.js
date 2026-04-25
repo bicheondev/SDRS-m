@@ -1,49 +1,27 @@
+import { Appearance } from 'react-native';
 import { useEffect, useState } from 'react';
+
+function getAppearanceColorMode() {
+  return Appearance.getColorScheme?.() === 'dark' ? 'dark' : 'light';
+}
 
 export function useColorMode(initialMode = 'light') {
   const [colorMode, setColorMode] = useState(initialMode);
-  const [systemColorMode, setSystemColorMode] = useState(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return 'light';
-    }
-
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  const [systemColorMode, setSystemColorMode] = useState(getAppearanceColorMode);
 
   const resolvedColorMode = colorMode === 'system' ? systemColorMode : colorMode;
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return undefined;
-    }
+    const subscription = Appearance.addChangeListener?.(({ colorScheme }) => {
+      setSystemColorMode(colorScheme === 'dark' ? 'dark' : 'light');
+    });
 
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (event) => {
-      setSystemColorMode(event.matches ? 'dark' : 'light');
-    };
-
-    handleChange(mediaQuery);
-
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
-  }, []);
-
-  useEffect(() => {
-    const root = document.documentElement;
-
-    root.dataset.theme = resolvedColorMode;
-    root.style.colorScheme = resolvedColorMode;
+    setSystemColorMode(getAppearanceColorMode());
 
     return () => {
-      delete root.dataset.theme;
-      root.style.colorScheme = '';
+      subscription?.remove?.();
     };
-  }, [resolvedColorMode]);
+  }, []);
 
   return {
     colorMode,

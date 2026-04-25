@@ -113,9 +113,9 @@ export function RnwAuthScreen({
           {({ pressed }) => (
             <>
               <View
-                pointerEvents="none"
                 style={[
                   styles.loginButtonOverlay,
+                  styles.pointerEventsNone,
                   isFilled && pressed ? styles.loginButtonOverlayPressed : null,
                 ]}
               />
@@ -288,6 +288,9 @@ const styles = StyleSheet.create({
     transitionDuration: `${motionDurationsMs.fast}ms`,
     transitionProperty: 'opacity',
     transitionTimingFunction: IOS_EASE,
+  },
+  pointerEventsNone: {
+    pointerEvents: 'none',
   },
   loginButtonOverlayPressed: {
     opacity: 1,

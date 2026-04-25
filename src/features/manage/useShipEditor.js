@@ -124,7 +124,7 @@ export function useShipEditor({
   const handleManageShipAdd = () => {
     hideManageSaveToast();
     setManageShipCardsState((current) => [
-      ...current.map((card) => ({ ...card, selected: false })),
+      ...current.map((card) => (card.selected ? { ...card, selected: false } : card)),
       {
         id: `ship-${Date.now()}`,
         ...emptyManageShipCard,
@@ -171,7 +171,7 @@ export function useShipEditor({
 
   const handleManageShipReorder = (nextCards) => {
     hideManageSaveToast();
-    setManageShipCardsState(nextCards.map((card) => ({ ...card })));
+    setManageShipCardsState(nextCards);
   };
 
   const handleManageShipSave = () => {

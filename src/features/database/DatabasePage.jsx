@@ -1,7 +1,7 @@
 import { memo } from 'react';
-import { AnimatePresence } from 'framer-motion';
 
 import { vesselTypeOptions } from '../../assets/assets.js';
+import { AppScreenShell, screenLayoutStyles } from '../../components/layout/ScreenLayout.jsx';
 import { FilterScreen } from './FilterSheet.jsx';
 import { SearchTopBar, TopBar } from './DatabaseTopBars.jsx';
 import { VesselResults } from './VesselResults.jsx';
@@ -14,6 +14,7 @@ export const DatabasePage = memo(function DatabasePage({
   filteredDisplayVessels,
   harborFilter,
   harborOptions,
+  hiddenThumbnailId = null,
   mainContentRef,
   onFilterClose,
   onFilterHarborSelect,
@@ -37,15 +38,14 @@ export const DatabasePage = memo(function DatabasePage({
   const filterScrollResetKey = `${harborFilter}:${vesselTypeFilter}`;
 
   return (
-    <main className="app-shell">
-      <section
-        className={`phone-screen ${databaseView === 'search' ? 'phone-screen--search' : 'phone-screen--main'}`}
-      >
+    <>
+      <AppScreenShell screenStyle={screenLayoutStyles.screenColumn}>
         {databaseView === 'search' ? (
           <SearchTopBar
             compact={compact}
             harborFilter={harborFilter}
             query={searchQuery}
+            scrollbarGutter
             vesselTypeFilter={vesselTypeFilter}
             onBack={onSearchClose}
             onClear={onSearchClear}
@@ -58,50 +58,49 @@ export const DatabasePage = memo(function DatabasePage({
           <TopBar
             compact={compact}
             harborFilter={harborFilter}
-            harborLabelWidth={0}
             hidden={topBarHidden}
             onHarborFilterOpen={() => onFilterOpen('harbor')}
             onSearchOpen={onSearchOpen}
             onToggleCompact={onToggleCompact}
             onVesselTypeFilterOpen={() => onFilterOpen('vesselType')}
-            vesselTypeLabelWidth={0}
+            scrollbarGutter
             vesselTypeFilter={vesselTypeFilter}
           />
         )}
 
         <VesselResults
-          className={`main-content ${databaseView === 'search' ? 'main-content--search' : ''}`.trim()}
+          ref={databaseView === 'browse' ? mainContentRef : undefined}
           compact={compact}
+          hiddenThumbnailId={hiddenThumbnailId}
           onImageClick={onImageClick}
           onScroll={databaseView === 'browse' ? onMainScroll : undefined}
-          ref={databaseView === 'browse' ? mainContentRef : undefined}
+          chromeScrollbar
           scrollResetKey={filterScrollResetKey}
           vessels={databaseView === 'search' ? searchedDisplayVessels : filteredDisplayVessels}
         />
-      </section>
+      </AppScreenShell>
 
-      <AnimatePresence>
-        {filterSheet ? (
-          <FilterScreen
-            compact={compact}
-            filterMode={filterSheet.mode}
-            harborFilter={harborFilter}
-            harborOptions={harborOptions}
-            query={filterSheet.sourceView === 'search' ? searchQuery : ''}
-            vessels={displayVessels}
-            onClose={onFilterClose}
-            onHarborSelect={onFilterHarborSelect}
-            onImageClick={onImageClick}
-            onManageOpen={onManageOpen}
-            onMenuOpen={onMenuOpen}
-            onSearchOpen={onFilterSearchOpen}
-            onToggleCompact={onToggleCompact}
-            onVesselTypeSelect={onFilterVesselTypeSelect}
-            vesselTypeOptions={vesselTypeOptions}
-            vesselTypeFilter={vesselTypeFilter}
-          />
-        ) : null}
-      </AnimatePresence>
-    </main>
+      {filterSheet ? (
+        <FilterScreen
+          compact={compact}
+          filterMode={filterSheet.mode}
+          harborFilter={harborFilter}
+          harborOptions={harborOptions}
+          phase={filterSheet.phase}
+          query={filterSheet.sourceView === 'search' ? searchQuery : ''}
+          vessels={displayVessels}
+          onClose={onFilterClose}
+          onHarborSelect={onFilterHarborSelect}
+          onImageClick={onImageClick}
+          onManageOpen={onManageOpen}
+          onMenuOpen={onMenuOpen}
+          onSearchOpen={onFilterSearchOpen}
+          onToggleCompact={onToggleCompact}
+          onVesselTypeSelect={onFilterVesselTypeSelect}
+          vesselTypeFilter={vesselTypeFilter}
+          vesselTypeOptions={vesselTypeOptions}
+        />
+      ) : null}
+    </>
   );
 });

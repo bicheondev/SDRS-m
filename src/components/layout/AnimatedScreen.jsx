@@ -12,12 +12,43 @@ import {
   visibleScreenState,
 } from '../../motion.js';
 
+const FLAT_APP_SHELL_GRADIENT = 'linear-gradient(var(--color-bg-app), var(--color-bg-app))';
+const FLATTENED_BACKDROP_DIRECTIONS = new Set(['tabForward', 'tabBackward', 'push', 'pop']);
+
 function waitForNextFrame() {
   return new Promise((resolve) => {
     requestAnimationFrame(() => {
       resolve();
     });
   });
+}
+
+function shouldFlattenTransitionBackdrop(direction) {
+  return FLATTENED_BACKDROP_DIRECTIONS.has(direction);
+}
+
+function shouldFlattenScreen(direction, entering) {
+  if (!shouldFlattenTransitionBackdrop(direction)) {
+    return false;
+  }
+
+  if (direction === 'tabForward' || direction === 'tabBackward') {
+    return !entering;
+  }
+
+  return true;
+}
+
+function blurFocusedDescendant(element) {
+  if (typeof document === 'undefined' || !element) {
+    return;
+  }
+
+  const activeElement = document.activeElement;
+
+  if (activeElement && activeElement !== document.body && element.contains(activeElement)) {
+    activeElement.blur?.();
+  }
 }
 
 export default function AnimatedScreen({
@@ -41,6 +72,7 @@ export default function AnimatedScreen({
     const resetScreenChrome = () => {
       if (element) {
         element.style.boxShadow = hiddenScreenState.boxShadow;
+        element.style.removeProperty('--gradient-app-shell');
       }
 
       if (overlayElement) {
@@ -72,12 +104,19 @@ export default function AnimatedScreen({
       return undefined;
     }
 
-    if (previousActiveRef.current === isActive) {
-      return undefined;
-    }
+	    if (previousActiveRef.current === isActive) {
+	      return undefined;
+	    }
 
-    previousActiveRef.current = isActive;
-    element.style.willChange = 'transform, opacity, box-shadow';
+	    previousActiveRef.current = isActive;
+	    if (!isActive) {
+	      blurFocusedDescendant(element);
+	    }
+	    element.style.willChange = 'transform, opacity, box-shadow';
+
+    if (shouldFlattenScreen(navDir, isActive)) {
+      element.style.setProperty('--gradient-app-shell', FLAT_APP_SHELL_GRADIENT);
+    }
 
     if (overlayElement) {
       overlayElement.style.willChange = 'opacity';
@@ -104,6 +143,7 @@ export default function AnimatedScreen({
         }
 
         if (isActive) {
+          resetScreenChrome();
           element.style.zIndex = '1';
           element.style.willChange = '';
         } else {
@@ -129,6 +169,7 @@ export default function AnimatedScreen({
 
       return () => {
         cancelled = true;
+        resetScreenChrome();
       };
     }
 
@@ -218,6 +259,7 @@ export default function AnimatedScreen({
 
     return () => {
       cancelled = true;
+      resetScreenChrome();
     };
   }, [animate, isActive, navDir, reducedMotion, scope]);
 
@@ -231,9 +273,8 @@ export default function AnimatedScreen({
         overflow: 'hidden',
         pointerEvents: isActive ? 'auto' : 'none',
       }}
-      aria-hidden={!isActive}
-      inert={isActive ? undefined : ''}
-    >
+	      inert={!isActive}
+	    >
       <div
         ref={overlayRef}
         className="animated-screen__overlay"
