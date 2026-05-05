@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "SDRS-RN",
+    "slug": "SDRS-RN",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "kr.bicheondev.sdrs"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "kr.bicheondev.sdrs"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/PretendardGOV-Regular.otf",
+            "./assets/fonts/PretendardGOV-Medium.otf",
+            "./assets/fonts/PretendardGOV-SemiBold.otf",
+            "./assets/fonts/PretendardGOV-Bold.otf",
+            "./assets/fonts/MaterialSymbolsRounded.ttf",
+            "./assets/fonts/MaterialIconsRound-Regular.otf"
+          ]
+        }
+      ]
+    ]
+  }
+}
