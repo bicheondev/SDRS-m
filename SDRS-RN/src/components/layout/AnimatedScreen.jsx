@@ -1,415 +1,242 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import {
   getScreenMotionState,
   getScreenOverlayState,
   getScreenOverlayTransition,
-  getScreenShadowState,
   getScreenTransition,
   getScreenZIndex,
   hiddenScreenState,
   visibleScreenState,
+  motionTokens,
 } from '../../motion.js';
-import { blurFocusedDescendant } from '../../platform/index';
 
-const FLAT_APP_SHELL_GRADIENT = 'linear-gradient(var(--color-bg-app), var(--color-bg-app))';
-const FLATTENED_BACKDROP_DIRECTIONS = new Set(['tabForward', 'tabBackward', 'push', 'pop']);
-
-function toCssLength(value) {
+function toPx(value, dim) {
   if (typeof value === 'number') {
-    return `${value}px`;
+    return value;
   }
-
-  return value ?? '0px';
-}
-
-function toCssEasing(ease) {
-  if (Array.isArray(ease)) {
-    return `cubic-bezier(${ease.join(', ')})`;
+  if (typeof value === 'string' && value.endsWith('%')) {
+    return (Number.parseFloat(value) / 100) * dim;
   }
-
-  return ease ?? 'linear';
+  return 0;
 }
 
-function getTransitionOptions(transition) {
-  if (!transition || typeof transition.duration === 'number') {
-    return {
-      duration: Math.max(0, (transition?.duration ?? 0) * 1000),
-      easing: toCssEasing(transition?.ease),
-      fill: 'forwards',
-    };
+function toEasing(ease) {
+  if (Array.isArray(ease) && ease.length === 4) {
+    const [x1, y1, x2, y2] = ease;
+    return Easing.bezier(x1, y1, x2, y2);
   }
-
-  const propertyTransitions = Object.values(transition).filter(Boolean);
-  const longestTransition =
-    propertyTransitions.reduce((longest, current) => {
-      if ((current.duration ?? 0) > (longest.duration ?? 0)) {
-        return current;
-      }
-
-      return longest;
-    }, propertyTransitions[0]) ?? {};
-
-  return {
-    duration: Math.max(0, (longestTransition.duration ?? 0) * 1000),
-    easing: toCssEasing(longestTransition.ease),
-    fill: 'forwards',
-  };
+  return Easing.linear;
 }
 
-function getScreenKeyframe(state) {
-  const x = toCssLength(state.x ?? 0);
-  const y = toCssLength(state.y ?? 0);
-  const scale = state.scale ?? 1;
-
-  return {
-    opacity: state.opacity ?? 1,
-    transform: `translate3d(${x}, ${y}, 0) scale(${scale})`,
-    boxShadow: state.boxShadow ?? hiddenScreenState.boxShadow,
-  };
-}
-
-function applyScreenState(element, state) {
-  const keyframe = getScreenKeyframe(state);
-
-  element.style.opacity = String(keyframe.opacity);
-  element.style.transform = keyframe.transform;
-  element.style.boxShadow = keyframe.boxShadow;
-}
-
-function applyOverlayState(element, state) {
-  element.style.opacity = String(state.opacity ?? 0);
-}
-
-function playAnimation({ element, from, to, transition, toKeyframe, applyState }) {
-  const options = getTransitionOptions(transition);
-
-  applyState(element, from);
-
-  if (options.duration <= 0 || typeof element.animate !== 'function') {
-    applyState(element, to);
-    return {
-      cancel() {},
-      finished: Promise.resolve(),
-    };
+function pickPrimaryTransition(transition) {
+  if (!transition) {
+    return { duration: 0, ease: motionTokens.ease.linear };
   }
-
-  const animation = element.animate([toKeyframe(from), toKeyframe(to)], options);
-  const finished = animation.finished
-    .then(() => {
-      applyState(element, to);
-    })
-    .catch(() => {});
-
-  return {
-    cancel() {
-      animation.cancel();
-    },
-    finished,
-  };
-}
-
-function playScreenAnimation(element, from, to, transition) {
-  return playAnimation({
-    element,
-    from,
-    to,
-    transition,
-    toKeyframe: getScreenKeyframe,
-    applyState: applyScreenState,
-  });
-}
-
-function playOverlayAnimation(element, from, to, transition) {
-  return playAnimation({
-    element,
-    from,
-    to,
-    transition,
-    toKeyframe: (state) => ({ opacity: state.opacity ?? 0 }),
-    applyState: applyOverlayState,
-  });
-}
-
-function waitForNextFrame() {
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => {
-      resolve();
-    });
-  });
-}
-
-function shouldFlattenTransitionBackdrop(direction) {
-  return FLATTENED_BACKDROP_DIRECTIONS.has(direction);
-}
-
-function shouldFlattenScreen(direction, entering) {
-  if (!shouldFlattenTransitionBackdrop(direction)) {
-    return false;
+  if (typeof transition.duration === 'number') {
+    return { duration: transition.duration, ease: transition.ease };
   }
-
-  if (direction === 'tabForward' || direction === 'tabBackward') {
-    return !entering;
-  }
-
-  return true;
+  // Per-property transition map (e.g. { x: {...}, opacity: {...} }) — pick the longest entry.
+  const entries = Object.values(transition).filter(Boolean);
+  return entries.reduce(
+    (longest, current) =>
+      (current.duration ?? 0) > (longest.duration ?? 0) ? current : longest,
+    entries[0] ?? { duration: 0, ease: motionTokens.ease.linear },
+  );
 }
 
 export default function AnimatedScreen({
   children,
   currentScreen,
-  fillMode = 'fixed',
+  fillMode = 'absolute',
   navDir,
   reducedMotion = false,
   screenKey,
 }) {
-  const scope = useRef(null);
-  const overlayRef = useRef(null);
   const isActive = currentScreen === screenKey;
   const previousActiveRef = useRef(null);
+  const { width, height } = useWindowDimensions();
 
-  useLayoutEffect(() => {
-    const element = scope.current;
-    const overlayElement = overlayRef.current;
-    let cancelled = false;
-    const activeAnimations = [];
+  const [interactive, setInteractive] = useState(isActive);
+  const [zIndex, setZIndex] = useState(isActive ? 1 : 0);
 
-    const resetScreenChrome = () => {
-      if (element) {
-        element.style.boxShadow = hiddenScreenState.boxShadow;
-        element.style.removeProperty('--gradient-app-shell');
-      }
+  const opacity = useSharedValue(isActive ? visibleScreenState.opacity : hiddenScreenState.opacity);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const overlayOpacity = useSharedValue(0);
 
-      if (overlayElement) {
-        overlayElement.style.opacity = '0';
-      }
-    };
-
-    if (!element) {
-      return undefined;
-    }
-
+  useEffect(() => {
     if (previousActiveRef.current === null) {
+      // First mount — snap to the resting state for whichever side we're on.
       previousActiveRef.current = isActive;
-      element.style.visibility = isActive ? 'visible' : 'hidden';
-      element.style.zIndex = isActive ? '1' : '0';
-
-      if (!isActive) {
-        applyScreenState(element, hiddenScreenState);
-      } else {
-        applyScreenState(element, visibleScreenState);
-      }
-
-      if (overlayElement) {
-        applyOverlayState(overlayElement, { opacity: 0 });
-      }
-
-      resetScreenChrome();
-
+      cancelAnimation(opacity);
+      cancelAnimation(translateX);
+      cancelAnimation(translateY);
+      cancelAnimation(scale);
+      cancelAnimation(overlayOpacity);
+      opacity.value = isActive ? visibleScreenState.opacity : hiddenScreenState.opacity;
+      translateX.value = 0;
+      translateY.value = 0;
+      scale.value = 1;
+      overlayOpacity.value = 0;
+      setInteractive(isActive);
+      setZIndex(isActive ? 1 : 0);
       return undefined;
     }
 
     if (previousActiveRef.current === isActive) {
       return undefined;
     }
-
     previousActiveRef.current = isActive;
-    if (!isActive) {
-      blurFocusedDescendant(element);
-    }
-    element.style.willChange = 'transform, opacity, box-shadow';
 
-    if (shouldFlattenScreen(navDir, isActive)) {
-      element.style.setProperty('--gradient-app-shell', FLAT_APP_SHELL_GRADIENT);
-    }
+    const phase = isActive ? 'enter' : 'exit';
+    const fromState = isActive
+      ? getScreenMotionState(navDir, 'enter', reducedMotion)
+      : visibleScreenState;
+    const toState = isActive
+      ? visibleScreenState
+      : getScreenMotionState(navDir, 'exit', reducedMotion);
+    const screenTransition = pickPrimaryTransition(
+      getScreenTransition(navDir, reducedMotion, phase),
+    );
+    const overlayTransition = pickPrimaryTransition(
+      getScreenOverlayTransition(navDir, reducedMotion),
+    );
+    const overlayState = getScreenOverlayState(navDir, phase, reducedMotion);
 
-    if (overlayElement) {
-      overlayElement.style.willChange = 'opacity';
-    }
+    const screenDurationMs = Math.max(0, Math.round((screenTransition.duration ?? 0) * 1000));
+    const overlayDurationMs = Math.max(0, Math.round((overlayTransition.duration ?? 0) * 1000));
+    const screenEasing = toEasing(screenTransition.ease);
+    const overlayEasing = toEasing(overlayTransition.ease);
 
-    if (reducedMotion) {
-      if (isActive) {
-        element.style.visibility = 'visible';
-        element.style.zIndex = '1';
-      }
-
-      const phase = isActive ? 'enter' : 'exit';
-      const animation = playScreenAnimation(
-        element,
-        isActive ? getScreenMotionState(navDir, phase, true) : visibleScreenState,
-        {
-          ...(isActive ? visibleScreenState : hiddenScreenState),
-          boxShadow: getScreenShadowState(navDir, phase, true),
-        },
-        getScreenTransition(navDir, true, phase),
-      );
-      activeAnimations.push(animation);
-
-      animation.finished.then(() => {
-        if (cancelled || !element) {
-          return;
-        }
-
-        if (isActive) {
-          resetScreenChrome();
-          element.style.zIndex = '1';
-          element.style.willChange = '';
-        } else {
-          resetScreenChrome();
-          element.style.visibility = 'hidden';
-          element.style.zIndex = '0';
-          element.style.willChange = '';
-        }
-
-        if (overlayElement) {
-          overlayElement.style.opacity = '0';
-          overlayElement.style.willChange = '';
-        }
-      });
-
-      if (overlayElement) {
-        const overlayAnimation = playOverlayAnimation(
-          overlayElement,
-          { opacity: 0 },
-          getScreenOverlayState(navDir, phase, true),
-          getScreenOverlayTransition(navDir, true),
-        );
-        activeAnimations.push(overlayAnimation);
-      }
-
-      return () => {
-        cancelled = true;
-        activeAnimations.forEach((animation) => animation.cancel());
-        resetScreenChrome();
-      };
-    }
-
+    setZIndex(getScreenZIndex(navDir, isActive));
     if (isActive) {
-      element.style.visibility = 'visible';
-      element.style.zIndex = String(getScreenZIndex(navDir, true));
+      setInteractive(true);
+    }
 
-      if (overlayElement) {
-        applyOverlayState(overlayElement, getScreenOverlayState(navDir, 'enter', reducedMotion));
+    // Snap to the "from" pose, then animate to "to" so re-entries respect the directional offset.
+    opacity.value = fromState.opacity ?? 1;
+    translateX.value = toPx(fromState.x, width);
+    translateY.value = toPx(fromState.y, height);
+    scale.value = fromState.scale ?? 1;
+
+    if (screenDurationMs <= 0) {
+      opacity.value = toState.opacity ?? 1;
+      translateX.value = toPx(toState.x, width);
+      translateY.value = toPx(toState.y, height);
+      scale.value = toState.scale ?? 1;
+      if (!isActive) {
+        setInteractive(false);
+        setZIndex(0);
       }
-
-      const enterState = {
-        ...getScreenMotionState(navDir, 'enter', reducedMotion),
-        boxShadow: getScreenShadowState(navDir, 'enter', reducedMotion),
+    } else {
+      const onFinishedJS = () => {
+        if (!isActive) {
+          setInteractive(false);
+          setZIndex(0);
+        }
       };
 
-      applyScreenState(element, enterState);
-
-      waitForNextFrame().then(() => {
-        if (cancelled || !element) {
-          return;
-        }
-
-        const screenAnimation = playScreenAnimation(
-          element,
-          enterState,
-          {
-            ...visibleScreenState,
-            boxShadow: hiddenScreenState.boxShadow,
-          },
-          getScreenTransition(navDir, reducedMotion, 'enter'),
-        );
-        activeAnimations.push(screenAnimation);
-
-        screenAnimation.finished.then(() => {
-          if (!cancelled && element) {
-            resetScreenChrome();
-            element.style.zIndex = '1';
-            element.style.willChange = '';
-            if (overlayElement) {
-              overlayElement.style.opacity = '0';
-              overlayElement.style.willChange = '';
-            }
-          }
-        });
-
-        if (overlayElement) {
-          const overlayState = getScreenOverlayState(navDir, 'enter', reducedMotion);
-          const overlayAnimation = playOverlayAnimation(
-            overlayElement,
-            overlayState,
-            overlayState,
-            getScreenOverlayTransition(navDir, reducedMotion),
-          );
-          activeAnimations.push(overlayAnimation);
-        }
+      opacity.value = withTiming(toState.opacity ?? 1, {
+        duration: screenDurationMs,
+        easing: screenEasing,
       });
-    } else {
-      element.style.zIndex = String(getScreenZIndex(navDir, false));
-
-      if (overlayElement) {
-        const overlayAnimation = playOverlayAnimation(
-          overlayElement,
-          { opacity: 0 },
-          getScreenOverlayState(navDir, 'exit', reducedMotion),
-          getScreenOverlayTransition(navDir, reducedMotion),
-        );
-        activeAnimations.push(overlayAnimation);
-      }
-
-      const screenAnimation = playScreenAnimation(
-        element,
-        visibleScreenState,
-        {
-          ...getScreenMotionState(navDir, 'exit', reducedMotion),
-          boxShadow: getScreenShadowState(navDir, 'exit', reducedMotion),
-        },
-        getScreenTransition(navDir, reducedMotion, 'exit'),
-      );
-      activeAnimations.push(screenAnimation);
-
-      screenAnimation.finished.then(() => {
-        if (!cancelled && element) {
-          applyScreenState(element, hiddenScreenState);
-          resetScreenChrome();
-          element.style.visibility = 'hidden';
-          element.style.zIndex = '0';
-          element.style.willChange = '';
-          if (overlayElement) {
-            overlayElement.style.opacity = '0';
-            overlayElement.style.willChange = '';
+      translateX.value = withTiming(toPx(toState.x, width), {
+        duration: screenDurationMs,
+        easing: screenEasing,
+      });
+      translateY.value = withTiming(toPx(toState.y, height), {
+        duration: screenDurationMs,
+        easing: screenEasing,
+      });
+      scale.value = withTiming(
+        toState.scale ?? 1,
+        { duration: screenDurationMs, easing: screenEasing },
+        (finished) => {
+          'worklet';
+          if (finished) {
+            runOnJS(onFinishedJS)();
           }
-        }
+        },
+      );
+    }
+
+    if (overlayDurationMs <= 0) {
+      overlayOpacity.value = overlayState.opacity ?? 0;
+    } else {
+      overlayOpacity.value = withTiming(overlayState.opacity ?? 0, {
+        duration: overlayDurationMs,
+        easing: overlayEasing,
       });
     }
 
-    return () => {
-      cancelled = true;
-      activeAnimations.forEach((animation) => animation.cancel());
-      resetScreenChrome();
-    };
-  }, [isActive, navDir, reducedMotion]);
+    return undefined;
+  }, [
+    height,
+    isActive,
+    navDir,
+    opacity,
+    overlayOpacity,
+    reducedMotion,
+    scale,
+    translateX,
+    translateY,
+    width,
+  ]);
+
+  const screenStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
 
   return (
-    <div
-      className="animated-screen"
-      ref={scope}
-      style={{
-        position: fillMode,
-        inset: 0,
-        overflow: 'hidden',
-        pointerEvents: isActive ? 'auto' : 'none',
-      }}
-      inert={!isActive}
+    <Animated.View
+      pointerEvents={interactive ? 'auto' : 'none'}
+      style={[styles.screen, { zIndex }, screenStyle]}
     >
-      <div
-        ref={overlayRef}
-        className="animated-screen__overlay"
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'var(--color-overlay-scrim)',
-          pointerEvents: 'none',
-          opacity: 0,
-          zIndex: 2,
-        }}
-      />
-      {children}
-    </div>
+      <Animated.View pointerEvents="none" style={[styles.overlay, overlayStyle]} />
+      <View style={styles.body}>{children}</View>
+    </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    overflow: 'hidden',
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 2,
+  },
+  body: {
+    flex: 1,
+  },
+});

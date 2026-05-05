@@ -363,11 +363,8 @@ const VesselResultsBase = forwardRef(function VesselResults(
       showsVerticalScrollIndicator
       style={[styles.mainContent, chromeScrollbar && styles.mainContentChromeScrollbar, style]}
     >
-      <div
+      <View
         key={`${compact ? 'compact' : 'card'}-${modeAnimationId}`}
-        className={`vessel-results-mode ${
-          modeAnimationId > 0 ? 'vessel-results-mode--transitioning' : ''
-        }`.trim()}
       >
         {vessels.length === 0 ? (
           <VesselEmptyState />
@@ -394,7 +391,7 @@ const VesselResultsBase = forwardRef(function VesselResults(
             </View>
           ))
         )}
-      </div>
+      </View>
     </ScrollView>
   );
 });
