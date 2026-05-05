@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react';
 import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 
 import { RnwApp } from './RnwApp.jsx';
-import { getActiveTheme } from './theme.js';
+import { ThemeProvider, useTheme } from './ThemeContext.js';
+import { themes } from './theme.js';
 
-export default function App() {
+function AppShell() {
+  const { resolvedColorMode, hydrated } = useTheme();
+  const theme = themes[resolvedColorMode] ?? themes.light;
+  const barStyle = resolvedColorMode === 'dark' ? 'light-content' : 'dark-content';
+
   const [fontsLoaded, fontError] = useFonts({
     'Pretendard GOV Variable': require('../assets/fonts/PretendardGOV-Regular.otf'),
     'PretendardGOV-Medium': require('../assets/fonts/PretendardGOV-Medium.otf'),
@@ -16,32 +20,35 @@ export default function App() {
     'MaterialIconsRound-Regular': require('../assets/fonts/MaterialIconsRound-Regular.otf'),
   });
 
-  const [statusBarStyle, setStatusBarStyle] = useState(() =>
-    getActiveTheme()['color-bg-app'] === '#020617' ? 'light-content' : 'dark-content',
-  );
+  // Wait for both fonts and the persisted preference hydration before rendering
+  // the tree. AsyncStorage usually resolves before fonts finish unpacking, so this
+  // adds no extra splash latency; it just guarantees zero flash of unstyled theme.
+  const ready = (fontsLoaded || fontError) && hydrated;
 
-  useEffect(() => {
-    setStatusBarStyle(
-      getActiveTheme()['color-bg-app'] === '#020617' ? 'light-content' : 'dark-content',
-    );
-  }, []);
-
-  if (!fontsLoaded && !fontError) {
+  if (!ready) {
     return (
-      <SafeAreaProvider>
-        <View style={styles.loading}>
-          <ActivityIndicator size="large" />
-        </View>
-      </SafeAreaProvider>
+      <View style={[styles.loading, { backgroundColor: theme['color-bg-app'] }]}>
+        <ActivityIndicator size="large" />
+      </View>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={statusBarStyle} />
-      <View style={styles.container}>
+    <>
+      <StatusBar barStyle={barStyle} />
+      <View style={[styles.container, { backgroundColor: theme['color-bg-app'] }]}>
         <RnwApp />
       </View>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider initialMode="system">
+        <AppShell />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
@@ -49,12 +56,10 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: getActiveTheme()['color-bg-app'],
   },
   loading: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: getActiveTheme()['color-bg-app'],
   },
 });

@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { useLoginViewport } from './features/auth/useLoginViewport.js';
+import { useLoginViewport } from './features/auth/useLoginViewport';
 import { useReducedMotionSafe } from './hooks/useReducedMotionSafe.js';
 import { RnwAuthScreen } from './auth/RnwAuthScreen.jsx';
 import { RnwAuthRouteStage } from './auth/RnwAuthRouteStage.jsx';

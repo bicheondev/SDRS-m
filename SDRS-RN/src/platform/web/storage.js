@@ -3,6 +3,8 @@ export const STORE_NAME = 'app-state';
 export const STATE_KEY = 'database-v1';
 export const DATABASE_VERSION = 1;
 
+const COLOR_MODE_STORAGE_KEY = 'sdrs:color-mode';
+
 function closeDatabase(database) {
   if (database) {
     database.close();
@@ -57,6 +59,28 @@ export async function loadStoredDatabaseState() {
     transaction.oncomplete = finalize;
     transaction.onerror = finalize;
   });
+}
+
+export async function getColorModePreference() {
+  if (typeof localStorage === 'undefined') {
+    return null;
+  }
+  try {
+    return localStorage.getItem(COLOR_MODE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function setColorModePreference(mode) {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+  try {
+    localStorage.setItem(COLOR_MODE_STORAGE_KEY, String(mode));
+  } catch {
+    // ignore storage failures (e.g. private mode quota errors)
+  }
 }
 
 export async function saveStoredDatabaseState(state) {

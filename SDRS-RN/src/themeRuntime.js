@@ -68,7 +68,6 @@ const UNSUPPORTED_STYLE_KEYS = new Set([
   'fontSmoothing',
   'boxShadow',
   'boxSizing',
-  'WebkitOverflowScrolling',
   'overflowAnchor',
   'fontStretch',
   'background',
@@ -117,7 +116,7 @@ function looksLikeCssDimension(value) {
   return typeof value === 'string' && /^-?\d+\.?\d*(?:vh|vw|vmin|vmax|dvh|dvw)$/.test(value);
 }
 
-function adaptDimensionValue(value, key) {
+function adaptDimensionValue(value) {
   if (!looksLikeCssDimension(value)) {
     return value;
   }
@@ -179,7 +178,7 @@ function adaptValue(key, value, theme) {
       return undefined;
     }
     if (looksLikeCssDimension(value)) {
-      return adaptDimensionValue(value, key);
+      return adaptDimensionValue(value);
     }
     if (value === 'currentColor') {
       return undefined;
@@ -223,25 +222,47 @@ function resolveStyleObject(style, theme) {
   return next;
 }
 
-function resolveStyles(styles, theme) {
-  if (!isPlainObject(styles)) {
-    return styles;
-  }
+let runtimeColorMode = Appearance.getColorScheme?.() === 'dark' ? 'dark' : 'light';
 
-  const resolved = {};
-  for (const key of Object.keys(styles)) {
-    const inner = styles[key];
-    resolved[key] = isPlainObject(inner) ? resolveStyleObject(inner, theme) : inner;
+export function setRuntimeColorMode(colorMode) {
+  const next = colorMode === 'dark' ? 'dark' : 'light';
+  if (next === runtimeColorMode) {
+    return;
   }
+  runtimeColorMode = next;
+  setActiveColorMode(next);
+}
+
+export function getRuntimeColorMode() {
+  return runtimeColorMode;
+}
+
+function getRuntimeTheme() {
+  return themes[runtimeColorMode] ?? themes.light;
+}
+
+// Cache of resolved style objects keyed first by the original sub-style object
+// (via WeakMap), then by color mode. Each access returns the same resolved object
+// for that theme so identity stays stable across renders within the same theme.
+const resolvedStyleCache = new WeakMap();
+
+function resolveAgainstActiveTheme(originalSubStyle) {
+  let perStyle = resolvedStyleCache.get(originalSubStyle);
+  if (!perStyle) {
+    perStyle = new Map();
+    resolvedStyleCache.set(originalSubStyle, perStyle);
+  }
+  if (perStyle.has(runtimeColorMode)) {
+    return perStyle.get(runtimeColorMode);
+  }
+  const resolved = resolveStyleObject(originalSubStyle, getRuntimeTheme());
+  perStyle.set(runtimeColorMode, resolved);
   return resolved;
 }
 
 let originalCreate = null;
-let activeStyleSheetTheme = themes.light;
 
-export function patchStyleSheet(colorMode = 'light') {
-  activeStyleSheetTheme = themes[colorMode === 'dark' ? 'dark' : 'light'];
-
+export function patchStyleSheet() {
   if (originalCreate) {
     return;
   }
@@ -249,14 +270,32 @@ export function patchStyleSheet(colorMode = 'light') {
   originalCreate = StyleSheet.create.bind(StyleSheet);
 
   StyleSheet.create = (styles) => {
-    const resolved = resolveStyles(styles, activeStyleSheetTheme);
-    return originalCreate(resolved);
+    if (!isPlainObject(styles)) {
+      return originalCreate(styles);
+    }
+
+    const result = {};
+    for (const key of Object.keys(styles)) {
+      const sub = styles[key];
+
+      if (isPlainObject(sub)) {
+        Object.defineProperty(result, key, {
+          enumerable: true,
+          configurable: false,
+          get() {
+            return resolveAgainstActiveTheme(sub);
+          },
+        });
+      } else {
+        result[key] = sub;
+      }
+    }
+    return result;
   };
 }
 
-const detectedColorScheme = Appearance.getColorScheme?.() === 'dark' ? 'dark' : 'light';
-setActiveColorMode(detectedColorScheme);
-patchStyleSheet(detectedColorScheme);
+setActiveColorMode(runtimeColorMode);
+patchStyleSheet();
 
 export function resolveInlineStyle(style) {
   const theme = getActiveTheme();

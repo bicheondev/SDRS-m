@@ -63,6 +63,7 @@ export function writeLocalStorageValue() {}
 export function isHostElement() {
   return false;
 }
+// TODO: replace with ref.measure() once gesture layer is added — requires device testing
 export const getElementRectSnapshot = unsupported;
 export function setElementDataAttribute() {}
 export function removeElementDataAttribute() {}

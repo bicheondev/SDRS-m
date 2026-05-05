@@ -1,9 +1,12 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SQLite from 'expo-sqlite';
 
 export const DATABASE_NAME = 'ship-database-app';
 export const STORE_NAME = 'app-state';
 export const STATE_KEY = 'database-v1';
 export const DATABASE_VERSION = 1;
+
+const COLOR_MODE_STORAGE_KEY = 'sdrs:color-mode';
 
 let databasePromise = null;
 
@@ -55,4 +58,20 @@ export async function saveStoredDatabaseState(state) {
     STATE_KEY,
     serialized,
   );
+}
+
+export async function getColorModePreference() {
+  try {
+    return await AsyncStorage.getItem(COLOR_MODE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function setColorModePreference(mode) {
+  try {
+    await AsyncStorage.setItem(COLOR_MODE_STORAGE_KEY, String(mode));
+  } catch {
+    // ignore — color-mode preference is best-effort
+  }
 }
