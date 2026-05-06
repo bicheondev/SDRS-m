@@ -41,7 +41,9 @@
             "./assets/fonts/MaterialIconsRound-Regular.otf"
           ]
         }
-      ]
+      ],
+      "expo-build-properties",
+      "./plugins/withGradleWrapper.js"
     ]
   }
 }
