@@ -1,11 +1,12 @@
 import { memo, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIcon } from '../../components/Icons.jsx';
 import { AppText as Text, AppTextInput as TextInput } from '../../components/primitives/AppTypography.jsx';
 import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
 import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
-import Logo from '../../assets/ui/logo.svg';
+import Logo from '../../assets/ui/logo';
 import { resolveCssVariableString } from '../../theme.js';
 
 function FrostBackground({ filterSheet = false, scrollbarGutter = false }) {
@@ -76,6 +77,7 @@ function FiltersRow({
         >
           <Text
             className="filter-button__label"
+            numberOfLines={1}
             onLayout={onHarborLabelLayout}
             style={[styles.filterLabel, harborLabelWidth ? { width: harborLabelWidth } : null]}
           >
@@ -100,6 +102,7 @@ function FiltersRow({
         >
           <Text
             className="filter-button__label"
+            numberOfLines={1}
             onLayout={onVesselTypeLabelLayout}
             style={[styles.filterLabel, vesselTypeLabelWidth ? { width: vesselTypeLabelWidth } : null]}
           >
@@ -189,6 +192,10 @@ export const TopBar = memo(function TopBar({
   vesselTypeButtonRef,
   vesselTypeLabelWidth,
 }) {
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, 0);
+  const barHeight = (inFilterSheet ? 108 : 136) + topInset;
+
   return (
     <View
       className={`top-bar top-bar--rnw-frost ${
@@ -196,9 +203,9 @@ export const TopBar = memo(function TopBar({
       } ${scrollbarGutter ? 'top-bar--scrollbar-gutter' : ''}`.trim()}
       style={[
         styles.topBar,
-        styles.screenAligned,
         inFilterSheet && styles.topBarInSheet,
-        hidden && styles.topBarHidden,
+        { height: barHeight, paddingTop: topInset },
+        hidden && { top: -barHeight },
       ]}
     >
       <FrostBackground filterSheet={inFilterSheet} scrollbarGutter={scrollbarGutter} />
@@ -271,6 +278,9 @@ export const SearchTopBar = memo(function SearchTopBar({
   onVesselTypeFilterOpen,
 }) {
   const inputRef = useRef(null);
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, 0);
+  const barHeight = 136 + topInset;
 
   useEffect(() => {
     const frameId = requestAnimationFrame(() => {
@@ -285,7 +295,7 @@ export const SearchTopBar = memo(function SearchTopBar({
       className={`search-top-bar search-top-bar--rnw-frost ${
         scrollbarGutter ? 'search-top-bar--scrollbar-gutter' : ''
       }`.trim()}
-      style={[styles.searchTopBar, styles.screenAligned]}
+      style={[styles.searchTopBar, { height: barHeight, paddingTop: topInset }]}
     >
       <FrostBackground scrollbarGutter={scrollbarGutter} />
 
@@ -368,10 +378,11 @@ export const SearchTopBar = memo(function SearchTopBar({
 
 const styles = StyleSheet.create({
   topBar: {
-    position: 'fixed',
-    left: '50%',
+    position: 'absolute',
+    right: 0,
+    left: 0,
     top: 0,
-    width: 'min(100%, var(--screen-width))',
+    width: '100%',
     zIndex: 2,
     height: 136,
     overflow: 'hidden',
@@ -437,18 +448,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   searchTopBar: {
-    position: 'fixed',
-    left: '50%',
+    position: 'absolute',
+    right: 0,
+    left: 0,
     top: 0,
-    width: 'min(100%, var(--screen-width))',
+    width: '100%',
     zIndex: 2,
     height: 136,
     overflow: 'hidden',
     isolation: 'isolate',
     backgroundColor: 'transparent',
-  },
-  screenAligned: {
-    transform: [{ translateX: '-50%' }],
   },
   searchMain: {
     position: 'relative',
@@ -532,26 +541,28 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'row',
     gap: 24,
+    flexShrink: 1,
+    minWidth: 0,
   },
   filterGroupInSheet: {
     zIndex: 3,
   },
   filterButton: {
-    display: 'inline-flex',
+    display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 0,
     padding: 0,
     backgroundColor: 'transparent',
+    flexShrink: 1,
   },
   filterLabel: {
-    display: 'inline-block',
     color: 'var(--color-text-secondary)',
     fontSize: 18,
+    lineHeight: 23.4,
     fontWeight: '600',
     letterSpacing: -0.36,
     textAlign: 'left',
-    whiteSpace: 'nowrap',
     transitionDuration: 'var(--motion-duration-normal)',
     transitionProperty: 'width',
     transitionTimingFunction: 'var(--motion-ease-standard)',
@@ -563,6 +574,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flexShrink: 0,
   },
   viewOptionsBlurred: {
     opacity: 0.32,

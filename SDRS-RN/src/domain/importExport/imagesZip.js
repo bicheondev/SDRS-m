@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import JSZip from 'jszip';
 
 import { createId, createImportError } from './shared.js';
@@ -31,27 +32,42 @@ export function getExtensionFromFileName(fileName) {
   return parts.length > 1 ? parts.pop().toLowerCase() : '';
 }
 
-export function arrayBufferToDataUrl(buffer, mimeType) {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
+function bytesToBase64(bytes) {
+  if (typeof globalThis.btoa === 'function') {
+    let binary = '';
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+    return globalThis.btoa(binary);
   }
 
-  return `data:${mimeType};base64,${btoa(binary)}`;
+  return Buffer.from(bytes).toString('base64');
+}
+
+function base64ToBytes(base64) {
+  if (typeof globalThis.atob === 'function') {
+    const binary = globalThis.atob(base64);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+
+    return bytes;
+  }
+
+  return Uint8Array.from(Buffer.from(base64, 'base64'));
+}
+
+export function arrayBufferToDataUrl(buffer, mimeType) {
+  const bytes = new Uint8Array(buffer);
+
+  return `data:${mimeType};base64,${bytesToBase64(bytes)}`;
 }
 
 export function dataUrlToUint8Array(dataUrl) {
   const [, payload = ''] = String(dataUrl ?? '').split(',');
-  const binary = atob(payload);
-  const bytes = new Uint8Array(binary.length);
-
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-
-  return bytes;
+  return base64ToBytes(payload);
 }
 
 export async function importImagesZipFile(file) {

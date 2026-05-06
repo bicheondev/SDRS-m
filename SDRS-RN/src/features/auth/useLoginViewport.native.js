@@ -39,16 +39,18 @@ export function useLoginViewport({ enabled }) {
 
       // Prefer the gap between the keyboard's top edge and the viewport bottom,
       // which matches what the web version computes from visualViewport.
-      const inset =
+      const viewportInset =
         typeof screenY === 'number' && viewportHeight > 0
           ? Math.max(0, viewportHeight - screenY)
-          : Math.max(0, explicitHeight);
+          : 0;
+      const inset = viewportInset > 0 ? viewportInset : Math.max(0, explicitHeight);
 
       lastInsetRef.current = inset;
       setKeyboardInset(inset);
     };
 
     const handleHide = () => {
+      lastInsetRef.current = 0;
       setKeyboardInset(0);
     };
 

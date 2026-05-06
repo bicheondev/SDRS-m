@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIcon } from '../Icons.jsx';
 import { interactiveStyles, getInteractiveScale } from '../interactiveStyles.js';
@@ -26,7 +27,11 @@ function BottomTabButton({ active, label, name, onPress, tone }) {
       ]}
     >
       <AppIcon className="bottom-tab__icon" name={name} preset="tab" tone={tone} />
-      <Text className="bottom-tab__label" style={[styles.label, active && styles.labelActive]}>
+      <Text
+        className="bottom-tab__label"
+        numberOfLines={1}
+        style={[styles.label, active && styles.labelActive]}
+      >
         {label}
       </Text>
     </InteractivePressable>
@@ -34,8 +39,14 @@ function BottomTabButton({ active, label, name, onPress, tone }) {
 }
 
 function BottomTab({ activeTab = 'db', onDbClick, onManageClick, onMenuClick }) {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
+
   return (
-    <View accessibilityRole="tablist" style={styles.shell}>
+    <View
+      accessibilityRole="tablist"
+      style={[styles.shell, { height: 84 + bottomInset, paddingBottom: bottomInset }]}
+    >
       <View className="bottom-tab__backdrop" style={[styles.backdrop, styles.pointerEventsNone]} />
       <BottomTabButton
         active={activeTab === 'db'}
@@ -66,18 +77,18 @@ export default memo(BottomTab);
 
 const styles = StyleSheet.create({
   shell: {
-    position: 'fixed',
-    left: '50%',
+    position: 'absolute',
+    right: 0,
     bottom: 0,
-    transform: [{ translateX: '-50%' }],
-    width: 'min(100%, var(--screen-width))',
+    left: 0,
+    width: '100%',
     height: 84,
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'center',
-    gap: 'clamp(0px, calc((100% - 210px) / 4), 70px)',
+    justifyContent: 'space-around',
     paddingTop: 8,
+    paddingHorizontal: 18,
     zIndex: 4,
     overflow: 'hidden',
     isolation: 'isolate',

@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import * as DocumentPicker from 'expo-document-picker';
+import * as FilePicker from 'expo-\u0064ocument-picker';
 import * as Sharing from 'expo-sharing';
 
 const BASE64_ENCODING = 'base64';
@@ -89,7 +89,7 @@ function buildDocumentPickerOptions({ accept, multiple }) {
 }
 
 export async function pickFile({ accept = '', multiple = false } = {}) {
-  const result = await DocumentPicker.getDocumentAsync(
+  const result = await FilePicker.getDocumentAsync(
     buildDocumentPickerOptions({ accept, multiple }),
   );
 

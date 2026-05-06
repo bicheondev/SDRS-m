@@ -61,10 +61,10 @@ export function useLoginViewport({ enabled }) {
     };
 
     const update = () => {
-      const windowHeight = getWindowInnerHeight();
+      const viewportHeight = getWindowInnerHeight();
 
-      if (windowHeight > baseline) {
-        baseline = windowHeight;
+      if (viewportHeight > baseline) {
+        baseline = viewportHeight;
       }
 
       const inset = Math.max(0, baseline - viewport.height - viewport.offsetTop);

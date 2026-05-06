@@ -1,7 +1,9 @@
+import { Buffer } from 'buffer';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { loadBundledDatabaseStateFromFiles } from '../domain/importExport/bundledData.js';
+import { decodeCsvBuffer } from '../domain/importExport/csv.js';
 import { createImportError } from '../domain/importExport/shared.js';
 
 const BASE64_ENCODING = 'base64';
@@ -19,15 +21,9 @@ export const DEFAULT_BUNDLED_FILES = {
 };
 
 function base64ToArrayBuffer(base64) {
-  const binary = globalThis.atob(base64);
-  const length = binary.length;
-  const bytes = new Uint8Array(length);
+  const bytes = Buffer.from(base64, 'base64');
 
-  for (let index = 0; index < length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-
-  return bytes.buffer;
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 }
 
 async function ensureAssetReady(assetSource) {
@@ -37,38 +33,38 @@ async function ensureAssetReady(assetSource) {
     await asset.downloadAsync();
   }
 
-  if (!asset.localUri) {
+  const localUri = asset.localUri ?? asset.uri;
+
+  if (!localUri) {
     throw createImportError('기본 파일을 불러오지 못했어요.');
   }
 
-  return asset.localUri;
+  return localUri;
 }
 
 async function loadAssetAsFileLike({ asset, name, type }) {
   const localUri = await ensureAssetReady(asset);
-  const isCsv = type === 'text/csv';
+
+  const readBase64 = () =>
+    FileSystem.readAsStringAsync(localUri, {
+      encoding: BASE64_ENCODING,
+    });
 
   return {
     name,
     type,
     _uri: localUri,
     async text() {
-      return FileSystem.readAsStringAsync(localUri, {
-        encoding: UTF8_ENCODING,
-      });
-    },
-    async arrayBuffer() {
-      if (isCsv) {
-        const text = await FileSystem.readAsStringAsync(localUri, {
+      if (type !== 'text/csv') {
+        return FileSystem.readAsStringAsync(localUri, {
           encoding: UTF8_ENCODING,
         });
-        return new TextEncoder().encode(text).buffer;
       }
 
-      const base64 = await FileSystem.readAsStringAsync(localUri, {
-        encoding: BASE64_ENCODING,
-      });
-      return base64ToArrayBuffer(base64);
+      return decodeCsvBuffer(base64ToArrayBuffer(await readBase64()));
+    },
+    async arrayBuffer() {
+      return base64ToArrayBuffer(await readBase64());
     },
   };
 }

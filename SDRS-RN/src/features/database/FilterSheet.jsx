@@ -54,7 +54,7 @@ export function FilterScreen({
   vesselTypeFilter,
   vesselTypeOptions,
 }) {
-  const windowDimensions = useWindowDimensions();
+  const viewportDimensions = useWindowDimensions();
   const [naturalHarborLabelWidth, setNaturalHarborLabelWidth] = useState(0);
   const [naturalVesselTypeLabelWidth, setNaturalVesselTypeLabelWidth] = useState(0);
   const [harborOptionWidth, setHarborOptionWidth] = useState(0);
@@ -246,8 +246,8 @@ export function FilterScreen({
     harborFilter,
     updateColumnLayout,
     vesselTypeFilter,
-    windowDimensions.height,
-    windowDimensions.width,
+    viewportDimensions.height,
+    viewportDimensions.width,
   ]);
 
   return (

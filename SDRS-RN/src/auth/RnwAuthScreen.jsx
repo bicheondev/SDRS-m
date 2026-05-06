@@ -1,5 +1,14 @@
 import { useRef } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { motionDurationsMs, motionTokens } from '../motion.js';
 import { APP_FONT_FAMILY, resolveCssVariableString } from '../theme.js';
@@ -21,6 +30,7 @@ export function RnwAuthScreen({
   const passwordInputRef = useRef(null);
   const { width } = useWindowDimensions();
   const isCompactViewport = width <= 480;
+  const buttonBottom = Platform.OS === 'android' ? 0 : keyboardInset;
 
   const handleSubmit = () => {
     if (isFilled) {
@@ -36,100 +46,110 @@ export function RnwAuthScreen({
   const passwordFocused = focusedField === 'password';
 
   return (
-    <View style={[styles.appShell, isCompactViewport && styles.appShellCompact]}>
-      <View style={[styles.phoneScreen, isCompactViewport && styles.phoneScreenCompact]}>
-        <View style={[styles.loginHeader, isCompactViewport && styles.loginHeaderCompact]}>
-          <Text style={styles.loginTitle}>
-            <Text style={styles.loginTitleAccent}>로그인 정보</Text>를
-            {'\n'}
-            입력하세요.
-          </Text>
-        </View>
-
-        <View style={styles.loginForm}>
-          <View style={[styles.inputShell, usernameFocused && styles.inputShellFocused]}>
-            <TextInput
-              autoCapitalize="none"
-              autoCorrect={false}
-              blurOnSubmit={false}
-              enterKeyHint="next"
-              onBlur={onFieldBlur}
-              onChangeText={onUsernameChange}
-              onFocus={() => onFieldFocus('username')}
-              onSubmitEditing={handleUsernameSubmit}
-              placeholder="아이디"
-              placeholderTextColor={resolveCssVariableString(
-                usernameFocused
-                  ? 'var(--color-text-accent-strong)'
-                  : 'var(--color-text-muted)',
-              )}
-              returnKeyType="next"
-              selectionColor={resolveCssVariableString('var(--color-text-accent)')}
-              spellCheck={false}
-              style={[styles.loginInput, usernameFocused && styles.loginInputFocused]}
-              value={username}
-            />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'android' ? 'height' : undefined}
+      keyboardVerticalOffset={0}
+      style={styles.keyboardAvoidingView}
+    >
+      <View style={[styles.appShell, isCompactViewport && styles.appShellCompact]}>
+        <View style={[styles.phoneScreen, isCompactViewport && styles.phoneScreenCompact]}>
+          <View style={[styles.loginHeader, isCompactViewport && styles.loginHeaderCompact]}>
+            <Text style={styles.loginTitle}>
+              <Text style={styles.loginTitleAccent}>로그인 정보</Text>를
+              {'\n'}
+              입력하세요.
+            </Text>
           </View>
 
-          <View style={[styles.inputShell, styles.passwordShell, passwordFocused && styles.inputShellFocused]}>
-            <TextInput
-              ref={passwordInputRef}
-              enterKeyHint="go"
-              onBlur={onFieldBlur}
-              onChangeText={onPasswordChange}
-              onFocus={() => onFieldFocus('password')}
-              onSubmitEditing={handleSubmit}
-              placeholder="비밀번호"
-              placeholderTextColor={resolveCssVariableString(
-                passwordFocused
-                  ? 'var(--color-text-accent-strong)'
-                  : 'var(--color-text-muted)',
-              )}
-              returnKeyType="go"
-              secureTextEntry
-              selectionColor={resolveCssVariableString('var(--color-text-accent)')}
-              style={[styles.loginInput, passwordFocused && styles.loginInputFocused]}
-              value={password}
-            />
-          </View>
-        </View>
-
-        <Text style={[styles.appVersion, focusedField ? styles.appVersionHidden : null]}>
-          선박DB정보체계 버전 1.0
-        </Text>
-
-        <Pressable
-          accessibilityRole="button"
-          disabled={!isFilled}
-          onPress={handleSubmit}
-          style={({ focused }) => [
-            styles.loginButton,
-            isFilled ? styles.loginButtonActive : styles.loginButtonInactive,
-            focused ? styles.loginButtonFocused : null,
-            { transform: [{ translateY: -keyboardInset }] },
-          ]}
-        >
-          {({ pressed }) => (
-            <>
-              <View
-                style={[
-                  styles.loginButtonOverlay,
-                  styles.pointerEventsNone,
-                  isFilled && pressed ? styles.loginButtonOverlayPressed : null,
-                ]}
+          <View style={styles.loginForm}>
+            <View style={[styles.inputShell, usernameFocused && styles.inputShellFocused]}>
+              <TextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                blurOnSubmit={false}
+                enterKeyHint="next"
+                onBlur={onFieldBlur}
+                onChangeText={onUsernameChange}
+                onFocus={() => onFieldFocus('username')}
+                onSubmitEditing={handleUsernameSubmit}
+                placeholder="아이디"
+                placeholderTextColor={resolveCssVariableString(
+                  usernameFocused
+                    ? 'var(--color-text-accent-strong)'
+                    : 'var(--color-text-muted)',
+                )}
+                returnKeyType="next"
+                selectionColor={resolveCssVariableString('var(--color-text-accent)')}
+                spellCheck={false}
+                style={[styles.loginInput, usernameFocused && styles.loginInputFocused]}
+                value={username}
               />
-              <Text style={[styles.loginButtonText, isFilled && styles.loginButtonTextActive]}>
-                로그인
-              </Text>
-            </>
-          )}
-        </Pressable>
+            </View>
+
+            <View style={[styles.inputShell, styles.passwordShell, passwordFocused && styles.inputShellFocused]}>
+              <TextInput
+                ref={passwordInputRef}
+                enterKeyHint="go"
+                onBlur={onFieldBlur}
+                onChangeText={onPasswordChange}
+                onFocus={() => onFieldFocus('password')}
+                onSubmitEditing={handleSubmit}
+                placeholder="비밀번호"
+                placeholderTextColor={resolveCssVariableString(
+                  passwordFocused
+                    ? 'var(--color-text-accent-strong)'
+                    : 'var(--color-text-muted)',
+                )}
+                returnKeyType="go"
+                secureTextEntry
+                selectionColor={resolveCssVariableString('var(--color-text-accent)')}
+                style={[styles.loginInput, passwordFocused && styles.loginInputFocused]}
+                value={password}
+              />
+            </View>
+          </View>
+
+          <Text style={[styles.appVersion, focusedField ? styles.appVersionHidden : null]}>
+            선박DB정보체계 버전 1.0
+          </Text>
+
+          <Pressable
+            accessibilityRole="button"
+            disabled={!isFilled}
+            onPress={handleSubmit}
+            style={({ focused }) => [
+              styles.loginButton,
+              isFilled ? styles.loginButtonActive : styles.loginButtonInactive,
+              focused ? styles.loginButtonFocused : null,
+              { bottom: buttonBottom },
+            ]}
+          >
+            {({ pressed }) => (
+              <>
+                <View
+                  style={[
+                    styles.loginButtonOverlay,
+                    styles.pointerEventsNone,
+                    isFilled && pressed ? styles.loginButtonOverlayPressed : null,
+                  ]}
+                />
+                <Text style={[styles.loginButtonText, isFilled && styles.loginButtonTextActive]}>
+                  로그인
+                </Text>
+              </>
+            )}
+          </Pressable>
+        </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoidingView: {
+    flex: 1,
+    width: '100%',
+  },
   appShell: {
     flex: 1,
     width: '100%',
