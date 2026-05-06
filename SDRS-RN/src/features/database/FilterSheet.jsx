@@ -462,7 +462,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: 'transparent',
+    // Native: solid backdrop so the underlying top-bar text doesn't bleed through.
+    backgroundColor: 'var(--color-bg-screen)',
     backgroundImage: 'var(--gradient-filter-backdrop)',
     backdropFilter: 'blur(14px)',
     WebkitBackdropFilter: 'blur(14px)',
@@ -479,7 +480,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    zIndex: 4,
+    zIndex: 100,
+    elevation: 10,
   },
   panelMeasureHost: {
     overflow: 'visible',

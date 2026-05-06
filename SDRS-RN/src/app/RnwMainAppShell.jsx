@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { useDatabaseFilters } from '../features/database/useDatabaseFilters.js';
 import { useShipEditor } from '../features/manage/useShipEditor.js';
+import { useAndroidBackHandler } from '../hooks/useAndroidBackHandler.js';
 import { useColorMode } from '../hooks/useColorMode.js';
 import { useStackNavigation } from '../hooks/useStackNavigation.js';
 import { motionDurationsMs } from '../motion.js';
@@ -288,6 +289,45 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
   ]);
 
   const handleBottomTabManageClick = appState.activeTab === 'manage' ? undefined : openManage;
+
+  // Android hardware/back-gesture: walk the active stack so the OS only exits
+  // when there's nothing left to dismiss.
+  useAndroidBackHandler(
+    useCallback(() => {
+      if (appState.zoomSession) {
+        dispatch({ type: 'close-zoom' });
+        return true;
+      }
+      if (appState.activeTab === 'db' && databasePage.databaseView === 'search') {
+        databasePage.closeSearch();
+        return true;
+      }
+      if (appState.activeTab === 'db' && databasePage.filterSheet) {
+        databasePage.closeFilter();
+        return true;
+      }
+      if (appState.activeTab === 'manage' && manageNavigation.currentScreen !== 'manageHome') {
+        manageNavigation.pop();
+        return true;
+      }
+      if (appState.activeTab === 'menu' && menuNavigation.currentScreen !== 'menu') {
+        menuNavigation.pop();
+        return true;
+      }
+      if (appState.activeTab !== 'db') {
+        showDatabaseHome();
+        return true;
+      }
+      return false;
+    }, [
+      appState.activeTab,
+      appState.zoomSession,
+      databasePage,
+      manageNavigation,
+      menuNavigation,
+      showDatabaseHome,
+    ]),
+  );
 
   const handleBottomTabMenuClick = useCallback(() => {
     if (appState.activeTab === 'manage' && manageNavigation.currentScreen === 'manageHome') {

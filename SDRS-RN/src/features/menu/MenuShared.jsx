@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIcon } from '../../components/Icons.jsx';
 import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
@@ -6,9 +7,10 @@ import { InteractivePressable } from '../../components/primitives/InteractivePre
 import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 
 export function MenuSubpageTopBar({ title, onBack }) {
+  const insets = useSafeAreaInsets();
   return (
     <>
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top }]}>
         <InteractivePressable
           accessibilityLabel="뒤로가기"
           accessibilityRole="button"
@@ -44,7 +46,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     width: '100%',
-    height: 64,
+    minHeight: 64,
     paddingHorizontal: 18,
     display: 'flex',
     flexDirection: 'row',
