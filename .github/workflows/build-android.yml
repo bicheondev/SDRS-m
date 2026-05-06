@@ -1,0 +1,40 @@
+name: Build Android APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: SDRS-RN
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: SDRS-RN/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - uses: android/setup-android@v3
+        with:
+          android-api-level: 36
+          android-build-tools-version: '36.0.0'
+          ndk-version: '27.1.12297006'
+      - name: Install dependencies
+        run: npm install
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+      - name: Build Android APK (local)
+        run: eas build --platform android --profile preview --local --output ../app-release.apk
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: app-release.apk
