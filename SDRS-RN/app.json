@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "kr.bicheondev.sdrs"
@@ -41,8 +43,12 @@
             "./assets/fonts/MaterialIconsRound-Regular.otf"
           ]
         }
-      ],
-      "expo-build-properties"
-    ]
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "20d6c246-2051-415d-bcc6-dbdc44ef24bf"
+      }
+    }
   }
 }
