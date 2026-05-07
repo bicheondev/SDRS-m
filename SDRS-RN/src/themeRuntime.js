@@ -37,6 +37,8 @@ const UNSUPPORTED_STYLE_KEYS = new Set([
   'webkitMaskImage',
   'WebkitBackgroundClip',
   'webkitBackgroundClip',
+  'WebkitBackfaceVisibility',
+  'webkitBackfaceVisibility',
   'maskImage',
   'maskMode',
   'maskRepeat',
@@ -61,6 +63,7 @@ const UNSUPPORTED_STYLE_KEYS = new Set([
   'mixBlendMode',
   'visibility',
   'whiteSpace',
+  'wordBreak',
   'touchAction',
   'caretColor',
   'fontVariationSettings',
@@ -96,6 +99,7 @@ function isUnresolvableCssFunctionString(value) {
 const POSITION_FIXED_KEYS = new Set(['position']);
 const PRETENDARD_FONT_FAMILIES = new Set([
   'Pretendard GOV Variable',
+  'Pretendard GOV',
   'PretendardGOV-Regular',
   'PretendardGOV-Medium',
   'PretendardGOV-SemiBold',
@@ -140,7 +144,7 @@ function normalizeFontWeight(value) {
   return Number.isFinite(parsed) ? parsed : 400;
 }
 
-function getPretendardFontFamilyForWeight(value) {
+export function getPretendardFontFamilyForWeight(value) {
   const weight = normalizeFontWeight(value);
   if (weight >= 700) {
     return 'PretendardGOV-Bold';
@@ -154,6 +158,19 @@ function getPretendardFontFamilyForWeight(value) {
   return 'PretendardGOV-Regular';
 }
 
+function isPretendardFontFamily(value) {
+  if (value === undefined || value === null) {
+    return false;
+  }
+
+  const fontFamily = String(value);
+  if (PRETENDARD_FONT_FAMILIES.has(fontFamily)) {
+    return true;
+  }
+
+  return /Pretendard\s*GOV|PretendardGOV-/i.test(fontFamily);
+}
+
 function shouldApplyPretendardWeight(style) {
   if (!Object.prototype.hasOwnProperty.call(style, 'fontWeight')) {
     return false;
@@ -164,7 +181,7 @@ function shouldApplyPretendardWeight(style) {
     return true;
   }
 
-  return PRETENDARD_FONT_FAMILIES.has(String(fontFamily));
+  return isPretendardFontFamily(fontFamily);
 }
 
 function looksLikeCssDimension(value) {
@@ -194,7 +211,7 @@ function adaptShadowOrFilter(key, value) {
     return value;
   }
 
-  if (key === 'boxShadow' || key === 'shadowOffset' || key === 'shadowColor') {
+  if (key === 'boxShadow') {
     return undefined;
   }
 
@@ -205,9 +222,34 @@ function adaptShadowOrFilter(key, value) {
   return value;
 }
 
+function adaptDisplayValue(value) {
+  if (value === 'flex' || value === 'none') {
+    return value;
+  }
+
+  if (value === 'inline-flex') {
+    return 'flex';
+  }
+
+  if (
+    value === 'block' ||
+    value === 'inline' ||
+    value === 'inline-block' ||
+    value === 'grid'
+  ) {
+    return undefined;
+  }
+
+  return value;
+}
+
 function adaptValue(key, value, theme) {
   if (UNSUPPORTED_STYLE_KEYS.has(key)) {
     return undefined;
+  }
+
+  if (key === 'display' && typeof value === 'string') {
+    return adaptDisplayValue(value);
   }
 
   if (isCssVarString(value)) {
@@ -277,7 +319,7 @@ function resolveStyleObject(style, theme) {
   if (shouldApplyPretendardWeight(next)) {
     next.fontFamily = getPretendardFontFamilyForWeight(next.fontWeight);
     next.fontWeight = '400';
-  } else if (PRETENDARD_FONT_FAMILIES.has(String(next.fontFamily))) {
+  } else if (isPretendardFontFamily(next.fontFamily)) {
     next.fontFamily = getPretendardFontFamilyForWeight(next.fontWeight);
   }
 

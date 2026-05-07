@@ -26,8 +26,11 @@ export const AppTextInput = forwardRef(function AppTextInput({ style, ...props }
 const styles = StyleSheet.create({
   text: {
     fontFamily: APP_FONT_FAMILY,
+    includeFontPadding: false,
   },
   textInput: {
     fontFamily: APP_FONT_FAMILY,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 });

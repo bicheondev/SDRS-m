@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 11,
     fontWeight: '600',
-    letterSpacing: 0,
+    letterSpacing: -0.11,
     textAlign: 'center',
     whiteSpace: 'nowrap',
   },

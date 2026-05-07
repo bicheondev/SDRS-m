@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, Platform, useWindowDimensions } from 'react-native';
+import { Dimensions, Keyboard, Platform, useWindowDimensions } from 'react-native';
 
 const SHOW_EVENT = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
 const HIDE_EVENT = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
@@ -9,7 +9,22 @@ export function useLoginViewport({ enabled }) {
   const [keyboardInset, setKeyboardInset] = useState(0);
   const blurTimeoutRef = useRef(null);
   const lastInsetRef = useRef(0);
+  const baselineHeightRef = useRef(0);
   const { height: viewportHeight } = useWindowDimensions();
+
+  useEffect(() => {
+    if (!enabled) {
+      baselineHeightRef.current = 0;
+      return;
+    }
+
+    const windowHeight = Dimensions.get('window').height;
+    baselineHeightRef.current = Math.max(
+      baselineHeightRef.current,
+      viewportHeight,
+      windowHeight,
+    );
+  }, [enabled, viewportHeight]);
 
   useEffect(
     () => () => {
@@ -36,21 +51,24 @@ export function useLoginViewport({ enabled }) {
     const handleShow = (event) => {
       const screenY = event?.endCoordinates?.screenY;
       const explicitHeight = event?.endCoordinates?.height ?? 0;
+      const baselineHeight = Math.max(
+        baselineHeightRef.current,
+        viewportHeight,
+        Dimensions.get('window').height,
+      );
 
       const viewportInset =
-        typeof screenY === 'number' && viewportHeight > 0
-          ? Math.max(0, viewportHeight - screenY)
+        typeof screenY === 'number' && baselineHeight > 0
+          ? Math.max(0, baselineHeight - screenY)
           : 0;
-      const inset =
-        typeof screenY === 'number' && viewportHeight > 0
-          ? viewportInset
-          : Math.max(0, explicitHeight);
+      const inset = Math.max(viewportInset, Math.max(0, explicitHeight));
 
       lastInsetRef.current = inset;
       setKeyboardInset(inset);
     };
 
     const handleHide = () => {
+      baselineHeightRef.current = Math.max(viewportHeight, Dimensions.get('window').height);
       lastInsetRef.current = 0;
       setKeyboardInset(0);
     };
@@ -81,11 +99,16 @@ export function useLoginViewport({ enabled }) {
     const metrics = typeof Keyboard.metrics === 'function' ? Keyboard.metrics() : null;
     const metricsHeight = metrics?.height ?? 0;
     const metricsScreenY = metrics?.screenY;
+    const baselineHeight = Math.max(
+      baselineHeightRef.current,
+      viewportHeight,
+      Dimensions.get('window').height,
+    );
     const metricsViewportInset =
-      typeof metricsScreenY === 'number' && viewportHeight > 0
-        ? Math.max(0, viewportHeight - metricsScreenY)
+      typeof metricsScreenY === 'number' && baselineHeight > 0
+        ? Math.max(0, baselineHeight - metricsScreenY)
         : null;
-    const metricsInset = metricsViewportInset ?? Math.max(0, metricsHeight);
+    const metricsInset = Math.max(metricsViewportInset ?? 0, Math.max(0, metricsHeight));
     if (metricsInset > 0) {
       lastInsetRef.current = metricsInset;
       setKeyboardInset(metricsInset);

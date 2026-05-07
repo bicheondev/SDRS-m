@@ -133,7 +133,7 @@ export function FilterScreen({
   const harborMenuLeft = columnLayout.harborLeft;
   const vesselTypeMenuLeft = columnLayout.vesselTypeLeft;
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
-  const backdropBaseColor = colorWithAlpha(screenColor, 0.5);
+  const backdropBaseColor = colorWithAlpha(screenColor, 0);
   const backdropTopColor = colorWithAlpha(screenColor, 1);
   const backdropMidColor = colorWithAlpha(screenColor, 0.5);
   const layerProgress = useSharedValue(phase === 'closing' ? 1 : 0);

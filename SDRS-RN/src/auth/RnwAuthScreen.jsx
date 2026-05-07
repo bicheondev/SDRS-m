@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import Animated, {
   Easing,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -39,12 +40,34 @@ export function RnwAuthScreen({
   const resolvedKeyboardInset = Math.max(0, keyboardInset);
   const bottomInset = Math.max(insets.bottom, 0);
   const isKeyboardFocused = Boolean(focusedField);
+  const usernameFocused = focusedField === 'username';
+  const passwordFocused = focusedField === 'password';
   const loginButtonBottomTarget = isKeyboardFocused
-    ? Math.max(0, resolvedKeyboardInset - bottomInset)
+    ? Math.max(bottomInset, resolvedKeyboardInset)
     : bottomInset;
+  const inputBgColor = resolveCssVariableString('var(--color-bg-input)');
+  const inputFocusBgColor = resolveCssVariableString('var(--color-bg-input-focus)');
   const loginButtonBottom = useSharedValue(loginButtonBottomTarget);
+  const usernameFocusProgress = useSharedValue(usernameFocused ? 1 : 0);
+  const passwordFocusProgress = useSharedValue(passwordFocused ? 1 : 0);
   const loginButtonDockStyle = useAnimatedStyle(() => ({
     bottom: loginButtonBottom.value,
+  }));
+  const usernameInputShellStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      usernameFocusProgress.value,
+      [0, 1],
+      [inputBgColor, inputFocusBgColor],
+    ),
+    transform: [{ translateY: -usernameFocusProgress.value }],
+  }));
+  const passwordInputShellStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      passwordFocusProgress.value,
+      [0, 1],
+      [inputBgColor, inputFocusBgColor],
+    ),
+    transform: [{ translateY: -passwordFocusProgress.value }],
   }));
 
   useEffect(() => {
@@ -53,6 +76,20 @@ export function RnwAuthScreen({
       easing: Easing.bezier(...motionTokens.ease.ios),
     });
   }, [loginButtonBottom, loginButtonBottomTarget]);
+
+  useEffect(() => {
+    usernameFocusProgress.value = withTiming(usernameFocused ? 1 : 0, {
+      duration: motionDurationsMs.fast,
+      easing: Easing.bezier(...motionTokens.ease.ios),
+    });
+  }, [usernameFocusProgress, usernameFocused]);
+
+  useEffect(() => {
+    passwordFocusProgress.value = withTiming(passwordFocused ? 1 : 0, {
+      duration: motionDurationsMs.fast,
+      easing: Easing.bezier(...motionTokens.ease.ios),
+    });
+  }, [passwordFocusProgress, passwordFocused]);
 
   const handleSubmit = () => {
     if (isFilled) {
@@ -63,9 +100,6 @@ export function RnwAuthScreen({
   const handleUsernameSubmit = () => {
     passwordInputRef.current?.focus();
   };
-
-  const usernameFocused = focusedField === 'username';
-  const passwordFocused = focusedField === 'password';
 
   return (
     <View style={styles.root}>
@@ -80,7 +114,7 @@ export function RnwAuthScreen({
           </View>
 
           <View style={styles.loginForm}>
-            <View style={[styles.inputShell, usernameFocused && styles.inputShellFocused]}>
+            <Animated.View style={[styles.inputShell, usernameInputShellStyle]}>
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -102,9 +136,9 @@ export function RnwAuthScreen({
                 style={[styles.loginInput, usernameFocused && styles.loginInputFocused]}
                 value={username}
               />
-            </View>
+            </Animated.View>
 
-            <View style={[styles.inputShell, styles.passwordShell, passwordFocused && styles.inputShellFocused]}>
+            <Animated.View style={[styles.inputShell, styles.passwordShell, passwordInputShellStyle]}>
               <TextInput
                 ref={passwordInputRef}
                 enterKeyHint="go"
@@ -124,7 +158,7 @@ export function RnwAuthScreen({
                 style={[styles.loginInput, passwordFocused && styles.loginInputFocused]}
                 value={password}
               />
-            </View>
+            </Animated.View>
           </View>
 
           <Text style={[styles.appVersion, { bottom: 82 + bottomInset }, focusedField ? styles.appVersionHidden : null]}>
@@ -211,6 +245,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 33.8,
     fontWeight: '600',
+    includeFontPadding: false,
     letterSpacing: -0.78,
     userSelect: 'none',
     WebkitTouchCallout: 'none',
@@ -252,6 +287,7 @@ const styles = StyleSheet.create({
     color: 'var(--color-text-secondary)',
     fontFamily: APP_FONT_FAMILY,
     fontSize: 18,
+    includeFontPadding: false,
     lineHeight: 20,
     letterSpacing: -0.36,
   },
@@ -267,6 +303,7 @@ const styles = StyleSheet.create({
     color: 'var(--color-text-muted)',
     fontFamily: APP_FONT_FAMILY,
     fontSize: 15,
+    includeFontPadding: false,
     lineHeight: 20,
     letterSpacing: -0.3,
     textAlign: 'center',
@@ -298,6 +335,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     zIndex: 10,
+    elevation: 10,
     height: 64,
   },
   loginButtonInactive: {
@@ -331,6 +369,7 @@ const styles = StyleSheet.create({
     fontFamily: APP_FONT_FAMILY,
     fontSize: 18,
     fontWeight: '500',
+    includeFontPadding: false,
     lineHeight: 18,
     letterSpacing: -0.36,
   },

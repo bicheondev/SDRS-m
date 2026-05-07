@@ -239,6 +239,7 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
 
   const openFilter = useCallback(
     (mode) => {
+      Keyboard.dismiss();
       resetTransientUi();
       setFilterSheet({
         mode,

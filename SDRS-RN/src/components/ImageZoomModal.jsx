@@ -27,7 +27,9 @@ import { AppIcon } from './Icons.jsx';
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const DOUBLE_TAP_ZOOM = 2.5;
+const GESTURE_MIN_ZOOM = 0.85;
 const GESTURE_MAX_ZOOM = 4.5;
+const PAN_ELASTICITY = 0.24;
 const DISMISS_DISTANCE_DP = 140;
 const DISMISS_VELOCITY = 450;
 const DISMISS_FADE_RANGE = 260;
@@ -38,6 +40,7 @@ const SPRING_CONFIG = {
 };
 const OPEN_DURATION_MS = Math.round(motionTokens.duration.image * 1000);
 const IOS_EASE = motionTokens.ease.ios;
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function clampWorklet(value, min, max) {
   'worklet';
@@ -46,6 +49,19 @@ function clampWorklet(value, min, max) {
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+function applyElasticityWorklet(value, max) {
+  'worklet';
+  if (max <= 0) {
+    return value * PAN_ELASTICITY;
+  }
+
+  if (Math.abs(value) <= max) {
+    return value;
+  }
+
+  return Math.sign(value) * (max + (Math.abs(value) - max) * PAN_ELASTICITY);
 }
 
 function getContainRect(containerWidth, containerHeight, aspectRatio) {
@@ -229,7 +245,8 @@ function ImageZoomModalContent({ session, onClose }) {
         }
       });
     } else {
-      flipOpacity.value = withTiming(0, timing, (finished) => {
+      flipOpacity.value = withTiming(0, timing);
+      contentOpacity.value = withTiming(0, timing, (finished) => {
         'worklet';
         if (finished) {
           runOnJS(onClose)();
@@ -242,7 +259,7 @@ function ImageZoomModalContent({ session, onClose }) {
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .maxDuration(motionTokens.duration.fast * 1000 * 2)
-    .onStart(() => {
+    .onStart((event) => {
       'worklet';
       if (imageScale.value > MIN_ZOOM + 0.01) {
         imageScale.value = withSpring(MIN_ZOOM, SPRING_CONFIG);
@@ -270,9 +287,15 @@ function ImageZoomModalContent({ session, onClose }) {
   const singleTap = Gesture.Tap()
     .numberOfTaps(1)
     .maxDuration(220)
-    .onStart(() => {
+    .onStart((event) => {
       'worklet';
-      if (imageScale.value <= MIN_ZOOM + 0.01) {
+      const withinImage =
+        event.x >= displayRect.left &&
+        event.x <= displayRect.left + displayRect.width &&
+        event.y >= displayRect.top &&
+        event.y <= displayRect.top + displayRect.height;
+
+      if (!withinImage && imageScale.value <= MIN_ZOOM + 0.01) {
         runOnJS(handleClose)();
       }
     });
@@ -286,7 +309,7 @@ function ImageZoomModalContent({ session, onClose }) {
       'worklet';
       imageScale.value = clampWorklet(
         pinchStartScale.value * event.scale,
-        MIN_ZOOM,
+        GESTURE_MIN_ZOOM,
         GESTURE_MAX_ZOOM,
       );
     })
@@ -313,8 +336,8 @@ function ImageZoomModalContent({ session, onClose }) {
         // Pan the image while zoomed in.
         const maxX = Math.max(0, (displayRect.width * imageScale.value - screenWidth) / 2);
         const maxY = Math.max(0, (displayRect.height * imageScale.value - screenHeight) / 2);
-        imageTX.value = clampWorklet(panStartTX.value + event.translationX, -maxX, maxX);
-        imageTY.value = clampWorklet(panStartTY.value + event.translationY, -maxY, maxY);
+        imageTX.value = applyElasticityWorklet(panStartTX.value + event.translationX, maxX);
+        imageTY.value = applyElasticityWorklet(panStartTY.value + event.translationY, maxY);
       } else if (event.translationY > 0) {
         // Drag-to-dismiss: only respond to downward drags at 1x zoom.
         dismissTY.value = event.translationY;
@@ -385,6 +408,10 @@ function ImageZoomModalContent({ session, onClose }) {
     ],
   }));
 
+  const closeButtonAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value * backdropOpacity.value,
+  }));
+
   if (!session || !vessel) {
     return null;
   }
@@ -439,13 +466,14 @@ function ImageZoomModalContent({ session, onClose }) {
         </Animated.View>
       ) : null}
 
-      <Pressable
+      <AnimatedPressable
         accessibilityLabel="닫기"
         accessibilityRole="button"
         hitSlop={12}
         onPress={handleClose}
         style={[
           styles.closeButton,
+          closeButtonAnimatedStyle,
           {
             top: closeButtonTop,
             right: closeButtonRight,
@@ -453,7 +481,7 @@ function ImageZoomModalContent({ session, onClose }) {
         ]}
       >
         <AppIcon name="close" preset="modalClose" tone="slate-700" />
-      </Pressable>
+      </AnimatedPressable>
     </View>
   );
 }

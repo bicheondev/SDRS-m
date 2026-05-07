@@ -37,7 +37,7 @@ function AppShell() {
 
   return (
     <>
-      <StatusBar barStyle={barStyle} />
+      <StatusBar backgroundColor="transparent" barStyle={barStyle} translucent />
       <View style={[styles.container, { backgroundColor: theme['color-bg-app'] }]}>
         <RnwApp />
       </View>

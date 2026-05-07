@@ -515,12 +515,14 @@ const styles = StyleSheet.create({
   vesselName: {
     color: 'var(--slate-700)',
     fontSize: 24,
+    lineHeight: 31.2,
     fontWeight: '600',
     letterSpacing: -0.72,
   },
   registration: {
     color: 'var(--color-text-tertiary)',
     fontSize: 15,
+    lineHeight: 19.5,
     fontWeight: '400',
   },
   vesselTables: {
@@ -597,6 +599,7 @@ const styles = StyleSheet.create({
   },
   tableText: {
     fontSize: 15,
+    lineHeight: 19.5,
     textAlign: 'left',
   },
   tableLabelText: {
@@ -656,11 +659,13 @@ const styles = StyleSheet.create({
     width: 126,
     color: 'var(--color-text-tertiary)',
     fontSize: 18,
+    lineHeight: 23.4,
     fontWeight: '600',
   },
   compactDetailValue: {
     color: 'var(--color-text-tertiary)',
     fontSize: 18,
+    lineHeight: 23.4,
     fontWeight: '500',
   },
   compactDivider: {
@@ -683,6 +688,7 @@ const styles = StyleSheet.create({
     width: 126,
     color: 'var(--color-text-violet-muted)',
     fontSize: 18,
+    lineHeight: 23.4,
     fontWeight: '600',
   },
   compactEquipmentLabelActive: {

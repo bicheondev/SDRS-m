@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { useTheme } from '../../ThemeContext.js';
 import { manageHomeSecondaryRows } from '../../assets/assets.js';
@@ -9,8 +15,11 @@ import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
 import { getInteractiveScale, interactiveStyles } from '../../components/interactiveStyles.js';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe.js';
-import { motionTokens } from '../../motion.js';
+import { motionDurationsMs, motionTokens } from '../../motion.js';
 import { pickFile } from '../../services/filePicker.js';
+
+const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function joinClassNames(...tokens) {
   return tokens.filter(Boolean).join(' ');
@@ -76,6 +85,35 @@ function useMountTransition(reducedMotion = false) {
   return isPresented;
 }
 
+function useModalAnimatedStyles(reducedMotion) {
+  const progress = useSharedValue(reducedMotion ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(1, {
+      duration: reducedMotion ? motionDurationsMs.instant : motionDurationsMs.normal,
+      easing: IOS_EASING,
+    });
+  }, [progress, reducedMotion]);
+
+  const scrimStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+  }));
+
+  const cardStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [
+      { translateY: (1 - progress.value) * motionTokens.offset.modalLift },
+      {
+        scale:
+          motionTokens.scale.modalEnter +
+          (1 - motionTokens.scale.modalEnter) * progress.value,
+      },
+    ],
+  }));
+
+  return { cardStyle, scrimStyle };
+}
+
 function SectionDivider() {
   return <View style={styles.sectionDivider} />;
 }
@@ -128,30 +166,22 @@ function ManageAlertModal({
   title = '경고 사항',
 }) {
   const reducedMotion = useReducedMotionSafe();
-  const isPresented = useMountTransition(reducedMotion);
+  const modalAnimatedStyles = useModalAnimatedStyles(reducedMotion);
 
   return (
     <View className="manage-discard-modal" style={styles.modalShell}>
-      <View
+      <Animated.View
         className="manage-discard-modal__scrim"
         style={[
           styles.modalScrim,
-          {
-            opacity: isPresented ? 1 : 0,
-          },
+          modalAnimatedStyles.scrimStyle,
         ]}
       />
-      <View
+      <Animated.View
         className="manage-discard-modal__card"
         style={[
           styles.modalCard,
-          {
-            opacity: isPresented ? 1 : 0,
-            transform: [
-              { translateY: reducedMotion || isPresented ? 0 : motionTokens.offset.modalLift },
-              { scale: reducedMotion || isPresented ? 1 : motionTokens.scale.modalEnter },
-            ],
-          },
+          modalAnimatedStyles.cardStyle,
         ]}
       >
         <Text className="manage-discard-modal__title" style={styles.modalTitle}>{title}</Text>
@@ -193,7 +223,7 @@ function ManageAlertModal({
             <Text style={styles.modalButtonLabel}>{confirmLabel}</Text>
           </InteractivePressable>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -206,33 +236,25 @@ function ManageShipImportModal({
   replaceSameRegistration = true,
 }) {
   const reducedMotion = useReducedMotionSafe();
-  const isPresented = useMountTransition(reducedMotion);
+  const modalAnimatedStyles = useModalAnimatedStyles(reducedMotion);
 
   return (
     <View className="manage-discard-modal" style={styles.modalShell}>
-      <Pressable
+      <AnimatedPressable
         accessibilityLabel="선박 DB 불러오기 닫기"
         accessibilityRole="button"
         className="manage-discard-modal__scrim-button interaction-reset"
         onPress={onDismiss}
         style={[
           styles.modalScrimButton,
-          {
-            opacity: isPresented ? 1 : 0,
-          },
+          modalAnimatedStyles.scrimStyle,
         ]}
       />
-      <View
+      <Animated.View
         className="manage-discard-modal__card"
         style={[
           styles.modalCard,
-          {
-            opacity: isPresented ? 1 : 0,
-            transform: [
-              { translateY: reducedMotion || isPresented ? 0 : motionTokens.offset.modalLift },
-              { scale: reducedMotion || isPresented ? 1 : motionTokens.scale.modalEnter },
-            ],
-          },
+          modalAnimatedStyles.cardStyle,
         ]}
       >
         <View className="manage-ship-import-modal__content" style={styles.importContent}>
@@ -299,7 +321,7 @@ function ManageShipImportModal({
             <Text style={styles.modalButtonLabel}>기존 데이터 유지</Text>
           </InteractivePressable>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }

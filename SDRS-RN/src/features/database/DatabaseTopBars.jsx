@@ -1,6 +1,12 @@
 import { memo, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Keyboard, StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
@@ -10,6 +16,9 @@ import { InteractivePressable } from '../../components/primitives/InteractivePre
 import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
 import Logo from '../../assets/ui/logo';
 import { resolveCssVariableString } from '../../theme.js';
+import { motionDurationsMs, motionTokens } from '../../motion.js';
+
+const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
 
 function colorWithAlpha(color, alpha) {
   if (typeof color !== 'string') {
@@ -103,6 +112,51 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInse
   );
 }
 
+function FilterButtonLabel({ children, numberOfLines = 1, onLayout, width }) {
+  const widthValue = useSharedValue(width ?? 0);
+  const hasWidth = typeof width === 'number' && width > 0;
+
+  useEffect(() => {
+    if (!hasWidth) {
+      return;
+    }
+
+    widthValue.value = withTiming(width, {
+      duration: motionDurationsMs.normal,
+      easing: IOS_EASING,
+    });
+  }, [hasWidth, width, widthValue]);
+
+  const widthStyle = useAnimatedStyle(() => (
+    hasWidth
+      ? {
+          width: widthValue.value,
+        }
+      : {}
+  ));
+
+  const label = (
+    <Text
+      className="filter-button__label"
+      numberOfLines={numberOfLines}
+      onLayout={onLayout}
+      style={styles.filterLabel}
+    >
+      {children}
+    </Text>
+  );
+
+  if (!hasWidth) {
+    return label;
+  }
+
+  return (
+    <Animated.View pointerEvents="none" style={[styles.filterLabelClip, widthStyle]}>
+      {label}
+    </Animated.View>
+  );
+}
+
 function FiltersRow({
   blurViewOptions = false,
   compact,
@@ -151,14 +205,12 @@ function FiltersRow({
             { transform: [{ scale: pressed ? getInteractiveScale('button') : 1 }] },
           ]}
         >
-          <Text
-            className="filter-button__label"
-            numberOfLines={1}
+          <FilterButtonLabel
             onLayout={onHarborLabelLayout}
-            style={[styles.filterLabel, harborLabelWidth ? { width: harborLabelWidth } : null]}
+            width={harborLabelWidth}
           >
             {harborLabel}
-          </Text>
+          </FilterButtonLabel>
           <AppIcon className="filter-button__icon" name={dropdownIconName} preset="disclosure" tone="slate-400" />
         </InteractivePressable>
 
@@ -176,14 +228,12 @@ function FiltersRow({
             { transform: [{ scale: pressed ? getInteractiveScale('button') : 1 }] },
           ]}
         >
-          <Text
-            className="filter-button__label"
-            numberOfLines={1}
+          <FilterButtonLabel
             onLayout={onVesselTypeLabelLayout}
-            style={[styles.filterLabel, vesselTypeLabelWidth ? { width: vesselTypeLabelWidth } : null]}
+            width={vesselTypeLabelWidth}
           >
             {vesselTypeLabel}
-          </Text>
+          </FilterButtonLabel>
           <AppIcon className="filter-button__icon" name={dropdownIconName} preset="disclosure" tone="slate-400" />
         </InteractivePressable>
       </View>
@@ -272,9 +322,21 @@ export const TopBar = memo(function TopBar({
   const insets = useSafeAreaInsets();
   const topInset = Math.max(insets.top, 0);
   const barHeight = (inFilterSheet ? 108 : 136) + topInset;
+  const hiddenProgress = useSharedValue(hidden ? 1 : 0);
+
+  useEffect(() => {
+    hiddenProgress.value = withTiming(hidden ? 1 : 0, {
+      duration: motionDurationsMs.fast,
+      easing: IOS_EASING,
+    });
+  }, [hidden, hiddenProgress]);
+
+  const topBarAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -barHeight * hiddenProgress.value }],
+  }));
 
   return (
-    <View
+    <Animated.View
       className={`top-bar top-bar--rnw-frost ${
         inFilterSheet ? 'top-bar--filter-sheet' : ''
       } ${scrollbarGutter ? 'top-bar--scrollbar-gutter' : ''}`.trim()}
@@ -282,7 +344,7 @@ export const TopBar = memo(function TopBar({
         styles.topBar,
         inFilterSheet && styles.topBarInSheet,
         { height: barHeight, paddingTop: topInset },
-        hidden && { top: -barHeight },
+        topBarAnimatedStyle,
       ]}
     >
       <FrostBackground
@@ -341,7 +403,7 @@ export const TopBar = memo(function TopBar({
         vesselTypeButtonRef={vesselTypeButtonRef}
         vesselTypeLabelWidth={vesselTypeLabelWidth}
       />
-    </View>
+    </Animated.View>
   );
 });
 
@@ -715,6 +777,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: -0.36,
     textAlign: 'left',
+  },
+  filterLabelClip: {
+    overflow: 'hidden',
   },
   viewOptions: {
     position: 'relative',

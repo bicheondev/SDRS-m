@@ -1,7 +1,14 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { useTheme } from '../../ThemeContext.js';
+import { motionDurationsMs, motionTokens } from '../../motion.js';
 import { getHighResolutionTime } from '../../platform/index';
 import { resolveCssVariableString } from '../../theme.js';
 import { resolveInlineStyle } from '../../themeRuntime.js';
@@ -81,6 +88,24 @@ const PRESSABLE_VARIANT_CLASSES = new Set([
 ]);
 
 const PRESS_GUIDE_MIN_VISIBLE_MS = 48;
+const PRESS_EASING = Easing.bezier(...motionTokens.ease.ios);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function getPressScaleForVariant(variant) {
+  if (variant === 'icon') {
+    return motionTokens.scale.iconTap;
+  }
+
+  if (variant === 'media') {
+    return motionTokens.scale.cardTap;
+  }
+
+  if (variant === 'option' || variant === 'row') {
+    return motionTokens.scale.rowTap;
+  }
+
+  return motionTokens.scale.buttonTap;
+}
 
 function joinClassNames(...tokens) {
   return tokens.filter(Boolean).join(' ');
@@ -208,6 +233,8 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
   const forcedPressed = testOnly_pressed === true;
   const guideReleaseTimeoutRef = useRef(null);
   const guidePressStartedAtRef = useRef(0);
+  const pressProgress = useSharedValue(forcedPressed ? 1 : 0);
+  const pressScale = getPressScaleForVariant(pressGuideVariant);
 
   const cancelGuideRelease = useCallback(() => {
     cancelScheduledTimeout(guideReleaseTimeoutRef);
@@ -284,16 +311,39 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
     [pressGuideColor, pressGuideInset, pressGuideRadius, pressGuideVariant, resolvedColorMode],
   );
 
+  useEffect(() => {
+    const active = !disabled && (forcedPressed || pressGuideActive);
+    pressProgress.value = withTiming(active ? 1 : 0, {
+      duration: motionDurationsMs.fast,
+      easing: PRESS_EASING,
+    });
+  }, [disabled, forcedPressed, pressGuideActive, pressProgress]);
+
+  const animatedPressableStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - (1 - pressScale) * pressProgress.value }],
+  }));
+
+  const animatedPressGuideStyle = useAnimatedStyle(() => ({
+    opacity: pressProgress.value,
+  }));
+
   const resolvedStyle = useMemo(() => {
     if (typeof style !== 'function') {
-      return [pressGuideStyle, resolveInlineStyle(style)];
+      return [pressGuideStyle, resolveInlineStyle(style), animatedPressableStyle];
     }
 
     return (interactionState) => [
       pressGuideStyle,
       resolveInlineStyle(style(resolveInteractionState(interactionState))),
+      animatedPressableStyle,
     ];
-  }, [pressGuideStyle, resolveInteractionState, resolvedColorMode, style]);
+  }, [
+    animatedPressableStyle,
+    pressGuideStyle,
+    resolveInteractionState,
+    resolvedColorMode,
+    style,
+  ]);
 
   const resolvedClassName = useMemo(
     () =>
@@ -308,7 +358,7 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
   );
 
   return (
-    <Pressable
+    <AnimatedPressable
       className={resolvedClassName}
       disabled={disabled}
       onBlur={handleBlur}
@@ -325,7 +375,7 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
 
         return (
           <>
-            <View
+            <Animated.View
               className={joinClassNames(
                 'pressable-control__overlay',
                 showPressGuide && 'pressable-control__overlay--active',
@@ -333,14 +383,14 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
               style={[
                 styles.pressGuideOverlay,
                 pressGuideOverlayStyle,
-                showPressGuide && styles.pressGuideOverlayActive,
+                animatedPressGuideStyle,
               ]}
             />
             {typeof children === 'function' ? children(interactionState) : children}
           </>
         );
       }}
-    </Pressable>
+    </AnimatedPressable>
   );
 });
 
@@ -350,8 +400,5 @@ const styles = StyleSheet.create({
     pointerEvents: 'none',
     position: 'absolute',
     zIndex: 0,
-  },
-  pressGuideOverlayActive: {
-    opacity: 1,
   },
 });

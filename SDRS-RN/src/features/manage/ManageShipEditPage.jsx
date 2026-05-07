@@ -160,6 +160,35 @@ function useMountTransition(reducedMotion = false, enabled = true, animateReduce
   return isPresented;
 }
 
+function useModalAnimatedStyles(reducedMotion) {
+  const progress = useSharedValue(reducedMotion ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(1, {
+      duration: reducedMotion ? motionDurationsMs.instant : motionDurationsMs.normal,
+      easing: IOS_EASING,
+    });
+  }, [progress, reducedMotion]);
+
+  const scrimStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+  }));
+
+  const cardStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [
+      { translateY: (1 - progress.value) * motionTokens.offset.modalLift },
+      {
+        scale:
+          motionTokens.scale.modalEnter +
+          (1 - motionTokens.scale.modalEnter) * progress.value,
+      },
+    ],
+  }));
+
+  return { cardStyle, scrimStyle };
+}
+
 function getManageListEnterStyle({
   height = 0,
   isEntering = false,
@@ -1278,29 +1307,21 @@ function ManageAlertModal({
   title = '경고 사항',
 }) {
   const reducedMotion = useReducedMotionSafe();
-  const isPresented = useMountTransition(reducedMotion);
+  const modalAnimatedStyles = useModalAnimatedStyles(reducedMotion);
 
   return (
     <View style={styles.modalShell}>
-      <View
+      <Animated.View
         style={[
           styles.modalScrim,
-          {
-            opacity: isPresented ? 1 : 0,
-          },
+          modalAnimatedStyles.scrimStyle,
         ]}
       />
 
-      <View
+      <Animated.View
         style={[
           styles.modalCard,
-          {
-            opacity: isPresented ? 1 : 0,
-            transform: [
-              { translateY: reducedMotion || isPresented ? 0 : motionTokens.offset.modalLift },
-              { scale: reducedMotion || isPresented ? 1 : motionTokens.scale.modalEnter },
-            ],
-          },
+          modalAnimatedStyles.cardStyle,
         ]}
       >
         <Text style={styles.modalTitle}>{title}</Text>
@@ -1336,7 +1357,7 @@ function ManageAlertModal({
             <Text style={styles.modalButtonLabel}>{confirmLabel}</Text>
           </InteractivePressable>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -1347,8 +1368,8 @@ function ManageSavedToast({ message, onDismiss }) {
   const dismissDragThreshold = 56;
   const reducedMotion = useReducedMotionSafe();
   const bottomInset = Math.max(insets.bottom, 0);
-  const isPresented = useMountTransition(reducedMotion);
   const manualDismissDuration = reducedMotion ? 80 : 160;
+  const toastProgress = useSharedValue(reducedMotion ? 1 : 0);
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [dismissing, setDismissing] = useState(false);
@@ -1380,6 +1401,25 @@ function ManageSavedToast({ message, onDismiss }) {
   }, [clearPendingDismiss]);
 
   useEffect(() => clearPendingDismiss, [clearPendingDismiss]);
+
+  useEffect(() => {
+    toastProgress.value = withTiming(1, {
+      duration: reducedMotion ? motionDurationsMs.instant : motionDurationsMs.normal,
+      easing: IOS_EASING,
+    });
+  }, [reducedMotion, toastProgress]);
+
+  const toastAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: toastProgress.value,
+    transform: [
+      { translateY: (1 - toastProgress.value) * motionTokens.offset.toastLift },
+      {
+        scale:
+          motionTokens.scale.toastEnter +
+          (1 - motionTokens.scale.toastEnter) * toastProgress.value,
+      },
+    ],
+  }));
 
   const panResponder = useMemo(
     () =>
@@ -1460,16 +1500,10 @@ function ManageSavedToast({ message, onDismiss }) {
           { opacity: fadeOpacity },
         ]}
       >
-        <View
+        <Animated.View
           style={[
             styles.toast,
-            {
-              opacity: isPresented ? 1 : 0,
-              transform: [
-                { translateY: reducedMotion || isPresented ? 0 : motionTokens.offset.toastLift },
-                { scale: reducedMotion || isPresented ? 1 : motionTokens.scale.toastEnter },
-              ],
-            },
+            toastAnimatedStyle,
           ]}
         >
           <AppIcon
@@ -1480,7 +1514,7 @@ function ManageSavedToast({ message, onDismiss }) {
             tone="accent"
           />
           <Text style={styles.toastMessage}>{message}</Text>
-        </View>
+        </Animated.View>
       </View>
     </View>
   );
