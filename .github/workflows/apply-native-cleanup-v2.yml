@@ -1,0 +1,71 @@
+name: Apply Native Cleanup Patch V2
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/apply-native-cleanup-v2.yml
+permissions:
+  contents: write
+concurrency:
+  group: apply-native-cleanup-patch-v2
+  cancel-in-progress: false
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Apply native cleanup patch
+        run: |
+          set -euo pipefail
+          awk '/PATCH64/{flag=!flag; next} flag {gsub(/^          /, ""); print}' .github/workflows/apply-native-cleanup.yml > /tmp/native-cleanup.b64
+          base64 -d /tmp/native-cleanup.b64 > /tmp/native-cleanup.patch
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('/tmp/native-cleanup.patch')
+          s = p.read_text()
+          s = s.replace('style={styles.manaeShipImage}', 'style={styles.manageShipImage}')
+          s = s.replace('\n          )}\n       </View>\n \n@@ -2497,13 +2497,6 @@ const styles = StyleSheet.create({', '\n         )}\n       </View>\n \n@@ -2497,13 +2497,6 @@ const styles = StyleSheet.create({')
+          p.write_text(s)
+          PY
+          git apply --check /tmp/native-cleanup.patch
+          git apply /tmp/native-cleanup.patch
+          git diff --check
+          while read -r expected path; do
+            actual=$(git hash-object "$path")
+            if [ "$actual" != "$expected" ]; then
+              echo "hash mismatch for $path: expected $expected got $actual" >&2
+              exit 1
+            fi
+          done <<'HASHES'
+          51d73a478bef6905c89820f968afdf34a96de5a3 SDRS-RN/src/auth/RnwAuthScreen.jsx
+          c16eccd0d6f840a0421c840ae96c4eaef64bfe6e SDRS-RN/src/components/interactiveStyles.js
+          33dc329660d81d79b9d09d30f9fff22a0699fa09 SDRS-RN/src/components/layout/BottomTab.jsx
+          3e0fe4cc21a32c70235a8f59c5762a13389ef9fd SDRS-RN/src/components/layout/ScreenLayout.jsx
+          a197ada2b940469df67e9d4fecf238ae02229b1e SDRS-RN/src/features/database/DatabaseTopBars.jsx
+          2a967556f226e086593e86bfc9d58f98fea8bd79 SDRS-RN/src/features/database/FilterSheet.jsx
+          82fb79c744d405332fb351578b18a0b745e5077b SDRS-RN/src/features/database/VesselResults.jsx
+          f2ddc63ffe22939acc6c916804a6db2bbce26ce6 SDRS-RN/src/features/manage/ManageHomePage.jsx
+          03d36ea920743757dba2ac5cfd603d6b3cef47f3 SDRS-RN/src/features/manage/ManageShipEditPage.jsx
+          74552f9d35e7c8314b726a75ba1fdbe32ebe2290 SDRS-RN/src/features/menu/MenuPage.jsx
+          b8b88cae910029cd743d8da3d83d38bccb37c7e8 SDRS-RN/src/motion.js
+          HASHES
+          git status --short
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            SDRS-RN/src/auth/RnwAuthScreen.jsx \
+            SDRS-RN/src/components/interactiveStyles.js \
+            SDRS-RN/src/components/layout/BottomTab.jsx \
+            SDRS-RN/src/components/layout/ScreenLayout.jsx \
+            SDRS-RN/src/features/database/DatabaseTopBars.jsx \
+            SDRS-RN/src/features/database/FilterSheet.jsx \
+            SDRS-RN/src/features/database/VesselResults.jsx \
+            SDRS-RN/src/features/manage/ManageHomePage.jsx \
+            SDRS-RN/src/features/manage/ManageShipEditPage.jsx \
+            SDRS-RN/src/features/menu/MenuPage.jsx \
+            SDRS-RN/src/motion.js
+          git commit -m "fix: remove web-only style props from native views"
+          git push origin HEAD:main
