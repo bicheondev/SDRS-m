@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
+import { useTheme } from '../../ThemeContext.js';
 import { AppIcon } from '../../components/Icons.jsx';
 import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
 import { AppScreenShell, screenLayoutStyles } from '../../components/layout/ScreenLayout.jsx';
@@ -8,6 +9,7 @@ import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 import { MenuSubpageTopBar } from './MenuShared.jsx';
 
 export function MenuModePage({ colorMode, onBack, onSelectMode }) {
+  useTheme();
   const modeOptions = [
     { value: 'system', label: '시스템 설정' },
     { value: 'light', label: '라이트' },

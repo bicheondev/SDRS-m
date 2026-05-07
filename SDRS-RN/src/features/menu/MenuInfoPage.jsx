@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
+import { useTheme } from '../../ThemeContext.js';
 import MenuInfoLogo from '../../assets/ui/menuInfoLogo';
 import MenuInfoMark from '../../assets/ui/menuInfoMark';
 import { AppScreenShell, screenLayoutStyles } from '../../components/layout/ScreenLayout.jsx';
@@ -7,6 +8,7 @@ import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 import { MenuSubpageTopBar } from './MenuShared.jsx';
 
 export function MenuInfoPage({ onBack }) {
+  useTheme();
   return (
     <AppScreenShell screenStyle={screenLayoutStyles.screenColumn}>
         <MenuSubpageTopBar title="앱 정보" onBack={onBack} />

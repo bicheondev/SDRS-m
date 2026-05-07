@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -7,8 +7,16 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTheme } from '../ThemeContext.js';
+import { motionDurationsMs, motionTokens } from '../motion.js';
 import { APP_FONT_FAMILY, resolveCssVariableString } from '../theme.js';
 
 export function RnwAuthScreen({
@@ -23,14 +31,28 @@ export function RnwAuthScreen({
   password,
   username,
 }) {
+  useTheme();
   const passwordInputRef = useRef(null);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isCompactViewport = width <= 480;
   const resolvedKeyboardInset = Math.max(0, keyboardInset);
   const bottomInset = Math.max(insets.bottom, 0);
-  const isKeyboardDocked = Boolean(focusedField) && resolvedKeyboardInset > 0;
-  const loginButtonBottom = isKeyboardDocked ? resolvedKeyboardInset : bottomInset;
+  const isKeyboardFocused = Boolean(focusedField);
+  const loginButtonBottomTarget = isKeyboardFocused
+    ? Math.max(0, resolvedKeyboardInset - bottomInset)
+    : bottomInset;
+  const loginButtonBottom = useSharedValue(loginButtonBottomTarget);
+  const loginButtonDockStyle = useAnimatedStyle(() => ({
+    bottom: loginButtonBottom.value,
+  }));
+
+  useEffect(() => {
+    loginButtonBottom.value = withTiming(loginButtonBottomTarget, {
+      duration: motionDurationsMs.normal,
+      easing: Easing.bezier(...motionTokens.ease.ios),
+    });
+  }, [loginButtonBottom, loginButtonBottomTarget]);
 
   const handleSubmit = () => {
     if (isFilled) {
@@ -109,34 +131,33 @@ export function RnwAuthScreen({
             선박DB정보체계 버전 1.0
           </Text>
 
-          <Pressable
-            accessibilityRole="button"
-            disabled={!isFilled}
-            onPress={handleSubmit}
-            style={({ focused }) => [
-              styles.loginButton,
-              isFilled ? styles.loginButtonActive : styles.loginButtonInactive,
-              focused ? styles.loginButtonFocused : null,
-              {
-                bottom: loginButtonBottom,
-              },
-            ]}
-          >
-            {({ pressed }) => (
-              <>
-                <View
-                  style={[
-                    styles.loginButtonOverlay,
-                    styles.pointerEventsNone,
-                    isFilled && pressed ? styles.loginButtonOverlayPressed : null,
-                  ]}
-                />
-                <Text style={[styles.loginButtonText, isFilled && styles.loginButtonTextActive]}>
-                  로그인
-                </Text>
-              </>
-            )}
-          </Pressable>
+          <Animated.View style={[styles.loginButtonDock, loginButtonDockStyle]}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={!isFilled}
+              onPress={handleSubmit}
+              style={({ focused }) => [
+                styles.loginButton,
+                isFilled ? styles.loginButtonActive : styles.loginButtonInactive,
+                focused ? styles.loginButtonFocused : null,
+              ]}
+            >
+              {({ pressed }) => (
+                <>
+                  <View
+                    style={[
+                      styles.loginButtonOverlay,
+                      styles.pointerEventsNone,
+                      isFilled && pressed ? styles.loginButtonOverlayPressed : null,
+                    ]}
+                  />
+                  <Text style={[styles.loginButtonText, isFilled && styles.loginButtonTextActive]}>
+                    로그인
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          </Animated.View>
         </View>
       </View>
     </View>
@@ -258,11 +279,7 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   loginButton: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    left: 0,
-    zIndex: 10,
+    width: '100%',
     height: 64,
     alignItems: 'center',
     justifyContent: 'center',
@@ -274,6 +291,14 @@ const styles = StyleSheet.create({
     userSelect: 'none',
     touchAction: 'manipulation',
     willChange: 'transform',
+  },
+  loginButtonDock: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 10,
+    height: 64,
   },
   loginButtonInactive: {
     backgroundColor: 'var(--color-bg-surface-pressed)',

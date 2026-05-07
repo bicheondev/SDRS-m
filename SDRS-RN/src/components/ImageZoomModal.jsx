@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   Image,
   Pressable,
@@ -18,11 +18,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTheme } from '../ThemeContext.js';
 import { motionTokens } from '../motion.js';
+import { resolveCssVariableString } from '../theme.js';
 import { AppIcon } from './Icons.jsx';
 
 const MIN_ZOOM = 1;
-const MAX_ZOOM = 5;
+const MAX_ZOOM = 4;
 const DOUBLE_TAP_ZOOM = 2.5;
 const DISMISS_DISTANCE_DP = 80;
 const DISMISS_VELOCITY = 800;
@@ -44,25 +46,8 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function getContainRect(containerWidth, containerHeight, aspectRatio) {
-  const safeAspectRatio = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
-  const containerAspectRatio = containerWidth / containerHeight;
-  const width = safeAspectRatio >= containerAspectRatio
-    ? containerWidth
-    : containerHeight * safeAspectRatio;
-  const height = safeAspectRatio >= containerAspectRatio
-    ? containerWidth / safeAspectRatio
-    : containerHeight;
-
-  return {
-    top: (containerHeight - height) / 2,
-    left: (containerWidth - width) / 2,
-    width,
-    height,
-  };
-}
-
 function ImageZoomModalContent({ session, onClose }) {
+  useTheme();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
@@ -70,7 +55,6 @@ function ImageZoomModalContent({ session, onClose }) {
   const initialIndex = clamp(session?.startIndex ?? 0, 0, Math.max(vessels.length - 1, 0));
   const vessel = vessels[initialIndex] ?? null;
   const imageUri = vessel?.imageWide || (typeof vessel?.image === 'string' ? vessel.image : null);
-  const [naturalImageSize, setNaturalImageSize] = useState(null);
 
   const fromRect = session?.fromRect ?? session?.sourceRect ?? null;
   const hasFromRect =
@@ -80,34 +64,12 @@ function ImageZoomModalContent({ session, onClose }) {
     fromRect.width > 0 &&
     fromRect.height > 0;
 
-  useEffect(() => {
-    let cancelled = false;
-    setNaturalImageSize(null);
-
-    if (!imageUri) {
-      return undefined;
-    }
-
-    Image.getSize(
-      imageUri,
-      (width, height) => {
-        if (!cancelled && width > 0 && height > 0) {
-          setNaturalImageSize({ width, height });
-        }
-      },
-      () => {},
-    );
-
-    return () => {
-      cancelled = true;
-    };
-  }, [imageUri]);
-
-  const fallbackAspectRatio = hasFromRect ? fromRect.width / fromRect.height : screenWidth / screenHeight;
-  const imageAspectRatio = naturalImageSize
-    ? naturalImageSize.width / naturalImageSize.height
-    : fallbackAspectRatio;
-  const targetRect = getContainRect(screenWidth, screenHeight, imageAspectRatio);
+  const targetRect = {
+    top: 0,
+    left: 0,
+    width: screenWidth,
+    height: screenHeight,
+  };
   const initialScaleX = hasFromRect ? fromRect.width / targetRect.width : 1;
   const initialScaleY = hasFromRect ? fromRect.height / targetRect.height : 1;
   const initialTX = hasFromRect
@@ -271,8 +233,10 @@ function ImageZoomModalContent({ session, onClose }) {
       'worklet';
       if (imageScale.value > MIN_ZOOM + 0.01) {
         // Pan the image while zoomed in.
-        imageTX.value = panStartTX.value + event.translationX;
-        imageTY.value = panStartTY.value + event.translationY;
+        const maxX = Math.max(0, (screenWidth * imageScale.value - screenWidth) / 2);
+        const maxY = Math.max(0, (screenHeight * imageScale.value - screenHeight) / 2);
+        imageTX.value = clampWorklet(panStartTX.value + event.translationX, -maxX, maxX);
+        imageTY.value = clampWorklet(panStartTY.value + event.translationY, -maxY, maxY);
       } else if (event.translationY > 0) {
         // Drag-to-dismiss: only respond to downward drags at 1x zoom.
         dismissTY.value = event.translationY;
@@ -283,7 +247,10 @@ function ImageZoomModalContent({ session, onClose }) {
     .onEnd((event) => {
       'worklet';
       if (imageScale.value > MIN_ZOOM + 0.01) {
-        // Zoomed pan: leave wherever the user dragged to.
+        const maxX = Math.max(0, (screenWidth * imageScale.value - screenWidth) / 2);
+        const maxY = Math.max(0, (screenHeight * imageScale.value - screenHeight) / 2);
+        imageTX.value = withSpring(clampWorklet(imageTX.value, -maxX, maxX), SPRING_CONFIG);
+        imageTY.value = withSpring(clampWorklet(imageTY.value, -maxY, maxY), SPRING_CONFIG);
         return;
       }
 
@@ -329,13 +296,19 @@ function ImageZoomModalContent({ session, onClose }) {
     return null;
   }
 
-  const closeButtonTop = Math.max(insets.top, 0) + 12;
-  const closeButtonRight = Math.max(insets.right, 0) + 16;
+  const closeButtonTop = Math.max(insets.top, 0) + 24;
+  const closeButtonRight = Math.max(insets.right, 0) + 19;
   const imageSource = imageUri ? { uri: imageUri } : vessel.image;
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <Animated.View style={[styles.backdrop, backdropStyle]} />
+      <Animated.View
+        style={[
+          styles.backdrop,
+          { backgroundColor: resolveCssVariableString('var(--color-bg-zoom)') },
+          backdropStyle,
+        ]}
+      />
 
       <GestureDetector gesture={composed}>
         <Animated.View
@@ -375,7 +348,7 @@ function ImageZoomModalContent({ session, onClose }) {
           },
         ]}
       >
-        <AppIcon name="close" preset="modalClose" tone="on-accent" />
+        <AppIcon name="close" preset="modalClose" tone="slate-700" />
       </Pressable>
     </View>
   );
@@ -392,7 +365,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: '#000000',
+    backgroundColor: 'var(--color-bg-zoom)',
   },
   flipContainer: {
     position: 'absolute',
@@ -411,12 +384,12 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 999,
+    backgroundColor: 'rgba(241, 245, 249, 0.5)',
     zIndex: 10,
   },
 });

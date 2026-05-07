@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTheme } from '../../ThemeContext.js';
 import { AppIcon } from '../Icons.jsx';
 import { interactiveStyles, getInteractiveScale } from '../interactiveStyles.js';
 import { InteractivePressable } from '../primitives/InteractivePressable.jsx';
@@ -40,6 +41,7 @@ function BottomTabButton({ active, label, name, onPress, tone, wide = false }) {
 }
 
 function BottomTab({ activeTab = 'db', onDbClick, onManageClick, onMenuClick }) {
+  useTheme();
   const insets = useSafeAreaInsets();
   const { width: viewportWidth } = useWindowDimensions();
   const bottomInset = Math.max(insets.bottom, 0);
@@ -49,7 +51,6 @@ function BottomTab({ activeTab = 'db', onDbClick, onManageClick, onMenuClick }) 
 
   return (
     <View
-      accessibilityRole="tablist"
       style={[
         styles.shell,
         {

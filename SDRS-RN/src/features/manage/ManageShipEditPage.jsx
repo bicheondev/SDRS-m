@@ -19,6 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTheme } from '../../ThemeContext.js';
 import { emptyManageShipCard } from '../../appDomain.js';
 import manageImage from '../../assets/ui/manageImage.png';
 import { AppIcon } from '../../components/Icons.jsx';
@@ -166,7 +167,6 @@ function getManageListEnterStyle({
     height: isPresented ? height : 0,
     opacity: isPresented ? 1 : 0,
     overflow: 'hidden',
-    filter: reducedMotion || isPresented ? 'blur(0px)' : 'blur(2px)',
   };
 }
 
@@ -180,7 +180,6 @@ function getManageListRemoveStyle({ isCollapsing = false, isRemoving = false, he
     opacity: isCollapsing ? 0 : 1,
     overflow: 'hidden',
     pointerEvents: 'none',
-    filter: reducedMotion || !isCollapsing ? 'blur(0px)' : 'blur(1.5px)',
   };
 }
 
@@ -1433,7 +1432,7 @@ function ManageSavedToast({ message, onDismiss }) {
 
   return (
     <View
-      accessibilityRole="status"
+      accessibilityLiveRegion="polite"
       style={[
         styles.toastShell,
         dragging && styles.toastShellDragging,
@@ -1496,6 +1495,7 @@ export function ManageShipEditPage({
   onSearchChange,
   onSearchClear,
 }) {
+  useTheme();
   const reducedMotion = useReducedMotionSafe();
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 0);
@@ -2460,7 +2460,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     boxShadow:
       '0 24px 52px -32px rgb(15 23 42 / 0.28), 0 10px 22px -18px rgb(15 23 42 / 0.18)',
-    filter: 'saturate(1.02)',
   },
   manageEditReorderEntry: {
     position: 'relative',

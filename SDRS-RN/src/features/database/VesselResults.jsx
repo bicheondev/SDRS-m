@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTheme } from '../../ThemeContext.js';
 import { AppIcon } from '../../components/Icons.jsx';
 import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
 import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
@@ -192,6 +193,7 @@ async function handleImagePress(buttonRef, vessel, onImageClick) {
 }
 
 export const VesselCard = memo(function VesselCard({ hiddenThumbnail = false, vessel, onImageClick }) {
+  useTheme();
   const imageButtonRef = useRef(null);
 
   return (
@@ -260,6 +262,7 @@ export const CompactVesselCard = memo(function CompactVesselCard({
   vessel,
   onImageClick,
 }) {
+  useTheme();
   const imageButtonRef = useRef(null);
 
   return (
@@ -306,6 +309,7 @@ export const CompactVesselCard = memo(function CompactVesselCard({
 });
 
 export function VesselEmptyState() {
+  useTheme();
   return (
     <View style={styles.emptyState}>
       <AppIcon
@@ -333,6 +337,7 @@ const VesselResultsBase = forwardRef(function VesselResults(
   },
   ref,
 ) {
+  useTheme();
   const reducedMotion = useReducedMotionSafe();
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 0);

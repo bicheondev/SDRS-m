@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { useTheme } from '../../ThemeContext.js';
 import { manageHomeSecondaryRows } from '../../assets/assets.js';
 import { AppIcon } from '../../components/Icons.jsx';
 import { AppScreenShell, screenLayoutStyles } from '../../components/layout/ScreenLayout.jsx';
@@ -317,6 +318,7 @@ export function ManageHomePage({
   onShipEditOpen,
   onShipImport,
 }) {
+  useTheme();
   const handleShipImport = useCallback(async () => {
     const file = await pickFile({ accept: '.csv,text/csv' });
     if (file) {

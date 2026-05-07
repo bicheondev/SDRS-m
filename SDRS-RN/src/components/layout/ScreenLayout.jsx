@@ -1,10 +1,13 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { useTheme } from '../../ThemeContext.js';
+
 export function useCompactViewport() {
   return useWindowDimensions().width <= 480;
 }
 
 export function AppScreenShell({ children, shellStyle, screenStyle }) {
+  useTheme();
   const isCompactViewport = useCompactViewport();
 
   return (

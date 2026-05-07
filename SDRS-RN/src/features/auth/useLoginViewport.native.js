@@ -37,13 +37,14 @@ export function useLoginViewport({ enabled }) {
       const screenY = event?.endCoordinates?.screenY;
       const explicitHeight = event?.endCoordinates?.height ?? 0;
 
-      // The CTA is positioned with bottom: keyboardHeight, so prefer the native
-      // keyboard height and only fall back to the measured viewport gap.
       const viewportInset =
         typeof screenY === 'number' && viewportHeight > 0
           ? Math.max(0, viewportHeight - screenY)
           : 0;
-      const inset = explicitHeight > 0 ? Math.max(0, explicitHeight) : viewportInset;
+      const inset =
+        typeof screenY === 'number' && viewportHeight > 0
+          ? viewportInset
+          : Math.max(0, explicitHeight);
 
       lastInsetRef.current = inset;
       setKeyboardInset(inset);
@@ -79,11 +80,17 @@ export function useLoginViewport({ enabled }) {
 
     const metrics = typeof Keyboard.metrics === 'function' ? Keyboard.metrics() : null;
     const metricsHeight = metrics?.height ?? 0;
-    if (metricsHeight > 0) {
-      lastInsetRef.current = metricsHeight;
-      setKeyboardInset(metricsHeight);
+    const metricsScreenY = metrics?.screenY;
+    const metricsViewportInset =
+      typeof metricsScreenY === 'number' && viewportHeight > 0
+        ? Math.max(0, viewportHeight - metricsScreenY)
+        : null;
+    const metricsInset = metricsViewportInset ?? Math.max(0, metricsHeight);
+    if (metricsInset > 0) {
+      lastInsetRef.current = metricsInset;
+      setKeyboardInset(metricsInset);
     }
-  }, []);
+  }, [viewportHeight]);
 
   const handleFieldBlur = useCallback(() => {
     blurTimeoutRef.current = setTimeout(() => {

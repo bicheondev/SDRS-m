@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTheme } from '../../ThemeContext.js';
 import { vesselTypeOptions } from '../../assets/assets.js';
 import { AppScreenShell, screenLayoutStyles } from '../../components/layout/ScreenLayout.jsx';
 import { FilterScreen } from './FilterSheet.jsx';
@@ -36,6 +37,7 @@ export const DatabasePage = memo(function DatabasePage({
   topBarHidden,
   vesselTypeFilter,
 }) {
+  useTheme();
   const insets = useSafeAreaInsets();
   const topContentPadding = 136 + Math.max(insets.top, 0);
   const filterScrollResetKey = `${harborFilter}:${vesselTypeFilter}`;

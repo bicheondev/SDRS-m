@@ -1,5 +1,6 @@
 import { StyleSheet, Text } from 'react-native';
 
+import { useTheme } from '../ThemeContext.js';
 import { resolveCssVariableString } from '../theme.js';
 
 const ICON_PRESETS = {
@@ -249,6 +250,7 @@ function getToneColor(tone) {
   if (tone === 'slate-300') return resolveCssVariableString('var(--slate-300)');
   if (tone === 'slate-400') return resolveCssVariableString('var(--slate-400)');
   if (tone === 'slate-500') return resolveCssVariableString('var(--slate-500)');
+  if (tone === 'slate-700') return resolveCssVariableString('var(--slate-700)');
   if (tone === 'blue-500') return resolveCssVariableString('var(--blue-500)');
   if (tone === 'accent') return resolveCssVariableString('var(--color-accent)');
   if (tone === 'violet') return resolveCssVariableString('var(--color-text-violet)');
@@ -272,6 +274,7 @@ export function AppIcon({
   tone = 'current',
   weight,
 }) {
+  useTheme();
   const basePreset = ICON_PRESETS[preset] ?? ICON_PRESETS.default;
   const resolvedSlotSize = slotSize ?? basePreset.slotSize;
   const resolvedGlyphSize = glyphSize ?? basePreset.glyphSize;

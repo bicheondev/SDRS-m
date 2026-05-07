@@ -2,6 +2,7 @@ import { memo, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTheme } from '../../ThemeContext.js';
 import { AppIcon } from '../../components/Icons.jsx';
 import { AppText as Text, AppTextInput as TextInput } from '../../components/primitives/AppTypography.jsx';
 import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
@@ -42,16 +43,18 @@ function colorWithAlpha(color, alpha) {
   return color;
 }
 
-function FrostBackground({ filterSheet = false, scrollbarGutter = false }) {
+function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInset = 0 }) {
+  const { resolvedColorMode } = useTheme();
+  const isDark = resolvedColorMode === 'dark';
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
   const topBand = colorWithAlpha(screenColor, 0.86);
   const midBand = colorWithAlpha(screenColor, 0.78);
   const lowBand = colorWithAlpha(screenColor, 0.42);
   const fadeBand = colorWithAlpha(screenColor, 0.1);
-  const filterTopBand = colorWithAlpha(screenColor, 0.44);
-  const filterMidBand = colorWithAlpha(screenColor, 0.24);
-  const filterLowBand = colorWithAlpha(screenColor, 0.05);
-  const filterBackdropTop = colorWithAlpha(screenColor, 0.92);
+  const filterTopBand = colorWithAlpha(screenColor, isDark ? 0.4 : 0.34);
+  const filterMidBand = colorWithAlpha(screenColor, isDark ? 0.22 : 0.18);
+  const filterLowBand = colorWithAlpha(screenColor, 0.04);
+  const filterBackdropTop = colorWithAlpha(screenColor, 1);
   const filterBackdropLow = colorWithAlpha(screenColor, 0.5);
 
   return (
@@ -75,7 +78,14 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false }) {
           <View style={[styles.filterBackdropLow, { backgroundColor: filterBackdropLow }]} />
         </View>
       ) : null}
-      <View className="top-bar__filters-frost-layer" style={[styles.filtersFrostLayer, styles.pointerEventsNone]}>
+      <View
+        className="top-bar__filters-frost-layer"
+        style={[
+          styles.filtersFrostLayer,
+          { top: Math.max(0, topInset) + 52 },
+          styles.pointerEventsNone,
+        ]}
+      >
         <View style={[styles.filterFrostTop, { backgroundColor: filterTopBand }]} />
         <View style={[styles.filterFrostMid, { backgroundColor: filterMidBand }]} />
         <View style={[styles.filterFrostLow, { backgroundColor: filterLowBand }]} />
@@ -249,6 +259,7 @@ export const TopBar = memo(function TopBar({
   vesselTypeButtonRef,
   vesselTypeLabelWidth,
 }) {
+  useTheme();
   const insets = useSafeAreaInsets();
   const topInset = Math.max(insets.top, 0);
   const barHeight = (inFilterSheet ? 108 : 136) + topInset;
@@ -265,7 +276,11 @@ export const TopBar = memo(function TopBar({
         hidden && { top: -barHeight },
       ]}
     >
-      <FrostBackground filterSheet={inFilterSheet} scrollbarGutter={scrollbarGutter} />
+      <FrostBackground
+        filterSheet={inFilterSheet}
+        scrollbarGutter={scrollbarGutter}
+        topInset={topInset}
+      />
 
       <View
         className="top-bar__main"
@@ -334,6 +349,7 @@ export const SearchTopBar = memo(function SearchTopBar({
   onToggleCompact,
   onVesselTypeFilterOpen,
 }) {
+  useTheme();
   const inputRef = useRef(null);
   const insets = useSafeAreaInsets();
   const topInset = Math.max(insets.top, 0);
@@ -354,7 +370,7 @@ export const SearchTopBar = memo(function SearchTopBar({
       }`.trim()}
       style={[styles.searchTopBar, { height: barHeight, paddingTop: topInset }]}
     >
-      <FrostBackground scrollbarGutter={scrollbarGutter} />
+      <FrostBackground scrollbarGutter={scrollbarGutter} topInset={topInset} />
 
       <View
         className="search-top-bar__main"
@@ -586,7 +602,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'var(--slate-50)',
+    backgroundColor: 'transparent',
   },
   iconButton: {
     width: 24,
@@ -621,7 +637,6 @@ const styles = StyleSheet.create({
   logo: {
     width: 62.637,
     height: 18,
-    filter: 'var(--logo-filter)',
   },
   filters: {
     position: 'relative',
@@ -686,6 +701,5 @@ const styles = StyleSheet.create({
   },
   viewOptionsBlurred: {
     opacity: 0.32,
-    filter: 'blur(6px)',
   },
 });

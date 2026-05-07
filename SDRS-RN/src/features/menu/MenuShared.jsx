@@ -1,12 +1,14 @@
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTheme } from '../../ThemeContext.js';
 import { AppIcon } from '../../components/Icons.jsx';
 import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
 import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
 import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 
 export function MenuSubpageTopBar({ title, onBack }) {
+  useTheme();
   const insets = useSafeAreaInsets();
   return (
     <>

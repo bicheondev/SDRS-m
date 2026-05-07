@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { useTheme } from '../../ThemeContext.js';
 import { getHighResolutionTime } from '../../platform/index';
 import { resolveCssVariableString } from '../../theme.js';
 import { resolveInlineStyle } from '../../themeRuntime.js';
@@ -201,6 +202,7 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
   },
   ref,
 ) {
+  const { resolvedColorMode } = useTheme();
   const [pressedFallback, setPressedFallback] = useState(false);
   const [pressGuideActive, setPressGuideActive] = useState(false);
   const forcedPressed = testOnly_pressed === true;
@@ -279,7 +281,7 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
         pressGuideRadius,
         pressGuideInset,
       ),
-    [pressGuideColor, pressGuideInset, pressGuideRadius, pressGuideVariant],
+    [pressGuideColor, pressGuideInset, pressGuideRadius, pressGuideVariant, resolvedColorMode],
   );
 
   const resolvedStyle = useMemo(() => {
@@ -291,7 +293,7 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
       pressGuideStyle,
       resolveInlineStyle(style(resolveInteractionState(interactionState))),
     ];
-  }, [pressGuideStyle, resolveInteractionState, style]);
+  }, [pressGuideStyle, resolveInteractionState, resolvedColorMode, style]);
 
   const resolvedClassName = useMemo(
     () =>

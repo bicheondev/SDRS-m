@@ -8,6 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useTheme } from '../../ThemeContext.js';
 import { filterVessels } from '../../domain/ships.js';
 import { motionDurationsMs, motionTokens } from '../../motion.js';
 import BottomTab from '../../components/layout/BottomTab.jsx';
@@ -95,6 +96,7 @@ export function FilterScreen({
   vesselTypeFilter,
   vesselTypeOptions,
 }) {
+  useTheme();
   const viewportDimensions = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const filterColumnTop = FILTER_COLUMN_TOP + Math.max(insets.top, 0);
@@ -130,9 +132,9 @@ export function FilterScreen({
   const harborMenuLeft = columnLayout.harborLeft;
   const vesselTypeMenuLeft = columnLayout.vesselTypeLeft;
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
-  const backdropBaseColor = colorWithAlpha(screenColor, 0.52);
-  const backdropTopColor = colorWithAlpha(screenColor, 0.92);
-  const backdropMidColor = colorWithAlpha(screenColor, 0.62);
+  const backdropBaseColor = colorWithAlpha(screenColor, 0.5);
+  const backdropTopColor = colorWithAlpha(screenColor, 1);
+  const backdropMidColor = colorWithAlpha(screenColor, 0.72);
   const layerProgress = useSharedValue(phase === 'closing' ? 1 : 0);
   const panelProgress = useSharedValue(phase === 'closing' ? 1 : 0);
   const panelTranslateY = useSharedValue(phase === 'closing' ? 0 : motionTokens.offset.sheetLift);

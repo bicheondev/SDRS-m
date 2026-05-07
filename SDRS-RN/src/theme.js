@@ -236,6 +236,33 @@ function buildDarkTheme() {
     'color-state-layer-media': rgb(2, 6, 23, 0.36),
     'color-state-layer-accent': rgb(2, 6, 23, 0.24),
     'color-state-layer-inverse': rgb(2, 6, 23, 0.24),
+    'shadow-screen': '0 24px 60px rgb(0 0 0 / 0.5)',
+    'shadow-screen-stack':
+      '-10px 0 28px -18px rgb(0 0 0 / 0.6), -2px 0 8px rgb(0 0 0 / 0.32)',
+    'shadow-focus': '0 0 0 1px var(--color-border-accent-focus)',
+    'shadow-edit': '0 0 0 1px var(--color-border-accent-soft)',
+    'shadow-zoom': '0 24px 48px rgb(0 0 0 / 0.6)',
+    'shadow-zoom-closing': '0 12px 20px rgb(0 0 0 / 0.42)',
+    'shadow-modal':
+      'inset 0 0 0 1px rgb(148 163 184 / 0.1), 0 10px 30px -3px rgb(0 0 0 / 0.4), 0 15px 80px -5px rgb(0 0 0 / 0.6)',
+    'shadow-toast':
+      'inset 0 0 0 1px var(--color-bg-toast-border), 0 12px 24px -12px rgb(0 0 0 / 0.6)',
+    'gradient-app-shell':
+      'radial-gradient(circle at top, #0f172a 0%, #020617 60%, #020617 100%)',
+    'gradient-top-bar':
+      'linear-gradient(180deg, rgb(15 23 42) 0%, rgb(15 23 42) 64%, rgb(15 23 42 / 0) 100%)',
+    'gradient-top-bar-frost':
+      'linear-gradient(180deg, rgb(15 23 42 / 0.86) 0%, rgb(15 23 42 / 0.78) 64%, rgb(15 23 42 / 0.1) 100%)',
+    'gradient-top-bar-frost-soft':
+      'linear-gradient(180deg, rgb(15 23 42 / 0.4) 0%, rgb(15 23 42 / 0.22) 68%, rgb(15 23 42 / 0.04) 100%)',
+    'gradient-filter-backdrop':
+      'linear-gradient(180deg, rgb(15 23 42) 0%, rgb(15 23 42 / 0.5) 100%)',
+    'icon-filter-neutral':
+      'brightness(0) saturate(100%) invert(72%) sepia(12%) saturate(391%) hue-rotate(178deg) brightness(95%) contrast(92%)',
+    'icon-filter-strong':
+      'brightness(0) saturate(100%) invert(92%) sepia(8%) saturate(462%) hue-rotate(179deg) brightness(103%) contrast(98%)',
+    'logo-filter':
+      'brightness(0) saturate(100%) invert(94%) sepia(8%) saturate(368%) hue-rotate(177deg) brightness(102%) contrast(97%)',
   };
 }
 

@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
+import { useTheme } from '../../ThemeContext.js';
 import { colorModeLabels } from '../../assets/assets.js';
 import { AppIcon } from '../../components/Icons.jsx';
 import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
@@ -38,6 +39,7 @@ function MenuRow({ children, detail, onPress, showArrow = false }) {
 }
 
 export function MenuPage({ colorMode, onColorModeOpen, onInfoOpen, onLogout }) {
+  useTheme();
   return (
     <AppScreenShell screenStyle={screenLayoutStyles.screenColumn}>
       <Text style={screenLayoutStyles.title}>메뉴</Text>
