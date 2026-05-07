@@ -44,6 +44,8 @@ import { pickFile } from '../../services/filePicker.js';
 import { resolveCssVariableString } from '../../theme.js';
 
 const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
+const KEYBOARD_SHOW_EVENT = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+const KEYBOARD_HIDE_EVENT = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 const LIST_ITEM_EASING = Easing.bezier(0.22, 1, 0.36, 1);
 const MANAGE_EDIT_CONTENT_PADDING_BOTTOM = 24;
 const MANAGE_EDIT_REORDER_DIVIDER_HEIGHT = 16;
@@ -1368,6 +1370,7 @@ function ManageSavedToast({ message, onDismiss }) {
   const dismissDragThreshold = 56;
   const reducedMotion = useReducedMotionSafe();
   const bottomInset = Math.max(insets.bottom, 0);
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const manualDismissDuration = reducedMotion ? 80 : 160;
   const toastProgress = useSharedValue(reducedMotion ? 1 : 0);
   const [dragOffset, setDragOffset] = useState(0);
@@ -1401,6 +1404,20 @@ function ManageSavedToast({ message, onDismiss }) {
   }, [clearPendingDismiss]);
 
   useEffect(() => clearPendingDismiss, [clearPendingDismiss]);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(KEYBOARD_SHOW_EVENT, (event) => {
+      setKeyboardInset(Math.max(0, event?.endCoordinates?.height ?? 0));
+    });
+    const hideSub = Keyboard.addListener(KEYBOARD_HIDE_EVENT, () => {
+      setKeyboardInset(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     toastProgress.value = withTiming(1, {
@@ -1478,6 +1495,7 @@ function ManageSavedToast({ message, onDismiss }) {
 
   const dragOpacity = 1 - dragOffset / maxVisibleDragOffset;
   const fadeOpacity = dragging ? dragOpacity : dismissing ? dismissOpacity : 1;
+  const toastBottom = Math.max(64 + bottomInset + 12, keyboardInset + 18);
 
   return (
     <View
@@ -1487,7 +1505,7 @@ function ManageSavedToast({ message, onDismiss }) {
         dragging && styles.toastShellDragging,
         dismissing && styles.toastShellDismissing,
         {
-          bottom: 52 + bottomInset,
+          bottom: toastBottom,
           transform: [{ translateY: dragOffset }],
         },
       ]}
@@ -2843,10 +2861,16 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     position: 'relative',
-    width: 'min(100%, 340px)',
+    width: '100%',
+    maxWidth: 340,
     borderRadius: 20,
     backgroundColor: 'var(--color-bg-modal)',
     boxShadow: 'var(--shadow-modal)',
+    shadowColor: 'var(--slate-700)',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.16,
+    shadowRadius: 28,
+    elevation: 12,
     padding: 20,
   },
   modalTitle: {
@@ -2933,6 +2957,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'var(--color-bg-toast)',
     boxShadow: 'var(--shadow-toast)',
+    borderWidth: 1,
+    borderColor: 'var(--color-bg-toast-border)',
+    shadowColor: 'var(--slate-700)',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
   },
   toastMessage: {
     color: 'var(--color-text-toast)',

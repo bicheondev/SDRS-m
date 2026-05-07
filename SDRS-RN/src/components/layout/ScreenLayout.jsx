@@ -2,26 +2,48 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useTheme } from '../../ThemeContext.js';
 
+export const SCREEN_WIDTH = 390;
+export const SCREEN_HEIGHT = 844;
+
+export function getScreenWidthForViewport(viewportWidth) {
+  return Math.min(viewportWidth, SCREEN_WIDTH);
+}
+
 export function useCompactViewport() {
   return useWindowDimensions().width <= 480;
 }
 
 export function AppScreenShell({ children, shellStyle, screenStyle }) {
   useTheme();
+  const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
   const isCompactViewport = useCompactViewport();
+  const screenWidth = getScreenWidthForViewport(viewportWidth);
+  const screenHeight = isCompactViewport
+    ? viewportHeight
+    : Math.min(Math.max(viewportHeight - 40, 1), SCREEN_HEIGHT);
 
   return (
     <View
       style={[
         screenLayoutStyles.appShell,
-        isCompactViewport && screenLayoutStyles.appShellCompact,
+        {
+          width: viewportWidth,
+          height: viewportHeight,
+          minHeight: viewportHeight,
+          padding: isCompactViewport ? 0 : 20,
+          justifyContent: isCompactViewport ? 'flex-start' : 'center',
+        },
         shellStyle,
       ]}
     >
       <View
         style={[
           screenLayoutStyles.phoneScreen,
-          isCompactViewport && screenLayoutStyles.phoneScreenCompact,
+          {
+            width: screenWidth,
+            height: screenHeight,
+            minHeight: screenHeight,
+          },
           screenStyle,
         ]}
       >
@@ -34,32 +56,20 @@ export function AppScreenShell({ children, shellStyle, screenStyle }) {
 export const screenLayoutStyles = StyleSheet.create({
   appShell: {
     flex: 1,
-    width: '100%',
-    minHeight: '100vh',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
     backgroundColor: 'var(--color-bg-app)',
   },
   appShellCompact: {
-    minHeight: '100dvh',
-    height: '100dvh',
-    display: 'block',
     padding: 0,
   },
   phoneScreen: {
     position: 'relative',
-    width: 'min(100%, var(--screen-width))',
-    minHeight: 'min(calc(100dvh - 40px), var(--screen-height))',
-    height: 'min(calc(100dvh - 40px), var(--screen-height))',
     backgroundColor: 'var(--color-bg-screen)',
     overflow: 'hidden',
     boxShadow: 'var(--shadow-screen)',
   },
   phoneScreenCompact: {
     width: '100%',
-    minHeight: '100dvh',
-    height: '100dvh',
     boxShadow: 'none',
   },
   screenColumn: {

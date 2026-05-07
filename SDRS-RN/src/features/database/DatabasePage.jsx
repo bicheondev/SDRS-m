@@ -39,7 +39,7 @@ export const DatabasePage = memo(function DatabasePage({
 }) {
   useTheme();
   const insets = useSafeAreaInsets();
-  const topContentPadding = 136 + Math.max(insets.top, 0);
+  const topContentPadding = 88 + Math.max(insets.top, 0);
   const filterScrollResetKey = `${harborFilter}:${vesselTypeFilter}`;
 
   return (

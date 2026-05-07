@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,11 +22,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext.js';
 import { motionDurationsMs, motionTokens } from '../motion.js';
 import { APP_FONT_FAMILY, resolveCssVariableString } from '../theme.js';
+import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../components/layout/ScreenLayout.jsx';
 
 export function RnwAuthScreen({
   focusedField,
   isFilled,
-  keyboardInset = 0,
   onFieldBlur,
   onFieldFocus,
   onPasswordChange,
@@ -34,25 +37,25 @@ export function RnwAuthScreen({
 }) {
   useTheme();
   const passwordInputRef = useRef(null);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isCompactViewport = width <= 480;
-  const resolvedKeyboardInset = Math.max(0, keyboardInset);
+  const screenWidth = Math.min(width, SCREEN_WIDTH);
+  const screenHeight = isCompactViewport
+    ? height
+    : Math.min(Math.max(height - 40, 1), SCREEN_HEIGHT);
+  const phoneScreenLayoutStyle = isCompactViewport
+    ? { width: screenWidth, flex: 1, minHeight: 0 }
+    : { width: screenWidth, height: screenHeight, minHeight: screenHeight };
+  const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : 'height';
+  const topInset = Math.max(insets.top, 0);
   const bottomInset = Math.max(insets.bottom, 0);
-  const isKeyboardFocused = Boolean(focusedField);
   const usernameFocused = focusedField === 'username';
   const passwordFocused = focusedField === 'password';
-  const loginButtonBottomTarget = isKeyboardFocused
-    ? Math.max(bottomInset, resolvedKeyboardInset)
-    : bottomInset;
   const inputBgColor = resolveCssVariableString('var(--color-bg-input)');
   const inputFocusBgColor = resolveCssVariableString('var(--color-bg-input-focus)');
-  const loginButtonBottom = useSharedValue(loginButtonBottomTarget);
   const usernameFocusProgress = useSharedValue(usernameFocused ? 1 : 0);
   const passwordFocusProgress = useSharedValue(passwordFocused ? 1 : 0);
-  const loginButtonDockStyle = useAnimatedStyle(() => ({
-    bottom: loginButtonBottom.value,
-  }));
   const usernameInputShellStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
       usernameFocusProgress.value,
@@ -69,13 +72,6 @@ export function RnwAuthScreen({
     ),
     transform: [{ translateY: -passwordFocusProgress.value }],
   }));
-
-  useEffect(() => {
-    loginButtonBottom.value = withTiming(loginButtonBottomTarget, {
-      duration: motionDurationsMs.normal,
-      easing: Easing.bezier(...motionTokens.ease.ios),
-    });
-  }, [loginButtonBottom, loginButtonBottomTarget]);
 
   useEffect(() => {
     usernameFocusProgress.value = withTiming(usernameFocused ? 1 : 0, {
@@ -103,97 +99,125 @@ export function RnwAuthScreen({
 
   return (
     <View style={styles.root}>
-      <View style={[styles.appShell, isCompactViewport && styles.appShellCompact]}>
-        <View style={[styles.phoneScreen, isCompactViewport && styles.phoneScreenCompact]}>
-          <View style={[styles.loginHeader, isCompactViewport && styles.loginHeaderCompact]}>
-            <Text style={styles.loginTitle}>
-              <Text style={styles.loginTitleAccent}>로그인 정보</Text>를
-              {'\n'}
-              입력하세요.
-            </Text>
-          </View>
-
-          <View style={styles.loginForm}>
-            <Animated.View style={[styles.inputShell, usernameInputShellStyle]}>
-              <TextInput
-                autoCapitalize="none"
-                autoCorrect={false}
-                blurOnSubmit={false}
-                enterKeyHint="next"
-                onBlur={onFieldBlur}
-                onChangeText={onUsernameChange}
-                onFocus={() => onFieldFocus('username')}
-                onSubmitEditing={handleUsernameSubmit}
-                placeholder="아이디"
-                placeholderTextColor={resolveCssVariableString(
-                  usernameFocused
-                    ? 'var(--color-text-accent-strong)'
-                    : 'var(--color-text-muted)',
-                )}
-                returnKeyType="next"
-                selectionColor={resolveCssVariableString('var(--color-text-accent)')}
-                spellCheck={false}
-                style={[styles.loginInput, usernameFocused && styles.loginInputFocused]}
-                value={username}
-              />
-            </Animated.View>
-
-            <Animated.View style={[styles.inputShell, styles.passwordShell, passwordInputShellStyle]}>
-              <TextInput
-                ref={passwordInputRef}
-                enterKeyHint="go"
-                onBlur={onFieldBlur}
-                onChangeText={onPasswordChange}
-                onFocus={() => onFieldFocus('password')}
-                onSubmitEditing={handleSubmit}
-                placeholder="비밀번호"
-                placeholderTextColor={resolveCssVariableString(
-                  passwordFocused
-                    ? 'var(--color-text-accent-strong)'
-                    : 'var(--color-text-muted)',
-                )}
-                returnKeyType="go"
-                secureTextEntry
-                selectionColor={resolveCssVariableString('var(--color-text-accent)')}
-                style={[styles.loginInput, passwordFocused && styles.loginInputFocused]}
-                value={password}
-              />
-            </Animated.View>
-          </View>
-
-          <Text style={[styles.appVersion, { bottom: 82 + bottomInset }, focusedField ? styles.appVersionHidden : null]}>
-            선박DB정보체계 버전 1.0
-          </Text>
-
-          <Animated.View style={[styles.loginButtonDock, loginButtonDockStyle]}>
-            <Pressable
-              accessibilityRole="button"
-              disabled={!isFilled}
-              onPress={handleSubmit}
-              style={({ focused }) => [
-                styles.loginButton,
-                isFilled ? styles.loginButtonActive : styles.loginButtonInactive,
-                focused ? styles.loginButtonFocused : null,
-              ]}
+      <KeyboardAvoidingView
+        behavior={keyboardBehavior}
+        keyboardVerticalOffset={0}
+        style={styles.keyboardRoot}
+      >
+        <View
+          style={[
+            styles.appShell,
+            {
+              width,
+              padding: isCompactViewport ? 0 : 20,
+              justifyContent: isCompactViewport ? 'flex-start' : 'center',
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.phoneScreen,
+              phoneScreenLayoutStyle,
+            ]}
+          >
+            <ScrollView
+              bounces={false}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              style={styles.loginScroll}
+              contentContainerStyle={styles.loginScrollContent}
             >
-              {({ pressed }) => (
-                <>
-                  <View
-                    style={[
-                      styles.loginButtonOverlay,
-                      styles.pointerEventsNone,
-                      isFilled && pressed ? styles.loginButtonOverlayPressed : null,
-                    ]}
+              <View style={[styles.loginHeader, { paddingTop: 77 + topInset }]}>
+                <Text style={styles.loginTitle}>
+                  <Text style={styles.loginTitleAccent}>로그인 정보</Text>를
+                  {'\n'}
+                  입력하세요.
+                </Text>
+              </View>
+
+              <View style={styles.loginForm}>
+                <Animated.View style={[styles.inputShell, usernameInputShellStyle]}>
+                  <TextInput
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    blurOnSubmit={false}
+                    enterKeyHint="next"
+                    onBlur={onFieldBlur}
+                    onChangeText={onUsernameChange}
+                    onFocus={() => onFieldFocus('username')}
+                    onSubmitEditing={handleUsernameSubmit}
+                    placeholder="아이디"
+                    placeholderTextColor={resolveCssVariableString(
+                      usernameFocused
+                        ? 'var(--color-text-accent-strong)'
+                        : 'var(--color-text-muted)',
+                    )}
+                    returnKeyType="next"
+                    selectionColor={resolveCssVariableString('var(--color-text-accent)')}
+                    spellCheck={false}
+                    style={[styles.loginInput, usernameFocused && styles.loginInputFocused]}
+                    value={username}
                   />
-                  <Text style={[styles.loginButtonText, isFilled && styles.loginButtonTextActive]}>
-                    로그인
-                  </Text>
-                </>
-              )}
-            </Pressable>
-          </Animated.View>
+                </Animated.View>
+
+                <Animated.View style={[styles.inputShell, styles.passwordShell, passwordInputShellStyle]}>
+                  <TextInput
+                    ref={passwordInputRef}
+                    enterKeyHint="go"
+                    onBlur={onFieldBlur}
+                    onChangeText={onPasswordChange}
+                    onFocus={() => onFieldFocus('password')}
+                    onSubmitEditing={handleSubmit}
+                    placeholder="비밀번호"
+                    placeholderTextColor={resolveCssVariableString(
+                      passwordFocused
+                        ? 'var(--color-text-accent-strong)'
+                        : 'var(--color-text-muted)',
+                    )}
+                    returnKeyType="go"
+                    secureTextEntry
+                    selectionColor={resolveCssVariableString('var(--color-text-accent)')}
+                    style={[styles.loginInput, passwordFocused && styles.loginInputFocused]}
+                    value={password}
+                  />
+                </Animated.View>
+              </View>
+            </ScrollView>
+
+            <Text style={[styles.appVersion, { bottom: 82 + bottomInset }, focusedField ? styles.appVersionHidden : null]}>
+              선박DB정보체계 버전 1.0
+            </Text>
+
+            <View style={[styles.loginButtonDock, { height: 64 + bottomInset, paddingBottom: bottomInset }]}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={!isFilled}
+                onPress={handleSubmit}
+                style={({ focused }) => [
+                  styles.loginButton,
+                  isFilled ? styles.loginButtonActive : styles.loginButtonInactive,
+                  focused ? styles.loginButtonFocused : null,
+                ]}
+              >
+                {({ pressed }) => (
+                  <>
+                    <View
+                      style={[
+                        styles.loginButtonOverlay,
+                        styles.pointerEventsNone,
+                        isFilled && pressed ? styles.loginButtonOverlayPressed : null,
+                      ]}
+                    />
+                    <Text style={[styles.loginButtonText, isFilled && styles.loginButtonTextActive]}>
+                      로그인
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -203,40 +227,33 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
   },
-  appShell: {
+  keyboardRoot: {
     flex: 1,
     width: '100%',
-    height: '100%',
-    minHeight: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-    backgroundColor: 'var(--color-bg-app)',
   },
-  appShellCompact: {
-    padding: 0,
+  appShell: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: 'var(--color-bg-app)',
   },
   phoneScreen: {
     position: 'relative',
-    width: 'min(100%, var(--screen-width))',
-    height: 'min(calc(100dvh - 40px), var(--screen-height))',
-    minHeight: 'min(calc(100dvh - 40px), var(--screen-height))',
+    display: 'flex',
+    flexDirection: 'column',
     overflow: 'hidden',
     backgroundColor: 'var(--color-bg-screen)',
     boxShadow: 'var(--shadow-screen)',
   },
-  phoneScreenCompact: {
+  loginScroll: {
+    flex: 1,
     width: '100%',
-    height: '100dvh',
-    minHeight: '100dvh',
-    boxShadow: 'none',
+  },
+  loginScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 24,
   },
   loginHeader: {
-    paddingTop: 77,
     paddingHorizontal: 18,
-  },
-  loginHeaderCompact: {
-    minHeight: 'calc(145px + env(safe-area-inset-top, 0px))',
   },
   loginTitle: {
     margin: 0,
@@ -330,12 +347,10 @@ const styles = StyleSheet.create({
     willChange: 'transform',
   },
   loginButtonDock: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    left: 0,
     zIndex: 10,
     elevation: 10,
+    flexShrink: 0,
+    width: '100%',
     height: 64,
   },
   loginButtonInactive: {

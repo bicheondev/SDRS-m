@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
 import { manageHomeSecondaryRows } from '../../assets/assets.js';
@@ -341,6 +342,8 @@ export function ManageHomePage({
   onShipImport,
 }) {
   useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
   const handleShipImport = useCallback(async () => {
     const file = await pickFile({ accept: '.csv,text/csv' });
     if (file) {
@@ -365,7 +368,10 @@ export function ManageHomePage({
       <Text style={styles.manageScreenTitle}>데이터 관리</Text>
 
       <ScrollView
-        contentContainerStyle={styles.manageHomeContentBody}
+        contentContainerStyle={[
+          styles.manageHomeContentBody,
+          { paddingBottom: 84 + bottomInset },
+        ]}
         showsVerticalScrollIndicator={false}
         style={styles.manageHomeContent}
       >
@@ -445,7 +451,6 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
-    paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
   },
   manageHomeGroup: {
     display: 'flex',
@@ -525,6 +530,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: 'var(--color-bg-modal)',
     boxShadow: 'var(--shadow-modal)',
+    shadowColor: 'var(--slate-700)',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.16,
+    shadowRadius: 28,
+    elevation: 12,
     padding: 20,
   },
   modalTitle: {

@@ -444,6 +444,12 @@ export const SearchTopBar = memo(function SearchTopBar({
     onBack();
   };
 
+  const handleFilterOpen = (openFilter) => {
+    inputRef.current?.blur?.();
+    Keyboard.dismiss();
+    openFilter?.();
+  };
+
   return (
     <View
       className={`search-top-bar search-top-bar--rnw-frost ${
@@ -519,9 +525,9 @@ export const SearchTopBar = memo(function SearchTopBar({
       <FiltersRow
         compact={compact}
         harborLabel={harborFilter}
-        onHarborClick={onHarborFilterOpen}
+        onHarborClick={() => handleFilterOpen(onHarborFilterOpen)}
         onToggleCompact={onToggleCompact}
-        onVesselTypeClick={onVesselTypeFilterOpen}
+        onVesselTypeClick={() => handleFilterOpen(onVesselTypeFilterOpen)}
         openState="closed"
         scrollbarGutter={scrollbarGutter}
         vesselTypeLabel={vesselTypeFilter}

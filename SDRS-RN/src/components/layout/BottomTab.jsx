@@ -7,6 +7,7 @@ import { AppIcon } from '../Icons.jsx';
 import { interactiveStyles, getInteractiveScale } from '../interactiveStyles.js';
 import { InteractivePressable } from '../primitives/InteractivePressable.jsx';
 import { AppText as Text } from '../primitives/AppTypography.jsx';
+import { getScreenWidthForViewport } from './ScreenLayout.jsx';
 
 function BottomTabButton({ active, label, name, onPress, tone, wide = false }) {
   return (
@@ -40,12 +41,13 @@ function BottomTabButton({ active, label, name, onPress, tone, wide = false }) {
   );
 }
 
-function BottomTab({ activeTab = 'db', onDbClick, onManageClick, onMenuClick }) {
+function BottomTab({ activeTab = 'db', contained = false, onDbClick, onManageClick, onMenuClick }) {
   useTheme();
   const insets = useSafeAreaInsets();
   const { width: viewportWidth } = useWindowDimensions();
   const bottomInset = Math.max(insets.bottom, 0);
-  const tabWidth = viewportWidth;
+  const tabWidth = getScreenWidthForViewport(viewportWidth);
+  const tabLeft = contained ? 0 : (viewportWidth - tabWidth) / 2;
   const itemTotalWidth = 70 + 104 + 70;
   const itemGap = Math.min(70, Math.max(8, (tabWidth - itemTotalWidth) / 4));
 
@@ -54,7 +56,7 @@ function BottomTab({ activeTab = 'db', onDbClick, onManageClick, onMenuClick }) 
       style={[
         styles.shell,
         {
-          left: 0,
+          left: tabLeft,
           width: tabWidth,
           height: 84 + bottomInset,
           paddingBottom: bottomInset,

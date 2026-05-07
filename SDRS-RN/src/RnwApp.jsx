@@ -83,7 +83,6 @@ export function RnwApp() {
         <RnwAuthScreen
           focusedField={loginViewport.focusedField}
           isFilled={isFilled}
-          keyboardInset={loginViewport.keyboardInset}
           onFieldBlur={loginViewport.handleFieldBlur}
           onFieldFocus={loginViewport.handleFieldFocus}
           onPasswordChange={setPassword}

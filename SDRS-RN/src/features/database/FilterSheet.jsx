@@ -100,7 +100,8 @@ export function FilterScreen({
   useTheme();
   const viewportDimensions = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const filterColumnTop = FILTER_COLUMN_TOP + Math.max(insets.top, 0);
+  const topInset = Math.max(insets.top, 0);
+  const filterColumnTop = FILTER_COLUMN_TOP + topInset;
   const [naturalHarborLabelWidth, setNaturalHarborLabelWidth] = useState(0);
   const [naturalVesselTypeLabelWidth, setNaturalVesselTypeLabelWidth] = useState(0);
   const [harborOptionWidth, setHarborOptionWidth] = useState(0);
@@ -351,7 +352,14 @@ export function FilterScreen({
         vesselTypeLabelWidth={displayedVesselTypeLabelWidth || undefined}
       />
 
-      <View className="filter-screen__results" style={[styles.resultsShell, styles.pointerEventsNone]}>
+      <View
+        className="filter-screen__results"
+        style={[
+          styles.resultsShell,
+          { paddingTop: 108 + topInset },
+          styles.pointerEventsNone,
+        ]}
+      >
         <VesselResults
           compact={compact}
           contentTopPadding={0}
@@ -514,7 +522,13 @@ export function FilterScreen({
         </View>
       </View>
 
-      <BottomTab activeTab="db" onDbClick={onClose} onManageClick={onManageOpen} onMenuClick={onMenuOpen} />
+      <BottomTab
+        activeTab="db"
+        contained
+        onDbClick={onClose}
+        onManageClick={onManageOpen}
+        onMenuClick={onMenuOpen}
+      />
     </AppScreenShell>
   );
 }
@@ -533,8 +547,7 @@ const styles = StyleSheet.create({
   },
   resultsShell: {
     position: 'relative',
-    minHeight: 'min(calc(100dvh - 40px), var(--screen-height))',
-    paddingTop: 108,
+    minHeight: '100%',
     opacity: 0.72,
   },
   filterResults: {

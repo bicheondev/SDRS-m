@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
 import { colorModeLabels } from '../../assets/assets.js';
@@ -40,11 +41,13 @@ function MenuRow({ children, detail, onPress, showArrow = false }) {
 
 export function MenuPage({ colorMode, onColorModeOpen, onInfoOpen, onLogout }) {
   useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
   return (
     <AppScreenShell screenStyle={screenLayoutStyles.screenColumn}>
       <Text style={screenLayoutStyles.title}>메뉴</Text>
 
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingBottom: 24 + bottomInset }]}>
         <MenuRow detail={colorModeLabels[colorMode]} onPress={onColorModeOpen}>
             화면 모드
           </MenuRow>
@@ -70,7 +73,6 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: 12,
     paddingTop: 28,
-    paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
     overflowY: 'auto',
     overflowX: 'hidden',
   },
