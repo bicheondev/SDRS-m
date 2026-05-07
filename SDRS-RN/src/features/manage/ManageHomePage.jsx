@@ -441,11 +441,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
     marginTop: 28,
-    msOverflowStyle: 'none',
-    scrollbarWidth: 'none',
-    WebkitOverflowScrolling: 'touch',
-    overflowX: 'hidden',
-    overflowY: 'auto',
   },
   manageHomeContentBody: {
     display: 'flex',
@@ -487,7 +482,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '400',
     letterSpacing: -0.36,
-    whiteSpace: 'nowrap',
   },
   manageHomeValueBlue: {
     color: 'var(--color-accent)',
@@ -529,7 +523,6 @@ const styles = StyleSheet.create({
     maxWidth: 340,
     borderRadius: 20,
     backgroundColor: 'var(--color-bg-modal)',
-    boxShadow: 'var(--shadow-modal)',
     shadowColor: 'var(--slate-700)',
     shadowOffset: { width: 0, height: 18 },
     shadowOpacity: 0.16,

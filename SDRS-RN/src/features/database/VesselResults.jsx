@@ -214,7 +214,7 @@ export const VesselCard = memo(function VesselCard({ hiddenThumbnail = false, ve
           { transform: [{ scale: pressed ? getInteractiveScale('card') : 1 }] },
         ]}
       >
-        <Image source={{ uri: vessel.imageWide }} style={styles.vesselCardImage} />
+        <Image resizeMode="cover" source={{ uri: vessel.imageWide }} style={styles.vesselCardImage} />
       </InteractivePressable>
 
       <View style={styles.vesselCardBody}>
@@ -288,7 +288,7 @@ export const CompactVesselCard = memo(function CompactVesselCard({
             { transform: [{ scale: pressed ? getInteractiveScale('card') : 1 }] },
           ]}
         >
-          <Image source={{ uri: vessel.imageCompact }} style={styles.compactImage} />
+          <Image resizeMode="cover" source={{ uri: vessel.imageCompact }} style={styles.compactImage} />
         </InteractivePressable>
       </View>
 
@@ -449,10 +449,6 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     minHeight: 0,
-    overflowX: 'hidden',
-    overflowY: 'auto',
-    msOverflowStyle: 'auto',
-    scrollbarWidth: 'auto',
     backgroundColor: 'var(--color-bg-card)',
   },
   mainContentContainer: {
@@ -498,7 +494,6 @@ const styles = StyleSheet.create({
   vesselCardImage: {
     width: '100%',
     height: 180,
-    objectFit: 'cover',
     borderRadius: 6,
   },
   vesselCardBody: {
@@ -642,7 +637,6 @@ const styles = StyleSheet.create({
     width: 150,
     height: 90,
     borderRadius: 6,
-    objectFit: 'cover',
   },
   compactDetails: {
     display: 'flex',

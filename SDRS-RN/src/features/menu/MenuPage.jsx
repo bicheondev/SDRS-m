@@ -73,8 +73,6 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: 12,
     paddingTop: 28,
-    overflowY: 'auto',
-    overflowX: 'hidden',
   },
   group: {
     display: 'flex',

@@ -820,10 +820,10 @@ function ManageShipCard({
             pressGuideVariant="media"
             style={(state) => getPressableStyle(state, 'card', styles.manageShipImageButton)}
           >
-            <Image source={resolveImageSource(card.image)} style={styles.manageShipImage} />
+            <Image resizeMode="cover" source={resolveImageSource(card.image)} style={styles.manageShipImage} />
           </InteractivePressable>
         ) : (
-          <Image source={resolveImageSource(card.image)} style={styles.manageShipImage} />
+          <Image resizeMode="cover" source={resolveImageSource(card.image)} style={styles.manageShipImage} />
         )}
       </View>
 
@@ -2497,13 +2497,6 @@ const styles = StyleSheet.create({
     minHeight: 0,
     marginTop: 28,
     marginBottom: 64,
-    scrollPaddingTop: 116,
-    overflowAnchor: 'none',
-    overflowX: 'hidden',
-    overflowY: 'auto',
-    msOverflowStyle: 'auto',
-    scrollbarWidth: 'auto',
-    WebkitOverflowScrolling: 'touch',
   },
   manageEditContentBody: {
     display: 'flex',
@@ -2530,24 +2523,22 @@ const styles = StyleSheet.create({
   },
   manageEditSectionDragging: {
     backgroundColor: 'transparent',
-    boxShadow:
-      '0 24px 52px -32px rgb(15 23 42 / 0.28), 0 10px 22px -18px rgb(15 23 42 / 0.18)',
+    shadowColor: 'var(--slate-700)',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.14,
+    shadowRadius: 26,
+    elevation: 10,
   },
   manageEditReorderEntry: {
     position: 'relative',
     display: 'flex',
     flexDirection: 'column',
-    willChange: 'transform',
-    backfaceVisibility: 'hidden',
   },
   manageEditReorderEntryDragging: {
-    isolation: 'isolate',
   },
   manageEditReorderItem: {
     position: 'relative',
     backgroundColor: 'var(--color-bg-screen)',
-    transformOrigin: 'center top',
-    willChange: 'transform',
   },
   manageEditReorderItemDragging: {
     backgroundColor: 'transparent',
@@ -2558,7 +2549,7 @@ const styles = StyleSheet.create({
   manageEditReorderDividerSettling: {
   },
   reorderHandle: {
-    display: 'inline-flex',
+    display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
@@ -2575,18 +2566,16 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'var(--color-bg-surface-muted)',
     color: 'var(--color-text-muted)',
-    outlineStyle: 'none',
-    cursor: 'grab',
-    touchAction: 'none',
-    userSelect: 'none',
-    WebkitUserSelect: 'none',
   },
   reorderHandleDragging: {
     backgroundColor: 'var(--color-bg-accent-soft)',
     color: 'var(--color-accent)',
-    cursor: 'grabbing',
     transform: [{ translateY: -1 }],
-    boxShadow: '0 10px 24px -18px rgb(37 99 235 / 0.42)',
+    shadowColor: 'var(--color-accent)',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    elevation: 6,
   },
   reorderLabel: {
     color: 'var(--color-text-muted)',
@@ -2621,7 +2610,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 20,
     fontWeight: '500',
-    outlineStyle: 'none',
     backgroundColor: 'transparent',
     borderWidth: 0,
   },
@@ -2650,13 +2638,13 @@ const styles = StyleSheet.create({
     height: 26,
   },
   manageTextBoxEdited: {
-    boxShadow: 'var(--shadow-edit)',
+    borderWidth: 1,
+    borderColor: 'var(--color-border-accent-soft)',
   },
   manageTextBoxInput: {
     width: '100%',
     height: '100%',
     padding: 0,
-    outlineStyle: 'none',
     backgroundColor: 'transparent',
     borderWidth: 0,
     letterSpacing: -0.36,
@@ -2679,7 +2667,7 @@ const styles = StyleSheet.create({
     color: 'var(--color-accent)',
   },
   manageFieldPill: {
-    display: 'inline-flex',
+    display: 'flex',
     alignItems: 'center',
     gap: 2,
     flexGrow: 1,
@@ -2697,10 +2685,10 @@ const styles = StyleSheet.create({
     lineHeight: 23.4,
     fontWeight: '500',
     letterSpacing: -0.36,
-    whiteSpace: 'nowrap',
   },
   manageFieldPillEdited: {
-    boxShadow: 'var(--shadow-edit)',
+    borderWidth: 1,
+    borderColor: 'var(--color-border-accent-soft)',
   },
   manageFieldInput: {
     width: '100%',
@@ -2713,7 +2701,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 23.4,
     fontWeight: '500',
-    outlineStyle: 'none',
     backgroundColor: 'transparent',
     borderWidth: 0,
   },
@@ -2747,7 +2734,6 @@ const styles = StyleSheet.create({
     width: 150,
     height: 90,
     borderRadius: 6,
-    objectFit: 'cover',
     flexShrink: 0,
   },
   manageShipImageButton: {
@@ -2865,7 +2851,6 @@ const styles = StyleSheet.create({
     maxWidth: 340,
     borderRadius: 20,
     backgroundColor: 'var(--color-bg-modal)',
-    boxShadow: 'var(--shadow-modal)',
     shadowColor: 'var(--slate-700)',
     shadowOffset: { width: 0, height: 18 },
     shadowOpacity: 0.16,
@@ -2887,8 +2872,6 @@ const styles = StyleSheet.create({
     lineHeight: 21.75,
     fontWeight: '500',
     letterSpacing: -0.34,
-    whiteSpace: 'pre-line',
-    wordBreak: 'keep-all',
   },
   modalActions: {
     display: 'flex',
@@ -2932,22 +2915,18 @@ const styles = StyleSheet.create({
     left: 0,
     alignItems: 'center',
     zIndex: 4,
-    cursor: 'grab',
-    touchAction: 'none',
-    userSelect: 'none',
   },
   toastShellDragging: {
-    cursor: 'grabbing',
   },
   toastShellDismissing: {
   },
   toastFade: {
-    display: 'inline-flex',
+    display: 'flex',
   },
   toastFadeDismissing: {
   },
   toast: {
-    display: 'inline-flex',
+    display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2956,7 +2935,6 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 999,
     backgroundColor: 'var(--color-bg-toast)',
-    boxShadow: 'var(--shadow-toast)',
     borderWidth: 1,
     borderColor: 'var(--color-bg-toast-border)',
     shadowColor: 'var(--slate-700)',
@@ -2971,6 +2949,5 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '500',
     letterSpacing: -0.36,
-    whiteSpace: 'nowrap',
   },
 });

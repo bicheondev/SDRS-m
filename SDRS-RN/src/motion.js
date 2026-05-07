@@ -54,8 +54,6 @@ export const motionTokens = {
 };
 
 const stackEase = motionTokens.ease.stack;
-const noScreenShadow = '0 0 0 0 rgb(0 0 0 / 0)';
-
 export const motionDurationsMs = {
   instant: Math.round(motionTokens.duration.instant * 1000),
   fast: Math.round(motionTokens.duration.fast * 1000),
@@ -126,14 +124,12 @@ export const hiddenScreenState = {
   x: 0,
   y: 0,
   scale: 1,
-  boxShadow: noScreenShadow,
 };
 export const visibleScreenState = {
   opacity: 1,
   x: 0,
   y: 0,
   scale: 1,
-  boxShadow: noScreenShadow,
 };
 
 export function getScreenMotionState(direction, phase, reducedMotion = false) {
@@ -165,18 +161,18 @@ export function getScreenOverlayState(direction, phase, reducedMotion = false) {
 
 export function getScreenShadowState(direction, phase, reducedMotion = false) {
   if (reducedMotion) {
-    return noScreenShadow;
+    return null;
   }
 
   if (direction === 'push' && phase === 'enter') {
-    return 'var(--shadow-screen-stack)';
+    return null;
   }
 
   if (direction === 'pop' && phase === 'exit') {
-    return 'var(--shadow-screen-stack)';
+    return null;
   }
 
-  return noScreenShadow;
+  return null;
 }
 
 export function getScreenTransition(direction, reducedMotion = false, phase = 'enter') {
@@ -202,7 +198,6 @@ export function getScreenTransition(direction, reducedMotion = false, phase = 'e
     return {
       x: { duration: 0.46, ease: stackEase },
       scale: { duration: 0.46, ease: stackEase },
-      boxShadow: { duration: 0.24, ease: motionTokens.ease.linear },
     };
   }
 
@@ -210,7 +205,6 @@ export function getScreenTransition(direction, reducedMotion = false, phase = 'e
     return {
       x: { duration: 0.46, ease: stackEase },
       scale: { duration: 0.46, ease: stackEase },
-      boxShadow: { duration: 0.24, ease: motionTokens.ease.linear },
     };
   }
 

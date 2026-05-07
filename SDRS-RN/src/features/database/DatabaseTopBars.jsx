@@ -546,11 +546,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
     height: 136,
     overflow: 'hidden',
-    isolation: 'isolate',
-    willChange: 'top',
     backgroundColor: 'transparent',
-    WebkitBackfaceVisibility: 'hidden',
-    backfaceVisibility: 'hidden',
   },
   topBarHidden: {
     top: -136,
@@ -684,7 +680,6 @@ const styles = StyleSheet.create({
     zIndex: 2,
     height: 136,
     overflow: 'hidden',
-    isolation: 'isolate',
     backgroundColor: 'transparent',
   },
   searchMain: {
@@ -721,7 +716,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '500',
     letterSpacing: -0.36,
-    outlineStyle: 'none',
     backgroundColor: 'transparent',
     borderWidth: 0,
   },

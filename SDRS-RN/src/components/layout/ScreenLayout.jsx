@@ -66,11 +66,9 @@ export const screenLayoutStyles = StyleSheet.create({
     position: 'relative',
     backgroundColor: 'var(--color-bg-screen)',
     overflow: 'hidden',
-    boxShadow: 'var(--shadow-screen)',
   },
   phoneScreenCompact: {
     width: '100%',
-    boxShadow: 'none',
   },
   screenColumn: {
     display: 'flex',

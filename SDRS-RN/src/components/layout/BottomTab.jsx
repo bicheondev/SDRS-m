@@ -106,7 +106,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     zIndex: 4,
     overflow: 'hidden',
-    isolation: 'isolate',
     backgroundColor: 'transparent',
   },
   backdrop: {
@@ -160,7 +159,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: -0.11,
     textAlign: 'center',
-    whiteSpace: 'nowrap',
   },
   labelActive: {
     color: 'var(--color-accent)',

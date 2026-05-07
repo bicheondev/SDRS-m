@@ -4,16 +4,9 @@ import { motionTokens } from '../motion.js';
 
 export const interactiveStyles = StyleSheet.create({
   base: {
-    isolation: 'isolate',
     position: 'relative',
-    WebkitTapHighlightColor: 'transparent',
-    WebkitTouchCallout: 'none',
-    userSelect: 'none',
-    WebkitUserSelect: 'none',
   },
   focus: {
-    outlineStyle: 'none',
-    boxShadow: 'none',
   },
 });
 

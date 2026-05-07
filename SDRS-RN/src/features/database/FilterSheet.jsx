@@ -543,7 +543,6 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   filterScreen: {
-    display: 'block',
   },
   resultsShell: {
     position: 'relative',
@@ -667,6 +666,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: -0.36,
     textAlign: 'left',
-    whiteSpace: 'nowrap',
   },
 });

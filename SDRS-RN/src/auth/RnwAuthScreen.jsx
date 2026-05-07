@@ -242,7 +242,6 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     overflow: 'hidden',
     backgroundColor: 'var(--color-bg-screen)',
-    boxShadow: 'var(--shadow-screen)',
   },
   loginScroll: {
     flex: 1,
@@ -264,9 +263,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     includeFontPadding: false,
     letterSpacing: -0.78,
-    userSelect: 'none',
-    WebkitTouchCallout: 'none',
-    WebkitUserSelect: 'none',
   },
   loginTitleAccent: {
     color: 'var(--color-text-accent)',
@@ -282,12 +278,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'transparent',
     borderRadius: 14,
     backgroundColor: 'var(--color-bg-input)',
   },
   inputShellFocused: {
     backgroundColor: 'var(--color-bg-input-focus)',
-    boxShadow: 'var(--shadow-focus)',
+    borderColor: 'var(--color-border-accent-focus)',
     transform: [{ translateY: -1 }],
   },
   passwordShell: {
@@ -299,7 +297,6 @@ const styles = StyleSheet.create({
     margin: 0,
     padding: 0,
     borderWidth: 0,
-    outlineStyle: 'none',
     backgroundColor: 'transparent',
     color: 'var(--color-text-secondary)',
     fontFamily: APP_FONT_FAMILY,
@@ -324,10 +321,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     letterSpacing: -0.3,
     textAlign: 'center',
-    whiteSpace: 'nowrap',
-    userSelect: 'none',
-    WebkitTouchCallout: 'none',
-    WebkitUserSelect: 'none',
   },
   appVersionHidden: {
     opacity: 0,
@@ -338,13 +331,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    outlineStyle: 'none',
-    WebkitTapHighlightColor: 'transparent',
-    WebkitTouchCallout: 'none',
-    WebkitUserSelect: 'none',
-    userSelect: 'none',
-    touchAction: 'manipulation',
-    willChange: 'transform',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   loginButtonDock: {
     zIndex: 10,
@@ -355,14 +343,12 @@ const styles = StyleSheet.create({
   },
   loginButtonInactive: {
     backgroundColor: 'var(--color-bg-surface-pressed)',
-    cursor: 'default',
   },
   loginButtonActive: {
     backgroundColor: 'var(--color-accent-solid)',
-    cursor: 'pointer',
   },
   loginButtonFocused: {
-    boxShadow: 'var(--shadow-focus)',
+    borderColor: 'var(--color-border-accent-focus)',
   },
   loginButtonOverlay: {
     position: 'absolute',
