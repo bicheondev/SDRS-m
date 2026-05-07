@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { Keyboard } from 'react-native';
 
 import { buildDisplayVessels, buildHarborOptions } from '../../domain/databaseState.js';
 import { filterVessels } from '../../domain/ships.js';
@@ -231,6 +232,7 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
   }, [resetTransientUi]);
 
   const closeSearch = useCallback(() => {
+    Keyboard.dismiss();
     resetTransientUi();
     setDatabaseView('browse');
   }, [resetTransientUi]);

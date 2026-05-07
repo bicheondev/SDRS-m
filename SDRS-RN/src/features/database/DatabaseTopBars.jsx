@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Keyboard, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
@@ -49,8 +50,7 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInse
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
   const topBand = colorWithAlpha(screenColor, 0.86);
   const midBand = colorWithAlpha(screenColor, 0.78);
-  const lowBand = colorWithAlpha(screenColor, 0.42);
-  const fadeBand = colorWithAlpha(screenColor, 0.1);
+  const fadeBand = colorWithAlpha(screenColor, 0);
   const filterTopBand = colorWithAlpha(screenColor, isDark ? 0.4 : 0.34);
   const filterMidBand = colorWithAlpha(screenColor, isDark ? 0.22 : 0.18);
   const filterLowBand = colorWithAlpha(screenColor, 0.04);
@@ -67,15 +67,21 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInse
           styles.pointerEventsNone,
         ]}
       >
-        <View style={[styles.frostBandTop, { backgroundColor: topBand }]} />
-        <View style={[styles.frostBandMid, { backgroundColor: midBand }]} />
-        <View style={[styles.frostBandLow, { backgroundColor: lowBand }]} />
-        <View style={[styles.frostBandFade, { backgroundColor: fadeBand }]} />
+        <LinearGradient
+          colors={[topBand, topBand, midBand, colorWithAlpha(screenColor, 0.1), fadeBand]}
+          locations={[0, 0.52, 0.72, 0.92, 1]}
+          pointerEvents="none"
+          style={styles.frostGradient}
+        />
       </View>
       {filterSheet ? (
         <View className="top-bar__filter-sheet-layer" style={[styles.filterSheetLayer, styles.pointerEventsNone]}>
-          <View style={[styles.filterBackdropTop, { backgroundColor: filterBackdropTop }]} />
-          <View style={[styles.filterBackdropLow, { backgroundColor: filterBackdropLow }]} />
+          <LinearGradient
+            colors={[filterBackdropTop, filterBackdropLow]}
+            locations={[0, 1]}
+            pointerEvents="none"
+            style={styles.frostGradient}
+          />
         </View>
       ) : null}
       <View
@@ -86,9 +92,12 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInse
           styles.pointerEventsNone,
         ]}
       >
-        <View style={[styles.filterFrostTop, { backgroundColor: filterTopBand }]} />
-        <View style={[styles.filterFrostMid, { backgroundColor: filterMidBand }]} />
-        <View style={[styles.filterFrostLow, { backgroundColor: filterLowBand }]} />
+        <LinearGradient
+          colors={[filterLowBand, filterTopBand, filterMidBand, filterLowBand]}
+          locations={[0, 0.24, 0.74, 1]}
+          pointerEvents="none"
+          style={styles.frostGradient}
+        />
       </View>
     </>
   );
@@ -360,8 +369,18 @@ export const SearchTopBar = memo(function SearchTopBar({
       inputRef.current?.focus?.();
     });
 
-    return () => cancelAnimationFrame(frameId);
+    return () => {
+      cancelAnimationFrame(frameId);
+      inputRef.current?.blur?.();
+      Keyboard.dismiss();
+    };
   }, []);
+
+  const handleBack = () => {
+    inputRef.current?.blur?.();
+    Keyboard.dismiss();
+    onBack();
+  };
 
   return (
     <View
@@ -380,7 +399,7 @@ export const SearchTopBar = memo(function SearchTopBar({
           accessibilityLabel="뒤로가기"
           accessibilityRole="button"
           className="search-top-bar__back pressable-control pressable-control--icon"
-          onPress={onBack}
+          onPress={handleBack}
           pressGuideColor="var(--slate-50)"
           pressGuideVariant="icon"
           style={({ focused, pressed }) => [
@@ -481,6 +500,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     zIndex: 0,
     overflow: 'hidden',
+  },
+  frostGradient: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
   },
   frostBandTop: {
     position: 'absolute',

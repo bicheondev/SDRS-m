@@ -14,6 +14,7 @@ function AppShell() {
 
   const [fontsLoaded, fontError] = useFonts({
     'Pretendard GOV Variable': require('../assets/fonts/PretendardGOV-Regular.otf'),
+    'PretendardGOV-Regular': require('../assets/fonts/PretendardGOV-Regular.otf'),
     'PretendardGOV-Medium': require('../assets/fonts/PretendardGOV-Medium.otf'),
     'PretendardGOV-SemiBold': require('../assets/fonts/PretendardGOV-SemiBold.otf'),
     'PretendardGOV-Bold': require('../assets/fonts/PretendardGOV-Bold.otf'),

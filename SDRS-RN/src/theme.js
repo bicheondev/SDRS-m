@@ -271,7 +271,7 @@ export const themes = {
   dark: buildDarkTheme(),
 };
 
-export const APP_FONT_FAMILY = 'Pretendard GOV Variable';
+export const APP_FONT_FAMILY = 'PretendardGOV-Regular';
 
 let activeColorMode = 'light';
 

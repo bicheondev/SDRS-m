@@ -40,7 +40,6 @@ export const screenLayoutStyles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
     backgroundColor: 'var(--color-bg-app)',
-    backgroundImage: 'var(--gradient-app-shell)',
   },
   appShellCompact: {
     minHeight: '100dvh',

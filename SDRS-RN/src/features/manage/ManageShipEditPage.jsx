@@ -1,11 +1,13 @@
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
+  Keyboard,
   LayoutAnimation,
   PanResponder,
   Platform,
   ScrollView,
   StyleSheet,
+  TextInput as ReactNativeTextInput,
   UIManager,
   Vibration,
   View,
@@ -55,6 +57,11 @@ const MANAGE_ITEM_REMOVE_REDUCED_MS = 100;
 const REORDER_AUTO_SCROLL_EDGE_PX = 88;
 const REORDER_AUTO_SCROLL_MAX_STEP_PX = 24;
 const ADD_SCROLL_MAX_ATTEMPTS = 18;
+
+function dismissNativeKeyboard() {
+  ReactNativeTextInput.State?.currentlyFocusedInput?.()?.blur?.();
+  Keyboard.dismiss();
+}
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -1335,9 +1342,11 @@ function ManageAlertModal({
 }
 
 function ManageSavedToast({ message, onDismiss }) {
+  const insets = useSafeAreaInsets();
   const maxVisibleDragOffset = 24;
   const dismissDragThreshold = 56;
   const reducedMotion = useReducedMotionSafe();
+  const bottomInset = Math.max(insets.bottom, 0);
   const isPresented = useMountTransition(reducedMotion);
   const manualDismissDuration = reducedMotion ? 80 : 160;
   const [dragOffset, setDragOffset] = useState(0);
@@ -1437,7 +1446,10 @@ function ManageSavedToast({ message, onDismiss }) {
         styles.toastShell,
         dragging && styles.toastShellDragging,
         dismissing && styles.toastShellDismissing,
-        { transform: [{ translateX: '-50%' }, { translateY: dragOffset }] },
+        {
+          bottom: 52 + bottomInset,
+          transform: [{ translateY: dragOffset }],
+        },
       ]}
       {...panResponder.panHandlers}
     >
@@ -1552,6 +1564,14 @@ export function ManageShipEditPage({
     () => visibleCards.filter((card) => !removingCards.has(card.id)),
     [removingCards, visibleCards],
   );
+  const handleSave = useCallback(() => {
+    dismissNativeKeyboard();
+    onSave?.();
+    requestAnimationFrame(() => {
+      dismissNativeKeyboard();
+    });
+    setTimeout(dismissNativeKeyboard, 80);
+  }, [onSave]);
 
   const contentRefCallback = useCallback(
     (node) => {
@@ -2217,7 +2237,7 @@ export function ManageShipEditPage({
         saveActive={dirty}
         onAdd={onAdd}
         onBack={onBack}
-        onSave={dirty ? onSave : undefined}
+        onSave={dirty ? handleSave : undefined}
       />
 
       <ScrollView
@@ -2850,8 +2870,9 @@ const styles = StyleSheet.create({
   },
   toastShell: {
     position: 'absolute',
-    left: '50%',
-    bottom: 'calc(52px + env(safe-area-inset-bottom, 0px))',
+    right: 0,
+    left: 0,
+    alignItems: 'center',
     zIndex: 4,
     cursor: 'grab',
     touchAction: 'none',
@@ -2878,8 +2899,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'var(--color-bg-toast)',
     boxShadow: 'var(--shadow-toast)',
-    backdropFilter: 'blur(8px)',
-    WebkitBackdropFilter: 'blur(8px)',
   },
   toastMessage: {
     color: 'var(--color-text-toast)',

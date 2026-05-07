@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -134,7 +135,7 @@ export function FilterScreen({
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
   const backdropBaseColor = colorWithAlpha(screenColor, 0.5);
   const backdropTopColor = colorWithAlpha(screenColor, 1);
-  const backdropMidColor = colorWithAlpha(screenColor, 0.72);
+  const backdropMidColor = colorWithAlpha(screenColor, 0.5);
   const layerProgress = useSharedValue(phase === 'closing' ? 1 : 0);
   const panelProgress = useSharedValue(phase === 'closing' ? 1 : 0);
   const panelTranslateY = useSharedValue(phase === 'closing' ? 0 : motionTokens.offset.sheetLift);
@@ -369,8 +370,12 @@ export function FilterScreen({
           onPress={onClose}
           style={[styles.backdrop, { backgroundColor: backdropBaseColor }]}
         >
-          <View pointerEvents="none" style={[styles.backdropTop, { backgroundColor: backdropTopColor }]} />
-          <View pointerEvents="none" style={[styles.backdropMid, { backgroundColor: backdropMidColor }]} />
+          <LinearGradient
+            colors={[backdropTopColor, backdropMidColor]}
+            locations={[0, 1]}
+            pointerEvents="none"
+            style={styles.backdropGradient}
+          />
         </Pressable>
       </Animated.View>
 
@@ -550,6 +555,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     overflow: 'hidden',
+  },
+  backdropGradient: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
   },
   backdropTop: {
     position: 'absolute',

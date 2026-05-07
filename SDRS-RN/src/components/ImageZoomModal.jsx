@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -13,6 +13,7 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -26,9 +27,10 @@ import { AppIcon } from './Icons.jsx';
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const DOUBLE_TAP_ZOOM = 2.5;
-const DISMISS_DISTANCE_DP = 80;
-const DISMISS_VELOCITY = 800;
-const DISMISS_FADE_RANGE = 300;
+const GESTURE_MAX_ZOOM = 4.5;
+const DISMISS_DISTANCE_DP = 140;
+const DISMISS_VELOCITY = 450;
+const DISMISS_FADE_RANGE = 260;
 const SPRING_CONFIG = {
   stiffness: motionTokens.spring.modal.stiffness,
   damping: motionTokens.spring.modal.damping,
@@ -46,6 +48,24 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+function getContainRect(containerWidth, containerHeight, aspectRatio) {
+  const safeAspectRatio = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
+  const containerAspectRatio = containerWidth / containerHeight;
+  const width = safeAspectRatio >= containerAspectRatio
+    ? containerWidth
+    : containerHeight * safeAspectRatio;
+  const height = safeAspectRatio >= containerAspectRatio
+    ? containerWidth / safeAspectRatio
+    : containerHeight;
+
+  return {
+    top: (containerHeight - height) / 2,
+    left: (containerWidth - width) / 2,
+    width,
+    height,
+  };
+}
+
 function ImageZoomModalContent({ session, onClose }) {
   useTheme();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -55,6 +75,7 @@ function ImageZoomModalContent({ session, onClose }) {
   const initialIndex = clamp(session?.startIndex ?? 0, 0, Math.max(vessels.length - 1, 0));
   const vessel = vessels[initialIndex] ?? null;
   const imageUri = vessel?.imageWide || (typeof vessel?.image === 'string' ? vessel.image : null);
+  const [naturalImageSize, setNaturalImageSize] = useState(null);
 
   const fromRect = session?.fromRect ?? session?.sourceRect ?? null;
   const hasFromRect =
@@ -64,19 +85,41 @@ function ImageZoomModalContent({ session, onClose }) {
     fromRect.width > 0 &&
     fromRect.height > 0;
 
-  const targetRect = {
-    top: 0,
-    left: 0,
-    width: screenWidth,
-    height: screenHeight,
-  };
-  const initialScaleX = hasFromRect ? fromRect.width / targetRect.width : 1;
-  const initialScaleY = hasFromRect ? fromRect.height / targetRect.height : 1;
+  useEffect(() => {
+    let cancelled = false;
+    setNaturalImageSize(null);
+
+    if (!imageUri) {
+      return undefined;
+    }
+
+    Image.getSize(
+      imageUri,
+      (width, height) => {
+        if (!cancelled && width > 0 && height > 0) {
+          setNaturalImageSize({ width, height });
+        }
+      },
+      () => {},
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUri]);
+
+  const fallbackAspectRatio = hasFromRect ? fromRect.width / fromRect.height : screenWidth / screenHeight;
+  const imageAspectRatio = naturalImageSize
+    ? naturalImageSize.width / naturalImageSize.height
+    : fallbackAspectRatio;
+  const displayRect = getContainRect(screenWidth, screenHeight, imageAspectRatio);
+  const initialScaleX = hasFromRect ? fromRect.width / displayRect.width : 1;
+  const initialScaleY = hasFromRect ? fromRect.height / displayRect.height : 1;
   const initialTX = hasFromRect
-    ? fromRect.left + fromRect.width / 2 - (targetRect.left + targetRect.width / 2)
+    ? fromRect.left + fromRect.width / 2 - (displayRect.left + displayRect.width / 2)
     : 0;
   const initialTY = hasFromRect
-    ? fromRect.top + fromRect.height / 2 - (targetRect.top + targetRect.height / 2)
+    ? fromRect.top + fromRect.height / 2 - (displayRect.top + displayRect.height / 2)
     : 0;
 
   // FLIP container shared values: morph from thumbnail rect → fullscreen on open,
@@ -87,6 +130,7 @@ function ImageZoomModalContent({ session, onClose }) {
   const flipTY = useSharedValue(initialTY);
   const flipRadius = useSharedValue(hasFromRect ? motionTokens.radius.thumbnail : 0);
   const flipOpacity = useSharedValue(hasFromRect ? 1 : 0);
+  const contentOpacity = useSharedValue(hasFromRect ? 0 : 1);
 
   // Backdrop dim overlay opacity (0 = transparent, 1 = full black).
   const backdropOpacity = useSharedValue(0);
@@ -118,8 +162,17 @@ function ImageZoomModalContent({ session, onClose }) {
       flipTX.value = withTiming(0, timing);
       flipTY.value = withTiming(0, timing);
       flipRadius.value = withTiming(0, timing);
+      flipOpacity.value = withDelay(
+        Math.max(0, OPEN_DURATION_MS - 40),
+        withTiming(0, { duration: 40, easing }),
+      );
+      contentOpacity.value = withDelay(
+        Math.max(0, OPEN_DURATION_MS - 24),
+        withTiming(1, { duration: 24, easing }),
+      );
     } else {
-      flipOpacity.value = withTiming(1, timing);
+      flipOpacity.value = 0;
+      contentOpacity.value = withTiming(1, timing);
     }
 
     return () => {
@@ -130,9 +183,11 @@ function ImageZoomModalContent({ session, onClose }) {
       cancelAnimation(flipTX);
       cancelAnimation(flipTY);
       cancelAnimation(flipRadius);
+      cancelAnimation(contentOpacity);
     };
   }, [
     backdropOpacity,
+    contentOpacity,
     flipOpacity,
     flipRadius,
     flipScaleX,
@@ -154,8 +209,15 @@ function ImageZoomModalContent({ session, onClose }) {
     dismissTY.value = withTiming(0, timing);
 
     backdropOpacity.value = withTiming(0, timing);
+    contentOpacity.value = withTiming(0, timing);
 
     if (hasFromRect) {
+      flipOpacity.value = 1;
+      flipScaleX.value = 1;
+      flipScaleY.value = 1;
+      flipTX.value = 0;
+      flipTY.value = 0;
+      flipRadius.value = 0;
       flipScaleX.value = withTiming(initialScaleX, timing);
       flipScaleY.value = withTiming(initialScaleY, timing);
       flipTX.value = withTiming(initialTX, timing);
@@ -187,7 +249,21 @@ function ImageZoomModalContent({ session, onClose }) {
         imageTX.value = withSpring(0, SPRING_CONFIG);
         imageTY.value = withSpring(0, SPRING_CONFIG);
       } else {
-        imageScale.value = withSpring(DOUBLE_TAP_ZOOM, SPRING_CONFIG);
+        const targetScale = DOUBLE_TAP_ZOOM;
+        const centerX = screenWidth / 2;
+        const centerY = screenHeight / 2;
+        const tapX = event.absoluteX ?? centerX;
+        const tapY = event.absoluteY ?? centerY;
+        const localX = (tapX - centerX - imageTX.value) / imageScale.value;
+        const localY = (tapY - centerY - imageTY.value) / imageScale.value;
+        const nextX = tapX - centerX - targetScale * localX;
+        const nextY = tapY - centerY - targetScale * localY;
+        const maxX = Math.max(0, (displayRect.width * targetScale - screenWidth) / 2);
+        const maxY = Math.max(0, (displayRect.height * targetScale - screenHeight) / 2);
+
+        imageScale.value = withSpring(targetScale, SPRING_CONFIG);
+        imageTX.value = withSpring(clampWorklet(nextX, -maxX, maxX), SPRING_CONFIG);
+        imageTY.value = withSpring(clampWorklet(nextY, -maxY, maxY), SPRING_CONFIG);
       }
     });
 
@@ -211,7 +287,7 @@ function ImageZoomModalContent({ session, onClose }) {
       imageScale.value = clampWorklet(
         pinchStartScale.value * event.scale,
         MIN_ZOOM,
-        MAX_ZOOM,
+        GESTURE_MAX_ZOOM,
       );
     })
     .onEnd(() => {
@@ -220,6 +296,8 @@ function ImageZoomModalContent({ session, onClose }) {
         imageScale.value = withSpring(MIN_ZOOM, SPRING_CONFIG);
         imageTX.value = withSpring(0, SPRING_CONFIG);
         imageTY.value = withSpring(0, SPRING_CONFIG);
+      } else if (imageScale.value > MAX_ZOOM) {
+        imageScale.value = withSpring(MAX_ZOOM, SPRING_CONFIG);
       }
     });
 
@@ -233,8 +311,8 @@ function ImageZoomModalContent({ session, onClose }) {
       'worklet';
       if (imageScale.value > MIN_ZOOM + 0.01) {
         // Pan the image while zoomed in.
-        const maxX = Math.max(0, (screenWidth * imageScale.value - screenWidth) / 2);
-        const maxY = Math.max(0, (screenHeight * imageScale.value - screenHeight) / 2);
+        const maxX = Math.max(0, (displayRect.width * imageScale.value - screenWidth) / 2);
+        const maxY = Math.max(0, (displayRect.height * imageScale.value - screenHeight) / 2);
         imageTX.value = clampWorklet(panStartTX.value + event.translationX, -maxX, maxX);
         imageTY.value = clampWorklet(panStartTY.value + event.translationY, -maxY, maxY);
       } else if (event.translationY > 0) {
@@ -247,8 +325,12 @@ function ImageZoomModalContent({ session, onClose }) {
     .onEnd((event) => {
       'worklet';
       if (imageScale.value > MIN_ZOOM + 0.01) {
-        const maxX = Math.max(0, (screenWidth * imageScale.value - screenWidth) / 2);
-        const maxY = Math.max(0, (screenHeight * imageScale.value - screenHeight) / 2);
+        const finalScale = Math.min(imageScale.value, MAX_ZOOM);
+        const maxX = Math.max(0, (displayRect.width * finalScale - screenWidth) / 2);
+        const maxY = Math.max(0, (displayRect.height * finalScale - screenHeight) / 2);
+        if (imageScale.value > MAX_ZOOM) {
+          imageScale.value = withSpring(MAX_ZOOM, SPRING_CONFIG);
+        }
         imageTX.value = withSpring(clampWorklet(imageTX.value, -maxX, maxX), SPRING_CONFIG);
         imageTY.value = withSpring(clampWorklet(imageTY.value, -maxY, maxY), SPRING_CONFIG);
         return;
@@ -273,7 +355,7 @@ function ImageZoomModalContent({ session, onClose }) {
     opacity: backdropOpacity.value,
   }));
 
-  const flipContainerStyle = useAnimatedStyle(() => ({
+  const transitionImageStyle = useAnimatedStyle(() => ({
     opacity: flipOpacity.value,
     borderRadius: flipRadius.value,
     transform: [
@@ -283,6 +365,17 @@ function ImageZoomModalContent({ session, onClose }) {
       { scaleY: flipScaleY.value },
     ],
   }));
+
+  const imageStageStyle = useAnimatedStyle(() => {
+    const dismissProgress = Math.min(Math.abs(dismissTY.value) / DISMISS_FADE_RANGE, 1);
+    return {
+      opacity: contentOpacity.value,
+      transform: [
+        { translateY: dismissTY.value },
+        { scale: imageScale.value > MIN_ZOOM + 0.01 ? 1 : 1 - dismissProgress * 0.08 },
+      ],
+    };
+  });
 
   const imageTransformStyle = useAnimatedStyle(() => ({
     transform: [
@@ -312,28 +405,39 @@ function ImageZoomModalContent({ session, onClose }) {
 
       <GestureDetector gesture={composed}>
         <Animated.View
-          style={[
-            styles.flipContainer,
-            {
-              top: targetRect.top,
-              left: targetRect.left,
-              width: targetRect.width,
-              height: targetRect.height,
-            },
-            flipContainerStyle,
-          ]}
+          style={styles.gestureSurface}
         >
-          <Animated.View style={[styles.imageWrap, imageTransformStyle]}>
-            <Image
-              accessibilityIgnoresInvertColors
-              accessibilityLabel={vessel.name ? `${vessel.name} 선박 이미지` : undefined}
-              resizeMode="contain"
-              source={imageSource}
-              style={styles.image}
-            />
+          <Animated.View style={[styles.imageStage, imageStageStyle]}>
+            <Animated.View style={[styles.imageWrap, imageTransformStyle]}>
+              <Image
+                accessibilityIgnoresInvertColors
+                accessibilityLabel={vessel.name ? `${vessel.name} 선박 이미지` : undefined}
+                resizeMode="contain"
+                source={imageSource}
+                style={styles.image}
+              />
+            </Animated.View>
           </Animated.View>
         </Animated.View>
       </GestureDetector>
+
+      {hasFromRect ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.transitionImage,
+            {
+              top: displayRect.top,
+              left: displayRect.left,
+              width: displayRect.width,
+              height: displayRect.height,
+            },
+            transitionImageStyle,
+          ]}
+        >
+          <Image resizeMode="cover" source={imageSource} style={styles.image} />
+        </Animated.View>
+      ) : null}
 
       <Pressable
         accessibilityLabel="닫기"
@@ -367,10 +471,22 @@ const styles = StyleSheet.create({
     left: 0,
     backgroundColor: 'var(--color-bg-zoom)',
   },
-  flipContainer: {
+  gestureSurface: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  imageStage: {
+    width: '100%',
+    height: '100%',
+  },
+  transitionImage: {
     position: 'absolute',
     overflow: 'hidden',
     backgroundColor: 'transparent',
+    zIndex: 2,
   },
   imageWrap: {
     width: '100%',

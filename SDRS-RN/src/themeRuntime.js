@@ -94,6 +94,13 @@ function isUnresolvableCssFunctionString(value) {
 }
 
 const POSITION_FIXED_KEYS = new Set(['position']);
+const PRETENDARD_FONT_FAMILIES = new Set([
+  'Pretendard GOV Variable',
+  'PretendardGOV-Regular',
+  'PretendardGOV-Medium',
+  'PretendardGOV-SemiBold',
+  'PretendardGOV-Bold',
+]);
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -110,6 +117,54 @@ function startsWithCssGradient(value) {
       value.startsWith('radial-gradient') ||
       value.startsWith('conic-gradient'))
   );
+}
+
+function normalizeFontWeight(value) {
+  if (value === undefined || value === null) {
+    return 400;
+  }
+
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === 'bold') {
+    return 700;
+  }
+  if (normalized === 'normal') {
+    return 400;
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  return Number.isFinite(parsed) ? parsed : 400;
+}
+
+function getPretendardFontFamilyForWeight(value) {
+  const weight = normalizeFontWeight(value);
+  if (weight >= 700) {
+    return 'PretendardGOV-Bold';
+  }
+  if (weight >= 600) {
+    return 'PretendardGOV-SemiBold';
+  }
+  if (weight >= 500) {
+    return 'PretendardGOV-Medium';
+  }
+  return 'PretendardGOV-Regular';
+}
+
+function shouldApplyPretendardWeight(style) {
+  if (!Object.prototype.hasOwnProperty.call(style, 'fontWeight')) {
+    return false;
+  }
+
+  const fontFamily = style.fontFamily;
+  if (fontFamily === undefined || fontFamily === null) {
+    return true;
+  }
+
+  return PRETENDARD_FONT_FAMILIES.has(String(fontFamily));
 }
 
 function looksLikeCssDimension(value) {
@@ -217,6 +272,13 @@ function resolveStyleObject(style, theme) {
     if (adapted !== undefined) {
       next[key] = adapted;
     }
+  }
+
+  if (shouldApplyPretendardWeight(next)) {
+    next.fontFamily = getPretendardFontFamilyForWeight(next.fontWeight);
+    next.fontWeight = '400';
+  } else if (PRETENDARD_FONT_FAMILIES.has(String(next.fontFamily))) {
+    next.fontFamily = getPretendardFontFamilyForWeight(next.fontWeight);
   }
 
   return next;
