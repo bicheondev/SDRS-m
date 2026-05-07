@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import {
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -47,7 +46,7 @@ export function RnwAuthScreen({
   const phoneScreenLayoutStyle = isCompactViewport
     ? { width: screenWidth, flex: 1, minHeight: 0 }
     : { width: screenWidth, height: screenHeight, minHeight: screenHeight };
-  const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : 'height';
+  const keyboardBehavior = 'padding';
   const topInset = Math.max(insets.top, 0);
   const bottomInset = Math.max(insets.bottom, 0);
   const usernameFocused = focusedField === 'username';

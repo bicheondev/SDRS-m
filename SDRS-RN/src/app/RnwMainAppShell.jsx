@@ -342,7 +342,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
   }, [appState.activeTab, manageNavigation.currentScreen, openMenu, shipEditor]);
 
   const showBottomTab =
-    appState.activeTab === 'db' ||
+    (appState.activeTab === 'db' && !databasePage.filterSheet) ||
     (appState.activeTab === 'manage' && manageNavigation.currentScreen === 'manageHome') ||
     (appState.activeTab === 'menu' && menuNavigation.currentScreen === 'menu');
   const bottomTabCompact = appState.activeTab === 'manage' ? false : databasePage.compact;

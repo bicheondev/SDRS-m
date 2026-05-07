@@ -434,7 +434,18 @@ function ImageZoomModalContent({ session, onClose }) {
         <Animated.View
           style={styles.gestureSurface}
         >
-          <Animated.View style={[styles.imageStage, imageStageStyle]}>
+          <Animated.View
+            style={[
+              styles.imageStage,
+              {
+                top: displayRect.top,
+                left: displayRect.left,
+                width: displayRect.width,
+                height: displayRect.height,
+              },
+              imageStageStyle,
+            ]}
+          >
             <Animated.View style={[styles.imageWrap, imageTransformStyle]}>
               <Image
                 accessibilityIgnoresInvertColors
@@ -507,8 +518,7 @@ const styles = StyleSheet.create({
     left: 0,
   },
   imageStage: {
-    width: '100%',
-    height: '100%',
+    position: 'absolute',
   },
   transitionImage: {
     position: 'absolute',

@@ -246,15 +246,15 @@ function buildDarkTheme() {
     'shadow-modal':
       'inset 0 0 0 1px rgb(148 163 184 / 0.1), 0 10px 30px -3px rgb(0 0 0 / 0.4), 0 15px 80px -5px rgb(0 0 0 / 0.6)',
     'shadow-toast':
-      'inset 0 0 0 1px var(--color-bg-toast-border), 0 12px 24px -12px rgb(0 0 0 / 0.6)',
+      'inset 0 0 0 1px var(--color-bg-toast-border), 0 12px 24px -12px rgb(15 23 42 / 0.5)',
     'gradient-app-shell':
-      'radial-gradient(circle at top, #0f172a 0%, #020617 60%, #020617 100%)',
+      'radial-gradient(circle at top, rgb(15 23 42) 0%, rgb(15 23 42) 30%, rgb(2 6 23) 100%)',
     'gradient-top-bar':
       'linear-gradient(180deg, rgb(15 23 42) 0%, rgb(15 23 42) 64%, rgb(15 23 42 / 0) 100%)',
     'gradient-top-bar-frost':
-      'linear-gradient(180deg, rgb(15 23 42 / 0.86) 0%, rgb(15 23 42 / 0.78) 64%, rgb(15 23 42 / 0.1) 100%)',
+      'linear-gradient(180deg, rgb(15 23 42 / 0.84) 0%, rgb(15 23 42 / 0.74) 64%, rgb(15 23 42 / 0.08) 100%)',
     'gradient-top-bar-frost-soft':
-      'linear-gradient(180deg, rgb(15 23 42 / 0.4) 0%, rgb(15 23 42 / 0.22) 68%, rgb(15 23 42 / 0.04) 100%)',
+      'linear-gradient(180deg, rgb(15 23 42 / 0.38) 0%, rgb(15 23 42 / 0.22) 68%, rgb(15 23 42 / 0.04) 100%)',
     'gradient-filter-backdrop':
       'linear-gradient(180deg, rgb(15 23 42) 0%, rgb(15 23 42 / 0.5) 100%)',
     'icon-filter-neutral':

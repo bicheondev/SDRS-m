@@ -125,7 +125,11 @@ function DataManagementHomeRow({ label, onPress, tone = 'default', value }) {
       <Text style={styles.manageHomeLabel}>{label}</Text>
       {value ? (
         <View style={styles.manageHomeValueGroup}>
-          <Text style={[styles.manageHomeValue, tone === 'blue' && styles.manageHomeValueBlue]}>
+          <Text
+            ellipsizeMode="tail"
+            numberOfLines={1}
+            style={[styles.manageHomeValue, tone === 'blue' && styles.manageHomeValueBlue]}
+          >
             {value}
           </Text>
           <AppIcon
@@ -464,6 +468,7 @@ const styles = StyleSheet.create({
   },
   manageHomeLabel: {
     color: 'var(--color-text-tertiary)',
+    flexShrink: 0,
     fontSize: 18,
     lineHeight: 20,
     fontWeight: '500',
@@ -473,11 +478,14 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
     gap: 12,
+    justifyContent: 'flex-end',
     minWidth: 0,
   },
   manageHomeValue: {
     color: 'var(--color-text-tertiary)',
+    flexShrink: 1,
     fontSize: 18,
     lineHeight: 20,
     fontWeight: '400',

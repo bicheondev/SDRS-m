@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef } from 'react';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Keyboard, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -57,10 +58,10 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInse
   const { resolvedColorMode } = useTheme();
   const isDark = resolvedColorMode === 'dark';
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
-  const topBand = colorWithAlpha(screenColor, 0.86);
-  const midBand = colorWithAlpha(screenColor, 0.78);
+  const topBand = colorWithAlpha(screenColor, isDark ? 0.84 : 0.86);
+  const midBand = colorWithAlpha(screenColor, isDark ? 0.74 : 0.78);
   const fadeBand = colorWithAlpha(screenColor, 0);
-  const filterTopBand = colorWithAlpha(screenColor, isDark ? 0.4 : 0.34);
+  const filterTopBand = colorWithAlpha(screenColor, isDark ? 0.38 : 0.34);
   const filterMidBand = colorWithAlpha(screenColor, isDark ? 0.22 : 0.18);
   const filterLowBand = colorWithAlpha(screenColor, 0.04);
   const filterBackdropTop = colorWithAlpha(screenColor, 1);
@@ -76,6 +77,12 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInse
           styles.pointerEventsNone,
         ]}
       >
+        <BlurView
+          intensity={72}
+          pointerEvents="none"
+          style={styles.frostBlur}
+          tint={isDark ? 'dark' : 'light'}
+        />
         <LinearGradient
           colors={[topBand, topBand, midBand, colorWithAlpha(screenColor, 0.1), fadeBand]}
           locations={[0, 0.52, 0.72, 0.92, 1]}
@@ -85,6 +92,12 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInse
       </View>
       {filterSheet ? (
         <View className="top-bar__filter-sheet-layer" style={[styles.filterSheetLayer, styles.pointerEventsNone]}>
+          <BlurView
+            intensity={52}
+            pointerEvents="none"
+            style={styles.frostBlur}
+            tint={isDark ? 'dark' : 'light'}
+          />
           <LinearGradient
             colors={[filterBackdropTop, filterBackdropLow]}
             locations={[0, 1]}
@@ -101,6 +114,12 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInse
           styles.pointerEventsNone,
         ]}
       >
+        <BlurView
+          intensity={42}
+          pointerEvents="none"
+          style={styles.frostBlur}
+          tint={isDark ? 'dark' : 'light'}
+        />
         <LinearGradient
           colors={[filterLowBand, filterTopBand, filterMidBand, filterLowBand]}
           locations={[0, 0.24, 0.74, 1]}
@@ -566,6 +585,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   frostGradient: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  frostBlur: {
     position: 'absolute',
     top: 0,
     right: 0,

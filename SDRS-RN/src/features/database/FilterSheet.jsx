@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -97,7 +98,8 @@ export function FilterScreen({
   vesselTypeFilter,
   vesselTypeOptions,
 }) {
-  useTheme();
+  const { resolvedColorMode } = useTheme();
+  const isDark = resolvedColorMode === 'dark';
   const viewportDimensions = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const topInset = Math.max(insets.top, 0);
@@ -135,7 +137,7 @@ export function FilterScreen({
   const vesselTypeMenuLeft = columnLayout.vesselTypeLeft;
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
   const backdropBaseColor = colorWithAlpha(screenColor, 0);
-  const backdropTopColor = colorWithAlpha(screenColor, 1);
+  const backdropTopColor = colorWithAlpha(screenColor, isDark ? 0.84 : 0.86);
   const backdropMidColor = colorWithAlpha(screenColor, 0.5);
   const layerProgress = useSharedValue(phase === 'closing' ? 1 : 0);
   const panelProgress = useSharedValue(phase === 'closing' ? 1 : 0);
@@ -378,6 +380,12 @@ export function FilterScreen({
           onPress={onClose}
           style={[styles.backdrop, { backgroundColor: backdropBaseColor }]}
         >
+          <BlurView
+            intensity={52}
+            pointerEvents="none"
+            style={styles.backdropBlur}
+            tint={isDark ? 'dark' : 'light'}
+          />
           <LinearGradient
             colors={[backdropTopColor, backdropMidColor]}
             locations={[0, 1]}
@@ -569,6 +577,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   backdropGradient: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  backdropBlur: {
     position: 'absolute',
     top: 0,
     right: 0,

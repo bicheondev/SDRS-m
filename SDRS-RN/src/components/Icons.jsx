@@ -91,7 +91,7 @@ const ICON_PRESETS = {
   statusSmall: {
     glyphSize: 24,
     offsetX: 0,
-    offsetY: 0.25,
+    offsetY: 0,
     opticalSize: 24,
     slotSize: 24,
   },
@@ -99,6 +99,13 @@ const ICON_PRESETS = {
     glyphSize: 24,
     offsetX: 0,
     offsetY: 0.25,
+    opticalSize: 24,
+    slotSize: 24,
+  },
+  toastCheck: {
+    glyphSize: 24,
+    offsetX: 0,
+    offsetY: 0,
     opticalSize: 24,
     slotSize: 24,
   },

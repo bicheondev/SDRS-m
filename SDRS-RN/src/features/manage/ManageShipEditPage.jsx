@@ -12,6 +12,8 @@ import {
   Vibration,
   View,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
   interpolateColor,
@@ -44,8 +46,6 @@ import { pickFile } from '../../services/filePicker.js';
 import { resolveCssVariableString } from '../../theme.js';
 
 const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
-const KEYBOARD_SHOW_EVENT = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-const KEYBOARD_HIDE_EVENT = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 const LIST_ITEM_EASING = Easing.bezier(0.22, 1, 0.36, 1);
 const MANAGE_EDIT_CONTENT_PADDING_BOTTOM = 24;
 const MANAGE_EDIT_REORDER_DIVIDER_HEIGHT = 16;
@@ -1365,12 +1365,13 @@ function ManageAlertModal({
 }
 
 function ManageSavedToast({ message, onDismiss }) {
+  const { resolvedColorMode } = useTheme();
+  const isDark = resolvedColorMode === 'dark';
   const insets = useSafeAreaInsets();
   const maxVisibleDragOffset = 24;
   const dismissDragThreshold = 56;
   const reducedMotion = useReducedMotionSafe();
   const bottomInset = Math.max(insets.bottom, 0);
-  const [keyboardInset, setKeyboardInset] = useState(0);
   const manualDismissDuration = reducedMotion ? 80 : 160;
   const toastProgress = useSharedValue(reducedMotion ? 1 : 0);
   const [dragOffset, setDragOffset] = useState(0);
@@ -1404,20 +1405,6 @@ function ManageSavedToast({ message, onDismiss }) {
   }, [clearPendingDismiss]);
 
   useEffect(() => clearPendingDismiss, [clearPendingDismiss]);
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener(KEYBOARD_SHOW_EVENT, (event) => {
-      setKeyboardInset(Math.max(0, event?.endCoordinates?.height ?? 0));
-    });
-    const hideSub = Keyboard.addListener(KEYBOARD_HIDE_EVENT, () => {
-      setKeyboardInset(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
 
   useEffect(() => {
     toastProgress.value = withTiming(1, {
@@ -1495,7 +1482,7 @@ function ManageSavedToast({ message, onDismiss }) {
 
   const dragOpacity = 1 - dragOffset / maxVisibleDragOffset;
   const fadeOpacity = dragging ? dragOpacity : dismissing ? dismissOpacity : 1;
-  const toastBottom = Math.max(52 + bottomInset, keyboardInset + 18);
+  const toastBottom = 52 + bottomInset;
 
   return (
     <View
@@ -1521,16 +1508,38 @@ function ManageSavedToast({ message, onDismiss }) {
         <Animated.View
           style={[
             styles.toast,
+            { shadowColor: isDark ? '#0f172a' : '#475569' },
             toastAnimatedStyle,
           ]}
         >
-          <AppIcon
-            glyphSize={24}
-            name="check_circle"
-            preset="action"
-            style={styles.iconSlot24}
-            tone="accent"
+          <BlurView
+            intensity={32}
+            pointerEvents="none"
+            style={styles.toastBlurLayer}
+            tint={isDark ? 'dark' : 'light'}
           />
+          <LinearGradient
+            colors={
+              isDark
+                ? ['rgba(30, 41, 59, 0.72)', 'rgba(30, 41, 59, 0.54)']
+                : ['rgba(248, 250, 252, 0.66)', 'rgba(241, 245, 249, 0.46)']
+            }
+            locations={[0, 1]}
+            pointerEvents="none"
+            style={styles.toastFrostLayer}
+          />
+          <View pointerEvents="none" style={styles.toastInsetStroke} />
+          <View style={styles.toastIconCircle}>
+            <AppIcon
+              glyphSize={24}
+              name="check_circle"
+              opticalSize={24}
+              preset="toastCheck"
+              slotSize={24}
+              style={styles.iconSlot24}
+              tone="accent"
+            />
+          </View>
           <Text style={styles.toastMessage}>{message}</Text>
         </Animated.View>
       </View>
@@ -2932,22 +2941,57 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     minHeight: 52,
-    padding: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     borderRadius: 999,
+    position: 'relative',
+    overflow: 'hidden',
     backgroundColor: 'var(--color-bg-toast)',
+    shadowColor: '#475569',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.24,
+    shadowRadius: 24,
+    elevation: 6,
+  },
+  toastBlurLayer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: 999,
+  },
+  toastFrostLayer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: 999,
+  },
+  toastInsetStroke: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     borderWidth: 1,
     borderColor: 'var(--color-bg-toast-border)',
-    shadowColor: 'var(--slate-700)',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 8,
+    borderRadius: 999,
+  },
+  toastIconCircle: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
   },
   toastMessage: {
     color: 'var(--color-text-toast)',
     fontSize: 18,
-    lineHeight: 18,
+    lineHeight: 22,
     fontWeight: '500',
     letterSpacing: -0.36,
+    zIndex: 1,
   },
 });
