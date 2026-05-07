@@ -37,13 +37,13 @@ export function useLoginViewport({ enabled }) {
       const screenY = event?.endCoordinates?.screenY;
       const explicitHeight = event?.endCoordinates?.height ?? 0;
 
-      // Prefer the gap between the keyboard's top edge and the viewport bottom,
-      // which matches what the web version computes from visualViewport.
+      // The CTA is positioned with bottom: keyboardHeight, so prefer the native
+      // keyboard height and only fall back to the measured viewport gap.
       const viewportInset =
         typeof screenY === 'number' && viewportHeight > 0
           ? Math.max(0, viewportHeight - screenY)
           : 0;
-      const inset = viewportInset > 0 ? viewportInset : Math.max(0, explicitHeight);
+      const inset = explicitHeight > 0 ? Math.max(0, explicitHeight) : viewportInset;
 
       lastInsetRef.current = inset;
       setKeyboardInset(inset);
@@ -74,6 +74,14 @@ export function useLoginViewport({ enabled }) {
 
     if (lastInsetRef.current > 0) {
       setKeyboardInset(lastInsetRef.current);
+      return;
+    }
+
+    const metrics = typeof Keyboard.metrics === 'function' ? Keyboard.metrics() : null;
+    const metricsHeight = metrics?.height ?? 0;
+    if (metricsHeight > 0) {
+      lastInsetRef.current = metricsHeight;
+      setKeyboardInset(metricsHeight);
     }
   }, []);
 

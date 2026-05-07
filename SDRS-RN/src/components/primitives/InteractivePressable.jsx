@@ -347,9 +347,6 @@ const styles = StyleSheet.create({
     opacity: 0,
     pointerEvents: 'none',
     position: 'absolute',
-    transitionDuration: 'var(--motion-duration-fast)',
-    transitionProperty: 'opacity, background-color',
-    transitionTimingFunction: 'var(--motion-ease-standard)',
     zIndex: 0,
   },
   pressGuideOverlayActive: {

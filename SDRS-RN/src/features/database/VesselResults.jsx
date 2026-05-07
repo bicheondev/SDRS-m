@@ -1,5 +1,11 @@
 import { forwardRef, memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIcon } from '../../components/Icons.jsx';
@@ -7,10 +13,12 @@ import { interactiveStyles, getInteractiveScale } from '../../components/interac
 import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
 import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe.js';
+import { motionTokens } from '../../motion.js';
 import { isHostElement } from '../../platform/index';
 import { measureNodeInWindow } from '../../utils/layout.js';
 
 const VIEW_MODE_TRANSITION_MS = 180;
+const VIEW_MODE_EASING = Easing.bezier(...motionTokens.ease.ios);
 
 function useViewModeTransition(compact, reducedMotion) {
   const previousCompactRef = useRef(compact);
@@ -329,6 +337,7 @@ const VesselResultsBase = forwardRef(function VesselResults(
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 0);
   const modeAnimationId = useViewModeTransition(compact, reducedMotion);
+  const modeProgress = useSharedValue(1);
   const scrollRef = useRef(null);
   const setScrollRef = useCallback(
     (node) => {
@@ -357,6 +366,27 @@ const VesselResultsBase = forwardRef(function VesselResults(
     scrollRef.current?.scrollTo?.({ y: 0, animated: false });
   }, [scrollResetKey]);
 
+  useEffect(() => {
+    if (reducedMotion || modeAnimationId === 0) {
+      modeProgress.value = 1;
+      return;
+    }
+
+    modeProgress.value = 0;
+    modeProgress.value = withTiming(1, {
+      duration: VIEW_MODE_TRANSITION_MS,
+      easing: VIEW_MODE_EASING,
+    });
+  }, [modeAnimationId, modeProgress, reducedMotion]);
+
+  const modeAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: 0.76 + modeProgress.value * 0.24,
+    transform: [
+      { translateY: (1 - modeProgress.value) * motionTokens.offset.tabLift },
+      { scale: 0.996 + modeProgress.value * 0.004 },
+    ],
+  }));
+
   return (
     <ScrollView
       className={`main-content ${chromeScrollbar ? 'main-content--chrome-scrollbar' : ''}`.trim()}
@@ -374,8 +404,9 @@ const VesselResultsBase = forwardRef(function VesselResults(
         style,
       ]}
     >
-      <View
+      <Animated.View
         key={`${compact ? 'compact' : 'card'}-${modeAnimationId}`}
+        style={modeAnimatedStyle}
       >
         {vessels.length === 0 ? (
           <VesselEmptyState />
@@ -402,7 +433,7 @@ const VesselResultsBase = forwardRef(function VesselResults(
             </View>
           ))
         )}
-      </View>
+      </Animated.View>
     </ScrollView>
   );
 });

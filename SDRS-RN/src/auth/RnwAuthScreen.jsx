@@ -9,10 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { motionDurationsMs, motionTokens } from '../motion.js';
 import { APP_FONT_FAMILY, resolveCssVariableString } from '../theme.js';
-
-const IOS_EASE = `cubic-bezier(${motionTokens.ease.ios.join(', ')})`;
 
 export function RnwAuthScreen({
   focusedField,
@@ -33,7 +30,7 @@ export function RnwAuthScreen({
   const resolvedKeyboardInset = Math.max(0, keyboardInset);
   const bottomInset = Math.max(insets.bottom, 0);
   const isKeyboardDocked = Boolean(focusedField) && resolvedKeyboardInset > 0;
-  const loginButtonBottom = isKeyboardDocked ? 0 : bottomInset;
+  const loginButtonBottom = isKeyboardDocked ? resolvedKeyboardInset : bottomInset;
 
   const handleSubmit = () => {
     if (isFilled) {
@@ -122,7 +119,6 @@ export function RnwAuthScreen({
               focused ? styles.loginButtonFocused : null,
               {
                 bottom: loginButtonBottom,
-                transform: [{ translateY: isKeyboardDocked ? -resolvedKeyboardInset : 0 }],
               },
             ]}
           >
@@ -215,9 +211,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 14,
     backgroundColor: 'var(--color-bg-input)',
-    transitionDuration: `${motionDurationsMs.fast}ms`,
-    transitionProperty: 'background-color, box-shadow, transform',
-    transitionTimingFunction: IOS_EASE,
   },
   inputShellFocused: {
     backgroundColor: 'var(--color-bg-input-focus)',
@@ -260,9 +253,6 @@ const styles = StyleSheet.create({
     userSelect: 'none',
     WebkitTouchCallout: 'none',
     WebkitUserSelect: 'none',
-    transitionDuration: `${motionDurationsMs.fast}ms`,
-    transitionProperty: 'opacity',
-    transitionTimingFunction: IOS_EASE,
   },
   appVersionHidden: {
     opacity: 0,
@@ -283,9 +273,6 @@ const styles = StyleSheet.create({
     WebkitUserSelect: 'none',
     userSelect: 'none',
     touchAction: 'manipulation',
-    transitionDuration: `${motionDurationsMs.fast}ms, ${motionDurationsMs.fast}ms, ${motionDurationsMs.fast}ms, ${motionDurationsMs.fast}ms, ${motionDurationsMs.normal}ms`,
-    transitionProperty: 'background-color, color, box-shadow, opacity, transform',
-    transitionTimingFunction: `${IOS_EASE}, ${IOS_EASE}, ${IOS_EASE}, ${IOS_EASE}, ${IOS_EASE}`,
     willChange: 'transform',
   },
   loginButtonInactive: {
@@ -307,9 +294,6 @@ const styles = StyleSheet.create({
     left: 0,
     opacity: 0,
     backgroundColor: 'var(--color-state-layer-accent)',
-    transitionDuration: `${motionDurationsMs.fast}ms`,
-    transitionProperty: 'opacity',
-    transitionTimingFunction: IOS_EASE,
   },
   pointerEventsNone: {
     pointerEvents: 'none',

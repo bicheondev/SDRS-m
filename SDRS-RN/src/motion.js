@@ -1,5 +1,3 @@
-const toMilliseconds = (seconds) => `${Math.round(seconds * 1000)}ms`;
-const toBezier = (points) => `cubic-bezier(${points.join(', ')})`;
 const reverseBezier = ([x1, y1, x2, y2]) => [1 - x2, 1 - y2, 1 - x1, 1 - y1];
 
 export const motionTokens = {
@@ -65,29 +63,6 @@ export const motionDurationsMs = {
   screen: Math.round(motionTokens.duration.screen * 1000),
   image: Math.round(motionTokens.duration.image * 1000),
 };
-
-export function getMotionCssVariables(reducedMotion = false) {
-  const fastDuration = reducedMotion ? motionTokens.reduced.duration : motionTokens.duration.fast;
-  const normalDuration = reducedMotion
-    ? motionTokens.reduced.duration
-    : motionTokens.duration.normal;
-  const screenDuration = reducedMotion
-    ? motionTokens.reduced.duration
-    : motionTokens.duration.screen;
-  const imageDuration = reducedMotion ? motionTokens.reduced.duration : motionTokens.duration.image;
-
-  return {
-    '--motion-duration-fast': toMilliseconds(fastDuration),
-    '--motion-duration-normal': toMilliseconds(normalDuration),
-    '--motion-duration-screen': toMilliseconds(screenDuration),
-    '--motion-duration-image': toMilliseconds(imageDuration),
-    '--motion-ease-standard': toBezier(motionTokens.ease.ios),
-    '--motion-ease-soft-exit': toBezier(motionTokens.ease.softExit),
-    '--motion-press-scale-button': String(motionTokens.scale.buttonTap),
-    '--motion-press-scale-row': String(motionTokens.scale.rowTap),
-    '--motion-thumbnail-radius': `${motionTokens.radius.thumbnail}px`,
-  };
-}
 
 export function getPressMotion(kind = 'button', options = {}) {
   const { enabled = true, whileTap = {} } = options;

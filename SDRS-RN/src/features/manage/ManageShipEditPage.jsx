@@ -40,12 +40,11 @@ import {
 import { pickFile } from '../../services/filePicker.js';
 import { resolveCssVariableString } from '../../theme.js';
 
-const IOS_EASE = `cubic-bezier(${motionTokens.ease.ios.join(', ')})`;
 const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
-const LIST_ITEM_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+const LIST_ITEM_EASING = Easing.bezier(0.22, 1, 0.36, 1);
 const MANAGE_EDIT_CONTENT_PADDING_BOTTOM = 24;
 const MANAGE_EDIT_REORDER_DIVIDER_HEIGHT = 16;
-const REORDER_MOVE_EASE = 'cubic-bezier(0.16, 1, 0.3, 1)';
+const REORDER_MOVE_EASING = Easing.bezier(0.16, 1, 0.3, 1);
 const REORDER_MOVE_MS = 240;
 const REORDER_MOVE_REDUCED_MS = 90;
 const MANAGE_ITEM_ADD_MS = 220;
@@ -498,6 +497,7 @@ function getPressableStyle(state, kind, baseStyle) {
 
 function useAnimatedTransformStyle({
   duration = motionDurationsMs.fast,
+  easing = IOS_EASING,
   immediate = false,
   scale = 1,
   translateY = 0,
@@ -514,11 +514,11 @@ function useAnimatedTransformStyle({
 
     const config = {
       duration,
-      easing: IOS_EASING,
+      easing,
     };
     translateYValue.value = withTiming(translateY, config);
     scaleValue.value = withTiming(scale, config);
-  }, [duration, immediate, scale, scaleValue, translateY, translateYValue]);
+  }, [duration, easing, immediate, scale, scaleValue, translateY, translateYValue]);
 
   return useAnimatedStyle(() => ({
     transform: [
@@ -1066,31 +1066,27 @@ function ManageShipReorderItem({
     : isReorderActive
       ? (reducedMotion ? REORDER_MOVE_REDUCED_MS : REORDER_MOVE_MS)
       : (reducedMotion ? MANAGE_ITEM_ADD_REDUCED_MS : MANAGE_ITEM_ADD_MS);
-  const itemTransitionTimingFunction = isRemoving && reducedMotion
-    ? 'linear'
-    : isEntering && reducedMotion
-      ? 'linear'
-      : isReorderActive
-        ? REORDER_MOVE_EASE
-        : LIST_ITEM_EASE;
   const itemTransformTransitionDurationMs = isDragging
     || isSettling
     ? 0
     : (reducedMotion ? REORDER_MOVE_REDUCED_MS : REORDER_MOVE_MS);
   const entryAnimatedStyle = useAnimatedTransformStyle({
     duration: isDragging || isSettling ? 0 : itemTransitionDurationMs,
+    easing: isReorderActive ? REORDER_MOVE_EASING : LIST_ITEM_EASING,
     immediate: reducedMotion || isDragging || isSettling,
     scale: enteringScale * removingScale,
     translateY: entryTranslateY + enteringTranslateY + removingTranslateY,
   });
   const itemAnimatedStyle = useAnimatedTransformStyle({
     duration: itemTransformTransitionDurationMs,
+    easing: REORDER_MOVE_EASING,
     immediate: reducedMotion || isDragging,
     scale: itemScale,
     translateY: itemTranslateY,
   });
   const dividerAnimatedStyle = useAnimatedTransformStyle({
     duration: itemTransitionDurationMs,
+    easing: REORDER_MOVE_EASING,
     immediate: reducedMotion || isDragging || isSettling,
     translateY: !isDragging && !isSettling ? shiftOffset : 0,
   });
@@ -1117,8 +1113,6 @@ function ManageShipReorderItem({
           }),
           entryAnimatedStyle,
           {
-            transitionDuration: isDragging || isSettling ? '0ms' : `${itemTransitionDurationMs}ms`,
-            transitionTimingFunction: itemTransitionTimingFunction,
             zIndex: isDragActive ? 24 : 0,
           },
         ]}
@@ -1129,11 +1123,6 @@ function ManageShipReorderItem({
               styles.manageEditReorderItem,
               isDragActive && styles.manageEditReorderItemDragging,
               itemAnimatedStyle,
-              {
-                transitionDuration: `${itemTransformTransitionDurationMs}ms`,
-                transitionProperty: 'transform',
-                transitionTimingFunction: itemTransitionTimingFunction,
-              },
             ]}
           >
             <View style={[styles.manageEditSection, isDragging && styles.manageEditSectionDragging]}>
@@ -1215,11 +1204,6 @@ function ManageShipStaticItem({
   const enteringScale = !reducedMotion && isEntering && !isPresented ? 0.992 : 1;
   const removingTranslateY = !reducedMotion && isCollapsing ? -6 : 0;
   const removingScale = !reducedMotion && isCollapsing ? 0.994 : 1;
-  const transitionDurationMs = isRemoving
-    ? (reducedMotion ? MANAGE_ITEM_REMOVE_REDUCED_MS : MANAGE_ITEM_REMOVE_MS)
-    : isEntering
-      ? (reducedMotion ? MANAGE_ITEM_ADD_REDUCED_MS : MANAGE_ITEM_ADD_MS)
-      : motionDurationsMs.fast;
   const enteringHeight = measuredEntryHeight || 520;
 
   const handleMeasuredEntryLayout = useCallback((event) => {
@@ -1255,13 +1239,6 @@ function ManageShipStaticItem({
             { translateY: enteringTranslateY + removingTranslateY },
             { scale: enteringScale * removingScale },
           ],
-          transitionDuration: `${transitionDurationMs}ms`,
-          transitionProperty: 'height, opacity, transform, filter',
-          transitionTimingFunction: (isRemoving || isEntering) && reducedMotion
-            ? 'linear'
-            : isEntering || isRemoving
-              ? LIST_ITEM_EASE
-              : IOS_EASE,
           zIndex: 0,
         },
       ]}
@@ -1304,9 +1281,6 @@ function ManageAlertModal({
           styles.modalScrim,
           {
             opacity: isPresented ? 1 : 0,
-            transitionDuration: `${motionDurationsMs.fast}ms`,
-            transitionProperty: 'opacity',
-            transitionTimingFunction: IOS_EASE,
           },
         ]}
       />
@@ -1320,9 +1294,6 @@ function ManageAlertModal({
               { translateY: reducedMotion || isPresented ? 0 : motionTokens.offset.modalLift },
               { scale: reducedMotion || isPresented ? 1 : motionTokens.scale.modalEnter },
             ],
-            transitionDuration: `${motionDurationsMs.normal}ms`,
-            transitionProperty: 'opacity, transform',
-            transitionTimingFunction: IOS_EASE,
           },
         ]}
       >
@@ -1487,9 +1458,6 @@ function ManageSavedToast({ message, onDismiss }) {
                 { translateY: reducedMotion || isPresented ? 0 : motionTokens.offset.toastLift },
                 { scale: reducedMotion || isPresented ? 1 : motionTokens.scale.toastEnter },
               ],
-              transitionDuration: `${motionDurationsMs.normal}ms`,
-              transitionProperty: 'opacity, transform',
-              transitionTimingFunction: IOS_EASE,
             },
           ]}
         >
@@ -2417,9 +2385,6 @@ const styles = StyleSheet.create({
     lineHeight: 33.8,
     fontWeight: '600',
     letterSpacing: -0.78,
-    transitionDuration: `${motionDurationsMs.fast}ms`,
-    transitionProperty: 'opacity, transform',
-    transitionTimingFunction: IOS_EASE,
   },
   manageSubpageTopBar: {
     position: 'absolute',
@@ -2490,9 +2455,6 @@ const styles = StyleSheet.create({
   manageEditSection: {
     paddingVertical: 36,
     paddingHorizontal: 24,
-    transitionDuration: `${motionDurationsMs.fast}ms`,
-    transitionProperty: 'box-shadow, filter',
-    transitionTimingFunction: IOS_EASE,
   },
   manageEditSectionDragging: {
     backgroundColor: 'transparent',
@@ -2504,8 +2466,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     display: 'flex',
     flexDirection: 'column',
-    transitionProperty: 'height, transform, opacity, filter',
-    transitionTimingFunction: IOS_EASE,
     willChange: 'transform',
     backfaceVisibility: 'hidden',
   },
@@ -2523,12 +2483,8 @@ const styles = StyleSheet.create({
     zIndex: 24,
   },
   manageEditReorderDivider: {
-    transitionDuration: `${motionDurationsMs.fast}ms`,
-    transitionProperty: 'opacity',
-    transitionTimingFunction: IOS_EASE,
   },
   manageEditReorderDividerSettling: {
-    transitionDuration: '0ms',
   },
   reorderHandle: {
     display: 'inline-flex',
@@ -2553,9 +2509,6 @@ const styles = StyleSheet.create({
     touchAction: 'none',
     userSelect: 'none',
     WebkitUserSelect: 'none',
-    transitionDuration: `${motionDurationsMs.fast}ms`,
-    transitionProperty: 'background-color, color, transform, box-shadow',
-    transitionTimingFunction: IOS_EASE,
   },
   reorderHandleDragging: {
     backgroundColor: 'var(--color-bg-accent-soft)',
@@ -2616,9 +2569,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 8,
     backgroundColor: 'var(--color-bg-surface-muted)',
-    transitionDuration: `${motionDurationsMs.fast}ms`,
-    transitionProperty: 'background-color, box-shadow, transform',
-    transitionTimingFunction: IOS_EASE,
   },
   manageTextBoxTitle: {
     width: 160,
@@ -2677,9 +2627,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     letterSpacing: -0.36,
     whiteSpace: 'nowrap',
-    transitionDuration: `${motionDurationsMs.fast}ms`,
-    transitionProperty: 'background-color, box-shadow, color',
-    transitionTimingFunction: IOS_EASE,
   },
   manageFieldPillEdited: {
     boxShadow: 'var(--shadow-edit)',
@@ -2707,9 +2654,6 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-end',
-    transitionDuration: `${motionDurationsMs.fast}ms`,
-    transitionProperty: 'opacity',
-    transitionTimingFunction: IOS_EASE,
   },
   manageShipCardDragging: {
     opacity: 0.5,
@@ -2913,24 +2857,16 @@ const styles = StyleSheet.create({
     cursor: 'grab',
     touchAction: 'none',
     userSelect: 'none',
-    transitionDuration: `${motionDurationsMs.fast}ms`,
-    transitionProperty: 'transform',
-    transitionTimingFunction: IOS_EASE,
   },
   toastShellDragging: {
-    transitionDuration: '0ms',
     cursor: 'grabbing',
   },
   toastShellDismissing: {
-    transitionDuration: '0ms',
   },
   toastFade: {
     display: 'inline-flex',
   },
   toastFadeDismissing: {
-    transitionDuration: '160ms',
-    transitionProperty: 'opacity',
-    transitionTimingFunction: IOS_EASE,
   },
   toast: {
     display: 'inline-flex',

@@ -8,10 +8,8 @@ import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
 import { getInteractiveScale, interactiveStyles } from '../../components/interactiveStyles.js';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe.js';
-import { motionDurationsMs, motionTokens } from '../../motion.js';
+import { motionTokens } from '../../motion.js';
 import { pickFile } from '../../services/filePicker.js';
-
-const IOS_EASE = `cubic-bezier(${motionTokens.ease.ios.join(', ')})`;
 
 function joinClassNames(...tokens) {
   return tokens.filter(Boolean).join(' ');
@@ -139,9 +137,6 @@ function ManageAlertModal({
           styles.modalScrim,
           {
             opacity: isPresented ? 1 : 0,
-            transitionDuration: `${motionDurationsMs.fast}ms`,
-            transitionProperty: 'opacity',
-            transitionTimingFunction: IOS_EASE,
           },
         ]}
       />
@@ -155,9 +150,6 @@ function ManageAlertModal({
               { translateY: reducedMotion || isPresented ? 0 : motionTokens.offset.modalLift },
               { scale: reducedMotion || isPresented ? 1 : motionTokens.scale.modalEnter },
             ],
-            transitionDuration: `${motionDurationsMs.normal}ms`,
-            transitionProperty: 'opacity, transform',
-            transitionTimingFunction: IOS_EASE,
           },
         ]}
       >
@@ -226,9 +218,6 @@ function ManageShipImportModal({
           styles.modalScrimButton,
           {
             opacity: isPresented ? 1 : 0,
-            transitionDuration: `${motionDurationsMs.fast}ms`,
-            transitionProperty: 'opacity',
-            transitionTimingFunction: IOS_EASE,
           },
         ]}
       />
@@ -242,9 +231,6 @@ function ManageShipImportModal({
               { translateY: reducedMotion || isPresented ? 0 : motionTokens.offset.modalLift },
               { scale: reducedMotion || isPresented ? 1 : motionTokens.scale.modalEnter },
             ],
-            transitionDuration: `${motionDurationsMs.normal}ms`,
-            transitionProperty: 'opacity, transform',
-            transitionTimingFunction: IOS_EASE,
           },
         ]}
       >
@@ -420,9 +406,6 @@ const styles = StyleSheet.create({
     lineHeight: 33.8,
     fontWeight: '600',
     letterSpacing: -0.78,
-    transitionDuration: `${motionDurationsMs.fast}ms`,
-    transitionProperty: 'opacity, transform',
-    transitionTimingFunction: IOS_EASE,
   },
   manageHomeContent: {
     flex: 1,

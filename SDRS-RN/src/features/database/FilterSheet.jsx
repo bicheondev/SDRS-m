@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { filterVessels } from '../../domain/ships.js';
 import { motionDurationsMs, motionTokens } from '../../motion.js';
@@ -20,10 +26,9 @@ const FILTER_COLUMN_TOP = 122;
 const FILTER_COLUMN_EDGE = 18;
 const FILTER_BUTTON_GAP = 24;
 const FILTER_DISCLOSURE_WIDTH = 24;
-const FILTER_MENU_MIN_WIDTH = 1;
 const reverseBezier = ([x1, y1, x2, y2]) => [1 - x2, 1 - y2, 1 - x1, 1 - y1];
-const IOS_EASE = `cubic-bezier(${motionTokens.ease.ios.join(', ')})`;
-const IOS_EASE_REVERSE = `cubic-bezier(${reverseBezier(motionTokens.ease.ios).join(', ')})`;
+const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
+const IOS_EASING_REVERSE = Easing.bezier(...reverseBezier(motionTokens.ease.ios));
 
 function colorWithAlpha(color, alpha) {
   if (typeof color !== 'string') {
@@ -120,46 +125,24 @@ export function FilterScreen({
   );
   const harborColumnWidth = Math.max(naturalHarborLabelWidth, harborOptionWidth);
   const vesselTypeColumnWidth = Math.max(naturalVesselTypeLabelWidth, vesselTypeOptionWidth);
-  const transitionDuration = reducedMotion
-    ? motionDurationsMs.instant
-    : motionDurationsMs.normal;
-  const layerTransitionDuration = reducedMotion
-    ? motionDurationsMs.instant
-    : motionDurationsMs.fast;
   const filterScrollResetKey = `${harborFilter}:${vesselTypeFilter}`;
   const filterOpenState = phase === 'closing' ? 'closed' : filterMode;
-  const layerOpacity = visualPhase === 'open' ? 1 : 0;
-  const panelOpacity = visualPhase === 'open' ? 1 : 0;
-  const menuMaxWidth = Math.max(
-    FILTER_MENU_MIN_WIDTH,
-    viewportDimensions.width - FILTER_COLUMN_EDGE * 2,
-  );
-  const harborMenuWidth = Math.min(
-    menuMaxWidth,
-    Math.max(FILTER_MENU_MIN_WIDTH, harborColumnWidth),
-  );
-  const vesselTypeMenuWidth = Math.min(
-    menuMaxWidth,
-    Math.max(FILTER_MENU_MIN_WIDTH, vesselTypeColumnWidth),
-  );
-  const harborMenuLeft = Math.min(
-    columnLayout.harborLeft,
-    Math.max(FILTER_COLUMN_EDGE, viewportDimensions.width - FILTER_COLUMN_EDGE - harborMenuWidth),
-  );
-  const vesselTypeMenuLeft = Math.min(
-    columnLayout.vesselTypeLeft,
-    Math.max(
-      FILTER_COLUMN_EDGE,
-      viewportDimensions.width - FILTER_COLUMN_EDGE - vesselTypeMenuWidth,
-    ),
-  );
-  const filterTranslateY =
-    reducedMotion || visualPhase === 'open' ? 0 : motionTokens.offset.sheetLift;
-  const transitionTimingFunction = visualPhase === 'closing' ? IOS_EASE_REVERSE : IOS_EASE;
+  const harborMenuLeft = columnLayout.harborLeft;
+  const vesselTypeMenuLeft = columnLayout.vesselTypeLeft;
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
   const backdropBaseColor = colorWithAlpha(screenColor, 0.52);
   const backdropTopColor = colorWithAlpha(screenColor, 0.92);
   const backdropMidColor = colorWithAlpha(screenColor, 0.62);
+  const layerProgress = useSharedValue(phase === 'closing' ? 1 : 0);
+  const panelProgress = useSharedValue(phase === 'closing' ? 1 : 0);
+  const panelTranslateY = useSharedValue(phase === 'closing' ? 0 : motionTokens.offset.sheetLift);
+  const layerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: layerProgress.value,
+  }));
+  const panelAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: panelProgress.value,
+    transform: [{ translateY: panelTranslateY.value }],
+  }));
 
   useEffect(
     () => () => {
@@ -180,6 +163,33 @@ export function FilterScreen({
     },
     [],
   );
+
+  useEffect(() => {
+    const opening = phase !== 'closing';
+    const targetOpacity = opening ? 1 : 0;
+    const targetPanelY = opening || reducedMotion ? 0 : motionTokens.offset.sheetLift;
+    const easing = opening ? IOS_EASING : IOS_EASING_REVERSE;
+
+    if (reducedMotion) {
+      layerProgress.value = targetOpacity;
+      panelProgress.value = targetOpacity;
+      panelTranslateY.value = targetPanelY;
+      return;
+    }
+
+    layerProgress.value = withTiming(targetOpacity, {
+      duration: motionDurationsMs.fast,
+      easing,
+    });
+    panelProgress.value = withTiming(targetOpacity, {
+      duration: motionDurationsMs.normal,
+      easing,
+    });
+    panelTranslateY.value = withTiming(targetPanelY, {
+      duration: motionDurationsMs.normal,
+      easing,
+    });
+  }, [layerProgress, panelProgress, panelTranslateY, phase, reducedMotion]);
 
   useEffect(() => {
     setHarborOptionWidth(0);
@@ -318,15 +328,7 @@ export function FilterScreen({
 
   return (
     <AppScreenShell
-      shellStyle={[
-        styles.layer,
-        {
-          opacity: layerOpacity,
-          transitionDuration: `${layerTransitionDuration}ms`,
-          transitionProperty: 'opacity',
-          transitionTimingFunction,
-        },
-      ]}
+      shellStyle={styles.layer}
       screenStyle={[screenLayoutStyles.screenColumn, styles.filterScreen]}
     >
       <TopBar
@@ -357,7 +359,7 @@ export function FilterScreen({
         />
       </View>
 
-      <View className="filter-screen__overlay" style={styles.overlay}>
+      <Animated.View className="filter-screen__overlay" style={[styles.overlay, layerAnimatedStyle]}>
         <Pressable
           accessibilityLabel="필터 닫기"
           accessibilityRole="button"
@@ -368,22 +370,16 @@ export function FilterScreen({
           <View pointerEvents="none" style={[styles.backdropTop, { backgroundColor: backdropTopColor }]} />
           <View pointerEvents="none" style={[styles.backdropMid, { backgroundColor: backdropMidColor }]} />
         </Pressable>
-      </View>
+      </Animated.View>
 
-      <View
+      <Animated.View
         className="filter-screen__panel"
         pointerEvents="box-none"
         style={[
           styles.panel,
           styles.pointerEventsBoxNone,
           styles.panelMeasureHost,
-          {
-            opacity: panelOpacity,
-            transform: [{ translateY: filterTranslateY }],
-            transitionDuration: `${transitionDuration}ms`,
-            transitionProperty: 'opacity, transform',
-            transitionTimingFunction,
-          },
+          panelAnimatedStyle,
         ]}
         ref={panelRef}
       >
@@ -392,100 +388,94 @@ export function FilterScreen({
           pointerEvents="box-none"
           style={[styles.columns, styles.pointerEventsBoxNone]}
         >
-          {filterMode === 'harbor' ? (
-            <View
-              className="filter-screen__column"
-              style={[
-                styles.column,
-                {
-                  top: columnLayout.top,
-                  left: harborMenuLeft,
-                  width: harborMenuWidth,
-                },
-              ]}
-            >
-              {harborOptions.map((option) => (
-                <InteractivePressable
-                  key={option}
-                  accessibilityRole="button"
-                  className={`filter-screen__option pressable-control pressable-control--option ${
-                    harborFilter === option ? 'filter-screen__option--active' : ''
-                  }`.trim()}
-                  onLayout={updateMaxWidth(setHarborOptionWidth)}
-                  onPress={() => {
-                    onHarborSelect(option);
-                    onClose();
-                  }}
-                  pressGuideVariant="option"
-                  style={({ focused, pressed }) => [
-                    interactiveStyles.base,
-                    styles.option,
-                    harborFilter === option && styles.optionActive,
-                    focused && interactiveStyles.focus,
-                    { transform: [{ scale: pressed ? getInteractiveScale('row') : 1 }] },
-                  ]}
+          <View
+            className="filter-screen__column"
+            style={[
+              styles.column,
+              {
+                top: columnLayout.top,
+                left: harborMenuLeft,
+              },
+            ]}
+          >
+            {harborOptions.map((option) => (
+              <InteractivePressable
+                key={option}
+                accessibilityRole="button"
+                className={`filter-screen__option pressable-control pressable-control--option ${
+                  harborFilter === option ? 'filter-screen__option--active' : ''
+                }`.trim()}
+                onLayout={updateMaxWidth(setHarborOptionWidth)}
+                onPress={() => {
+                  onHarborSelect(option);
+                  onClose();
+                }}
+                pressGuideVariant="option"
+                style={({ focused, pressed }) => [
+                  interactiveStyles.base,
+                  styles.option,
+                  harborFilter === option && styles.optionActive,
+                  focused && interactiveStyles.focus,
+                  { transform: [{ scale: pressed ? getInteractiveScale('row') : 1 }] },
+                ]}
+              >
+                <Text
+                  className="filter-screen__option-label filter-button__label"
+                  numberOfLines={1}
+                  style={[styles.optionLabel, harborFilter === option && styles.optionLabelActive]}
                 >
-                  <Text
-                    className="filter-screen__option-label filter-button__label"
-                    numberOfLines={1}
-                    style={[styles.optionLabel, harborFilter === option && styles.optionLabelActive]}
-                  >
-                    {option}
-                  </Text>
-                </InteractivePressable>
-              ))}
-            </View>
-          ) : null}
+                  {option}
+                </Text>
+              </InteractivePressable>
+            ))}
+          </View>
 
-          {filterMode === 'vesselType' ? (
-            <View
-              className="filter-screen__column"
-              style={[
-                styles.column,
-                {
-                  top: columnLayout.top,
-                  left: vesselTypeMenuLeft,
-                  width: vesselTypeMenuWidth,
-                },
-              ]}
-            >
-              {vesselTypeOptions.map((option) => (
-                <InteractivePressable
-                  key={option}
-                  accessibilityRole="button"
-                  className={`filter-screen__option pressable-control pressable-control--option ${
-                    vesselTypeFilter === option ? 'filter-screen__option--active' : ''
-                  }`.trim()}
-                  onLayout={updateMaxWidth(setVesselTypeOptionWidth)}
-                  onPress={() => {
-                    onVesselTypeSelect(option);
-                    onClose();
-                  }}
-                  pressGuideVariant="option"
-                  style={({ focused, pressed }) => [
-                    interactiveStyles.base,
-                    styles.option,
-                    vesselTypeFilter === option && styles.optionActive,
-                    focused && interactiveStyles.focus,
-                    { transform: [{ scale: pressed ? getInteractiveScale('row') : 1 }] },
+          <View
+            className="filter-screen__column"
+            style={[
+              styles.column,
+              {
+                top: columnLayout.top,
+                left: vesselTypeMenuLeft,
+              },
+            ]}
+          >
+            {vesselTypeOptions.map((option) => (
+              <InteractivePressable
+                key={option}
+                accessibilityRole="button"
+                className={`filter-screen__option pressable-control pressable-control--option ${
+                  vesselTypeFilter === option ? 'filter-screen__option--active' : ''
+                }`.trim()}
+                onLayout={updateMaxWidth(setVesselTypeOptionWidth)}
+                onPress={() => {
+                  onVesselTypeSelect(option);
+                  onClose();
+                }}
+                pressGuideVariant="option"
+                style={({ focused, pressed }) => [
+                  interactiveStyles.base,
+                  styles.option,
+                  vesselTypeFilter === option && styles.optionActive,
+                  focused && interactiveStyles.focus,
+                  { transform: [{ scale: pressed ? getInteractiveScale('row') : 1 }] },
+                ]}
+              >
+                <Text
+                  className="filter-screen__option-label filter-button__label"
+                  numberOfLines={1}
+                  style={[
+                    styles.optionLabel,
+                    vesselTypeFilter === option && styles.optionLabelActive,
                   ]}
                 >
-                  <Text
-                    className="filter-screen__option-label filter-button__label"
-                    numberOfLines={1}
-                    style={[
-                      styles.optionLabel,
-                      vesselTypeFilter === option && styles.optionLabelActive,
-                    ]}
-                  >
-                    {option}
-                  </Text>
-                </InteractivePressable>
-              ))}
-            </View>
-          ) : null}
+                  {option}
+                </Text>
+              </InteractivePressable>
+            ))}
+          </View>
         </View>
-      </View>
+      </Animated.View>
 
       <View style={[styles.measurements, styles.pointerEventsNone]}>
         <Text onLayout={setMeasuredWidth(setNaturalHarborLabelWidth)} style={styles.measurementFilterLabel}>
