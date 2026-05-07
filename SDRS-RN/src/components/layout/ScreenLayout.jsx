@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useTheme } from '../../ThemeContext.js';
@@ -11,6 +12,20 @@ export function getScreenWidthForViewport(viewportWidth) {
 
 export function useCompactViewport() {
   return useWindowDimensions().width <= 480;
+}
+
+export function AppShellGradient({ style }) {
+  const { resolvedColorMode } = useTheme();
+  const isDark = resolvedColorMode === 'dark';
+
+  return (
+    <LinearGradient
+      colors={isDark ? ['#0f172a', '#020617', '#020617'] : ['#f3f7fd', '#edf3fa', '#dde6f2']}
+      locations={isDark ? [0, 0.6, 1] : [0, 0.24, 1]}
+      pointerEvents="none"
+      style={[screenLayoutStyles.appShellGradient, style]}
+    />
+  );
 }
 
 export function AppScreenShell({ children, shellStyle, screenStyle }) {
@@ -36,6 +51,7 @@ export function AppScreenShell({ children, shellStyle, screenStyle }) {
         shellStyle,
       ]}
     >
+      <AppShellGradient />
       <View
         style={[
           screenLayoutStyles.phoneScreen,
@@ -56,8 +72,17 @@ export function AppScreenShell({ children, shellStyle, screenStyle }) {
 export const screenLayoutStyles = StyleSheet.create({
   appShell: {
     flex: 1,
+    position: 'relative',
     alignItems: 'center',
     backgroundColor: 'var(--color-bg-app)',
+    overflow: 'hidden',
+  },
+  appShellGradient: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
   },
   appShellCompact: {
     padding: 0,
