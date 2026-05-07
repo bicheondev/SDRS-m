@@ -9,7 +9,7 @@ import { InteractivePressable } from '../primitives/InteractivePressable.jsx';
 import { AppText as Text } from '../primitives/AppTypography.jsx';
 import { getScreenWidthForViewport } from './ScreenLayout.jsx';
 
-function BottomTabButton({ active, label, name, onPress, tone, wide = false }) {
+function BottomTabButton({ active, label, name, onPress, tone }) {
   return (
     <InteractivePressable
       accessibilityRole="button"
@@ -23,7 +23,6 @@ function BottomTabButton({ active, label, name, onPress, tone, wide = false }) {
       style={({ focused, pressed }) => [
         interactiveStyles.base,
         styles.item,
-        wide && styles.itemWide,
         active ? styles.itemActive : styles.itemInactive,
         focused && interactiveStyles.focus,
         { transform: [{ scale: pressed ? getInteractiveScale('button') : 1 }] },
@@ -48,8 +47,8 @@ function BottomTab({ activeTab = 'db', contained = false, onDbClick, onManageCli
   const bottomInset = Math.max(insets.bottom, 0);
   const tabWidth = getScreenWidthForViewport(viewportWidth);
   const tabLeft = contained ? 0 : (viewportWidth - tabWidth) / 2;
-  const itemTotalWidth = 70 + 104 + 70;
-  const itemGap = Math.min(70, Math.max(8, (tabWidth - itemTotalWidth) / 4));
+  const itemTotalWidth = 70 * 3;
+  const itemGap = Math.min(70, Math.max(0, (tabWidth - itemTotalWidth) / 4));
 
   return (
     <View
@@ -78,7 +77,6 @@ function BottomTab({ activeTab = 'db', contained = false, onDbClick, onManageCli
         name="database"
         onPress={onManageClick}
         tone={activeTab === 'manage' ? 'accent' : 'muted'}
-        wide
       />
       <BottomTabButton
         active={activeTab === 'menu'}
@@ -141,10 +139,6 @@ const styles = StyleSheet.create({
     opacity: 1,
     position: 'relative',
     zIndex: 1,
-  },
-  itemWide: {
-    width: 104,
-    minWidth: 104,
   },
   itemInactive: {
     color: 'var(--color-text-tertiary)',
