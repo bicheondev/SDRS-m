@@ -9,7 +9,51 @@ import { interactiveStyles, getInteractiveScale } from '../../components/interac
 import Logo from '../../assets/ui/logo';
 import { resolveCssVariableString } from '../../theme.js';
 
+function colorWithAlpha(color, alpha) {
+  if (typeof color !== 'string') {
+    return color;
+  }
+
+  const nextAlpha = Math.max(0, Math.min(1, alpha));
+  const hexMatch = color.match(/^#([a-f0-9]{3}|[a-f0-9]{6})$/i);
+  if (hexMatch) {
+    const value = hexMatch[1];
+    const expanded = value.length === 3
+      ? value.split('').map((char) => `${char}${char}`).join('')
+      : value;
+    const r = Number.parseInt(expanded.slice(0, 2), 16);
+    const g = Number.parseInt(expanded.slice(2, 4), 16);
+    const b = Number.parseInt(expanded.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${nextAlpha})`;
+  }
+
+  const rgbMatch = color.match(/^rgba?\(([^)]+)\)$/i);
+  if (rgbMatch) {
+    const channels = rgbMatch[1]
+      .split(',')
+      .map((part) => Number.parseFloat(part.trim()))
+      .filter((part) => Number.isFinite(part));
+
+    if (channels.length >= 3) {
+      return `rgba(${channels[0]}, ${channels[1]}, ${channels[2]}, ${nextAlpha})`;
+    }
+  }
+
+  return color;
+}
+
 function FrostBackground({ filterSheet = false, scrollbarGutter = false }) {
+  const screenColor = resolveCssVariableString('var(--color-bg-screen)');
+  const topBand = colorWithAlpha(screenColor, 0.86);
+  const midBand = colorWithAlpha(screenColor, 0.78);
+  const lowBand = colorWithAlpha(screenColor, 0.42);
+  const fadeBand = colorWithAlpha(screenColor, 0.1);
+  const filterTopBand = colorWithAlpha(screenColor, 0.44);
+  const filterMidBand = colorWithAlpha(screenColor, 0.24);
+  const filterLowBand = colorWithAlpha(screenColor, 0.05);
+  const filterBackdropTop = colorWithAlpha(screenColor, 0.92);
+  const filterBackdropLow = colorWithAlpha(screenColor, 0.5);
+
   return (
     <>
       <View
@@ -19,10 +63,23 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false }) {
           scrollbarGutter && styles.scrollbarGutterRight,
           styles.pointerEventsNone,
         ]}
-      />
+      >
+        <View style={[styles.frostBandTop, { backgroundColor: topBand }]} />
+        <View style={[styles.frostBandMid, { backgroundColor: midBand }]} />
+        <View style={[styles.frostBandLow, { backgroundColor: lowBand }]} />
+        <View style={[styles.frostBandFade, { backgroundColor: fadeBand }]} />
+      </View>
       {filterSheet ? (
-        <View className="top-bar__filter-sheet-layer" style={[styles.filterSheetLayer, styles.pointerEventsNone]} />
+        <View className="top-bar__filter-sheet-layer" style={[styles.filterSheetLayer, styles.pointerEventsNone]}>
+          <View style={[styles.filterBackdropTop, { backgroundColor: filterBackdropTop }]} />
+          <View style={[styles.filterBackdropLow, { backgroundColor: filterBackdropLow }]} />
+        </View>
       ) : null}
+      <View className="top-bar__filters-frost-layer" style={[styles.filtersFrostLayer, styles.pointerEventsNone]}>
+        <View style={[styles.filterFrostTop, { backgroundColor: filterTopBand }]} />
+        <View style={[styles.filterFrostMid, { backgroundColor: filterMidBand }]} />
+        <View style={[styles.filterFrostLow, { backgroundColor: filterLowBand }]} />
+      </View>
     </>
   );
 }
@@ -409,14 +466,36 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     backgroundColor: 'transparent',
-    backgroundImage: 'var(--gradient-top-bar-frost)',
-    backdropFilter: 'blur(22px) saturate(160%)',
-    WebkitBackdropFilter: 'blur(22px) saturate(160%)',
-    maskImage:
-      'linear-gradient(180deg, rgb(0 0 0 / 1) 0%, rgb(0 0 0 / 1) 52%, rgb(0 0 0 / 0.78) 72%, rgb(0 0 0 / 0) 100%)',
-    WebkitMaskImage:
-      'linear-gradient(180deg, rgb(0 0 0 / 1) 0%, rgb(0 0 0 / 1) 52%, rgb(0 0 0 / 0.78) 72%, rgb(0 0 0 / 0) 100%)',
     zIndex: 0,
+    overflow: 'hidden',
+  },
+  frostBandTop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    left: 0,
+    height: '46%',
+  },
+  frostBandMid: {
+    position: 'absolute',
+    top: '40%',
+    right: 0,
+    left: 0,
+    height: '24%',
+  },
+  frostBandLow: {
+    position: 'absolute',
+    top: '61%',
+    right: 0,
+    left: 0,
+    height: '18%',
+  },
+  frostBandFade: {
+    position: 'absolute',
+    top: '78%',
+    right: 0,
+    left: 0,
+    bottom: 0,
   },
   filterSheetLayer: {
     position: 'absolute',
@@ -425,10 +504,52 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     backgroundColor: 'transparent',
-    backgroundImage: 'var(--gradient-filter-backdrop)',
-    backdropFilter: 'blur(14px)',
-    WebkitBackdropFilter: 'blur(14px)',
     zIndex: 2,
+    overflow: 'hidden',
+  },
+  filterBackdropTop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    left: 0,
+    height: '58%',
+  },
+  filterBackdropLow: {
+    position: 'absolute',
+    top: '58%',
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  filtersFrostLayer: {
+    position: 'absolute',
+    top: 52,
+    right: 0,
+    left: 0,
+    height: 70,
+    zIndex: 0,
+    overflow: 'hidden',
+  },
+  filterFrostTop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    left: 0,
+    height: '32%',
+  },
+  filterFrostMid: {
+    position: 'absolute',
+    top: '22%',
+    right: 0,
+    left: 0,
+    height: '44%',
+  },
+  filterFrostLow: {
+    position: 'absolute',
+    top: '60%',
+    right: 0,
+    bottom: 0,
+    left: 0,
   },
   pointerEventsNone: {
     pointerEvents: 'none',
@@ -522,13 +643,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: -18,
     backgroundColor: 'transparent',
-    backgroundImage: 'var(--gradient-top-bar-frost-soft)',
-    backdropFilter: 'blur(10px) saturate(145%)',
-    WebkitBackdropFilter: 'blur(10px) saturate(145%)',
-    maskImage:
-      'linear-gradient(180deg, rgb(0 0 0 / 0) 0%, rgb(0 0 0 / 0.94) 24%, rgb(0 0 0 / 0.9) 74%, rgb(0 0 0 / 0) 100%)',
-    WebkitMaskImage:
-      'linear-gradient(180deg, rgb(0 0 0 / 0) 0%, rgb(0 0 0 / 0.94) 24%, rgb(0 0 0 / 0.9) 74%, rgb(0 0 0 / 0) 100%)',
     zIndex: 0,
   },
   filtersInSheet: {

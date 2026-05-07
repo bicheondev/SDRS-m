@@ -496,6 +496,38 @@ function getPressableStyle(state, kind, baseStyle) {
   ];
 }
 
+function useAnimatedTransformStyle({
+  duration = motionDurationsMs.fast,
+  immediate = false,
+  scale = 1,
+  translateY = 0,
+}) {
+  const translateYValue = useSharedValue(translateY);
+  const scaleValue = useSharedValue(scale);
+
+  useEffect(() => {
+    if (immediate || duration <= 0) {
+      translateYValue.value = translateY;
+      scaleValue.value = scale;
+      return;
+    }
+
+    const config = {
+      duration,
+      easing: IOS_EASING,
+    };
+    translateYValue.value = withTiming(translateY, config);
+    scaleValue.value = withTiming(scale, config);
+  }, [duration, immediate, scale, scaleValue, translateY, translateYValue]);
+
+  return useAnimatedStyle(() => ({
+    transform: [
+      { translateY: translateYValue.value },
+      { scale: scaleValue.value },
+    ],
+  }));
+}
+
 function useEditedBackgroundStyle(edited) {
   const progress = useSharedValue(edited ? 1 : 0);
   const idleBackground = resolveCssVariableString('var(--color-bg-surface-muted)');
@@ -1045,10 +1077,27 @@ function ManageShipReorderItem({
     || isSettling
     ? 0
     : (reducedMotion ? REORDER_MOVE_REDUCED_MS : REORDER_MOVE_MS);
+  const entryAnimatedStyle = useAnimatedTransformStyle({
+    duration: isDragging || isSettling ? 0 : itemTransitionDurationMs,
+    immediate: reducedMotion || isDragging || isSettling,
+    scale: enteringScale * removingScale,
+    translateY: entryTranslateY + enteringTranslateY + removingTranslateY,
+  });
+  const itemAnimatedStyle = useAnimatedTransformStyle({
+    duration: itemTransformTransitionDurationMs,
+    immediate: reducedMotion || isDragging,
+    scale: itemScale,
+    translateY: itemTranslateY,
+  });
+  const dividerAnimatedStyle = useAnimatedTransformStyle({
+    duration: itemTransitionDurationMs,
+    immediate: reducedMotion || isDragging || isSettling,
+    translateY: !isDragging && !isSettling ? shiftOffset : 0,
+  });
 
   return (
     <>
-      <View
+      <Animated.View
         ref={itemRef}
         onLayout={handleReorderItemLayout}
         style={[
@@ -1066,11 +1115,8 @@ function ManageShipReorderItem({
             isRemoving,
             reducedMotion,
           }),
+          entryAnimatedStyle,
           {
-            transform: [
-              { translateY: entryTranslateY + enteringTranslateY + removingTranslateY },
-              { scale: enteringScale * removingScale },
-            ],
             transitionDuration: isDragging || isSettling ? '0ms' : `${itemTransitionDurationMs}ms`,
             transitionTimingFunction: itemTransitionTimingFunction,
             zIndex: isDragActive ? 24 : 0,
@@ -1078,15 +1124,12 @@ function ManageShipReorderItem({
         ]}
       >
         <View onLayout={handleMeasuredEntryLayout} style={styles.manageEditEntryMeasure}>
-          <View
+          <Animated.View
             style={[
               styles.manageEditReorderItem,
               isDragActive && styles.manageEditReorderItemDragging,
+              itemAnimatedStyle,
               {
-                transform: [
-                  { translateY: itemTranslateY },
-                  { scale: itemScale },
-                ],
                 transitionDuration: `${itemTransformTransitionDurationMs}ms`,
                 transitionProperty: 'transform',
                 transitionTimingFunction: itemTransitionTimingFunction,
@@ -1134,17 +1177,16 @@ function ManageShipReorderItem({
               onImageChange={(file) => onImageChange(card.id, file)}
             />
             </View>
-          </View>
+          </Animated.View>
         </View>
-      </View>
+      </Animated.View>
       {showDivider ? (
-        <SectionDivider
+        <Animated.View
           style={[
+            styles.sectionDivider,
             styles.manageEditReorderDivider,
             isSettling && styles.manageEditReorderDividerSettling,
-            !isDragging && !isSettling && shiftOffset
-              ? { transform: [{ translateY: shiftOffset }] }
-              : null,
+            dividerAnimatedStyle,
           ]}
         />
       ) : null}

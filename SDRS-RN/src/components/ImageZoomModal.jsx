@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -44,6 +44,24 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+function getContainRect(containerWidth, containerHeight, aspectRatio) {
+  const safeAspectRatio = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
+  const containerAspectRatio = containerWidth / containerHeight;
+  const width = safeAspectRatio >= containerAspectRatio
+    ? containerWidth
+    : containerHeight * safeAspectRatio;
+  const height = safeAspectRatio >= containerAspectRatio
+    ? containerWidth / safeAspectRatio
+    : containerHeight;
+
+  return {
+    top: (containerHeight - height) / 2,
+    left: (containerWidth - width) / 2,
+    width,
+    height,
+  };
+}
+
 function ImageZoomModalContent({ session, onClose }) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -51,6 +69,8 @@ function ImageZoomModalContent({ session, onClose }) {
   const vessels = session?.vessels ?? [];
   const initialIndex = clamp(session?.startIndex ?? 0, 0, Math.max(vessels.length - 1, 0));
   const vessel = vessels[initialIndex] ?? null;
+  const imageUri = vessel?.imageWide || (typeof vessel?.image === 'string' ? vessel.image : null);
+  const [naturalImageSize, setNaturalImageSize] = useState(null);
 
   const fromRect = session?.fromRect ?? session?.sourceRect ?? null;
   const hasFromRect =
@@ -60,10 +80,42 @@ function ImageZoomModalContent({ session, onClose }) {
     fromRect.width > 0 &&
     fromRect.height > 0;
 
-  const initialScaleX = hasFromRect ? fromRect.width / screenWidth : 1;
-  const initialScaleY = hasFromRect ? fromRect.height / screenHeight : 1;
-  const initialTX = hasFromRect ? fromRect.left + fromRect.width / 2 - screenWidth / 2 : 0;
-  const initialTY = hasFromRect ? fromRect.top + fromRect.height / 2 - screenHeight / 2 : 0;
+  useEffect(() => {
+    let cancelled = false;
+    setNaturalImageSize(null);
+
+    if (!imageUri) {
+      return undefined;
+    }
+
+    Image.getSize(
+      imageUri,
+      (width, height) => {
+        if (!cancelled && width > 0 && height > 0) {
+          setNaturalImageSize({ width, height });
+        }
+      },
+      () => {},
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUri]);
+
+  const fallbackAspectRatio = hasFromRect ? fromRect.width / fromRect.height : screenWidth / screenHeight;
+  const imageAspectRatio = naturalImageSize
+    ? naturalImageSize.width / naturalImageSize.height
+    : fallbackAspectRatio;
+  const targetRect = getContainRect(screenWidth, screenHeight, imageAspectRatio);
+  const initialScaleX = hasFromRect ? fromRect.width / targetRect.width : 1;
+  const initialScaleY = hasFromRect ? fromRect.height / targetRect.height : 1;
+  const initialTX = hasFromRect
+    ? fromRect.left + fromRect.width / 2 - (targetRect.left + targetRect.width / 2)
+    : 0;
+  const initialTY = hasFromRect
+    ? fromRect.top + fromRect.height / 2 - (targetRect.top + targetRect.height / 2)
+    : 0;
 
   // FLIP container shared values: morph from thumbnail rect → fullscreen on open,
   // and back on close.
@@ -279,18 +331,25 @@ function ImageZoomModalContent({ session, onClose }) {
 
   const closeButtonTop = Math.max(insets.top, 0) + 12;
   const closeButtonRight = Math.max(insets.right, 0) + 16;
-  const imageSource = vessel.imageWide
-    ? { uri: vessel.imageWide }
-    : typeof vessel.image === 'string'
-      ? { uri: vessel.image }
-      : vessel.image;
+  const imageSource = imageUri ? { uri: imageUri } : vessel.image;
 
   return (
     <View style={StyleSheet.absoluteFill}>
       <Animated.View style={[styles.backdrop, backdropStyle]} />
 
       <GestureDetector gesture={composed}>
-        <Animated.View style={[styles.flipContainer, flipContainerStyle]}>
+        <Animated.View
+          style={[
+            styles.flipContainer,
+            {
+              top: targetRect.top,
+              left: targetRect.left,
+              width: targetRect.width,
+              height: targetRect.height,
+            },
+            flipContainerStyle,
+          ]}
+        >
           <Animated.View style={[styles.imageWrap, imageTransformStyle]}>
             <Image
               accessibilityIgnoresInvertColors
@@ -337,15 +396,12 @@ const styles = StyleSheet.create({
   },
   flipContainer: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
     overflow: 'hidden',
     backgroundColor: 'transparent',
   },
   imageWrap: {
-    flex: 1,
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -11,6 +11,7 @@ import { InteractivePressable } from '../../components/primitives/InteractivePre
 import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe.js';
 import { measureNodeInWindow } from '../../utils/layout.js';
+import { resolveCssVariableString } from '../../theme.js';
 import { applySearchQuery } from './useVesselSearch.js';
 import { TopBar } from './DatabaseTopBars.jsx';
 import { VesselResults } from './VesselResults.jsx';
@@ -19,10 +20,43 @@ const FILTER_COLUMN_TOP = 122;
 const FILTER_COLUMN_EDGE = 18;
 const FILTER_BUTTON_GAP = 24;
 const FILTER_DISCLOSURE_WIDTH = 24;
-const FILTER_MENU_MIN_WIDTH = 156;
+const FILTER_MENU_MIN_WIDTH = 1;
 const reverseBezier = ([x1, y1, x2, y2]) => [1 - x2, 1 - y2, 1 - x1, 1 - y1];
 const IOS_EASE = `cubic-bezier(${motionTokens.ease.ios.join(', ')})`;
 const IOS_EASE_REVERSE = `cubic-bezier(${reverseBezier(motionTokens.ease.ios).join(', ')})`;
+
+function colorWithAlpha(color, alpha) {
+  if (typeof color !== 'string') {
+    return color;
+  }
+
+  const nextAlpha = Math.max(0, Math.min(1, alpha));
+  const hexMatch = color.match(/^#([a-f0-9]{3}|[a-f0-9]{6})$/i);
+  if (hexMatch) {
+    const value = hexMatch[1];
+    const expanded = value.length === 3
+      ? value.split('').map((char) => `${char}${char}`).join('')
+      : value;
+    const r = Number.parseInt(expanded.slice(0, 2), 16);
+    const g = Number.parseInt(expanded.slice(2, 4), 16);
+    const b = Number.parseInt(expanded.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${nextAlpha})`;
+  }
+
+  const rgbMatch = color.match(/^rgba?\(([^)]+)\)$/i);
+  if (rgbMatch) {
+    const channels = rgbMatch[1]
+      .split(',')
+      .map((part) => Number.parseFloat(part.trim()))
+      .filter((part) => Number.isFinite(part));
+
+    if (channels.length >= 3) {
+      return `rgba(${channels[0]}, ${channels[1]}, ${channels[2]}, ${nextAlpha})`;
+    }
+  }
+
+  return color;
+}
 
 function setMeasuredWidth(setter) {
   return (event) => {
@@ -102,11 +136,11 @@ export function FilterScreen({
   );
   const harborMenuWidth = Math.min(
     menuMaxWidth,
-    Math.max(FILTER_MENU_MIN_WIDTH, harborColumnWidth + 44),
+    Math.max(FILTER_MENU_MIN_WIDTH, harborColumnWidth),
   );
   const vesselTypeMenuWidth = Math.min(
     menuMaxWidth,
-    Math.max(FILTER_MENU_MIN_WIDTH, vesselTypeColumnWidth + 44),
+    Math.max(FILTER_MENU_MIN_WIDTH, vesselTypeColumnWidth),
   );
   const harborMenuLeft = Math.min(
     columnLayout.harborLeft,
@@ -122,6 +156,10 @@ export function FilterScreen({
   const filterTranslateY =
     reducedMotion || visualPhase === 'open' ? 0 : motionTokens.offset.sheetLift;
   const transitionTimingFunction = visualPhase === 'closing' ? IOS_EASE_REVERSE : IOS_EASE;
+  const screenColor = resolveCssVariableString('var(--color-bg-screen)');
+  const backdropBaseColor = colorWithAlpha(screenColor, 0.52);
+  const backdropTopColor = colorWithAlpha(screenColor, 0.92);
+  const backdropMidColor = colorWithAlpha(screenColor, 0.62);
 
   useEffect(
     () => () => {
@@ -325,8 +363,11 @@ export function FilterScreen({
           accessibilityRole="button"
           className="filter-screen__backdrop interaction-reset"
           onPress={onClose}
-          style={styles.backdrop}
-        />
+          style={[styles.backdrop, { backgroundColor: backdropBaseColor }]}
+        >
+          <View pointerEvents="none" style={[styles.backdropTop, { backgroundColor: backdropTopColor }]} />
+          <View pointerEvents="none" style={[styles.backdropMid, { backgroundColor: backdropMidColor }]} />
+        </Pressable>
       </View>
 
       <View
@@ -516,11 +557,21 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    // Native: solid backdrop so the underlying top-bar text doesn't bleed through.
-    backgroundColor: 'var(--color-bg-screen)',
-    backgroundImage: 'var(--gradient-filter-backdrop)',
-    backdropFilter: 'blur(14px)',
-    WebkitBackdropFilter: 'blur(14px)',
+    overflow: 'hidden',
+  },
+  backdropTop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    left: 0,
+    height: '42%',
+  },
+  backdropMid: {
+    position: 'absolute',
+    top: '42%',
+    right: 0,
+    left: 0,
+    height: '26%',
   },
   pointerEventsNone: {
     pointerEvents: 'none',
@@ -535,8 +586,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     zIndex: 200,
-    elevation: 10,
-    backgroundColor: 'var(--color-bg-screen)',
+    elevation: 0,
+    backgroundColor: 'transparent',
   },
   panelMeasureHost: {
     overflow: 'visible',
@@ -548,27 +599,21 @@ const styles = StyleSheet.create({
   column: {
     position: 'absolute',
     zIndex: 200,
-    elevation: 10,
+    elevation: 0,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
-    gap: 0,
-    paddingVertical: 8,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'var(--color-border-subtle)',
-    backgroundColor: 'var(--color-bg-surface-elevated)',
-    shadowColor: '#000000',
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
+    gap: 24,
+    paddingVertical: 0,
+    backgroundColor: 'transparent',
   },
   option: {
-    width: '100%',
-    minHeight: 44,
+    alignSelf: 'flex-start',
+    minHeight: 24,
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     textAlign: 'left',
+    backgroundColor: 'transparent',
   },
   optionLabel: {
     color: 'var(--color-text-tertiary)',

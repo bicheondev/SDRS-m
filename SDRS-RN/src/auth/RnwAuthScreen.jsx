@@ -7,6 +7,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { motionDurationsMs, motionTokens } from '../motion.js';
 import { APP_FONT_FAMILY, resolveCssVariableString } from '../theme.js';
@@ -27,8 +28,12 @@ export function RnwAuthScreen({
 }) {
   const passwordInputRef = useRef(null);
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isCompactViewport = width <= 480;
   const resolvedKeyboardInset = Math.max(0, keyboardInset);
+  const bottomInset = Math.max(insets.bottom, 0);
+  const isKeyboardDocked = Boolean(focusedField) && resolvedKeyboardInset > 0;
+  const loginButtonBottom = isKeyboardDocked ? 0 : bottomInset;
 
   const handleSubmit = () => {
     if (isFilled) {
@@ -103,7 +108,7 @@ export function RnwAuthScreen({
             </View>
           </View>
 
-          <Text style={[styles.appVersion, focusedField ? styles.appVersionHidden : null]}>
+          <Text style={[styles.appVersion, { bottom: 82 + bottomInset }, focusedField ? styles.appVersionHidden : null]}>
             선박DB정보체계 버전 1.0
           </Text>
 
@@ -115,7 +120,10 @@ export function RnwAuthScreen({
               styles.loginButton,
               isFilled ? styles.loginButtonActive : styles.loginButtonInactive,
               focused ? styles.loginButtonFocused : null,
-              { transform: [{ translateY: -resolvedKeyboardInset }] },
+              {
+                bottom: loginButtonBottom,
+                transform: [{ translateY: isKeyboardDocked ? -resolvedKeyboardInset : 0 }],
+              },
             ]}
           >
             {({ pressed }) => (

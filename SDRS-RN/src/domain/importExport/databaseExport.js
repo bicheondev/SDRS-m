@@ -9,5 +9,5 @@ export async function buildDatabaseExportBlob(databaseState) {
   zip.file('ship.csv', buildShipCsvText(databaseState.shipRecords));
   zip.file('images.zip', await buildImagesArchive(databaseState.imageEntries));
 
-  return zip.generateAsync({ type: 'blob' });
+  return zip.generateAsync({ type: 'uint8array' });
 }

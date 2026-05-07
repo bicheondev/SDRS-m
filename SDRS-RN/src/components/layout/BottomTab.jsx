@@ -7,7 +7,7 @@ import { interactiveStyles, getInteractiveScale } from '../interactiveStyles.js'
 import { InteractivePressable } from '../primitives/InteractivePressable.jsx';
 import { AppText as Text } from '../primitives/AppTypography.jsx';
 
-function BottomTabButton({ active, label, name, onPress, tone }) {
+function BottomTabButton({ active, label, name, onPress, tone, wide = false }) {
   return (
     <InteractivePressable
       accessibilityRole="button"
@@ -21,6 +21,7 @@ function BottomTabButton({ active, label, name, onPress, tone }) {
       style={({ focused, pressed }) => [
         interactiveStyles.base,
         styles.item,
+        wide && styles.itemWide,
         active ? styles.itemActive : styles.itemInactive,
         focused && interactiveStyles.focus,
         { transform: [{ scale: pressed ? getInteractiveScale('button') : 1 }] },
@@ -42,9 +43,9 @@ function BottomTab({ activeTab = 'db', onDbClick, onManageClick, onMenuClick }) 
   const insets = useSafeAreaInsets();
   const { width: viewportWidth } = useWindowDimensions();
   const bottomInset = Math.max(insets.bottom, 0);
-  const tabWidth = Math.min(viewportWidth, 390);
-  const sideOffset = Math.max(0, (viewportWidth - tabWidth) / 2);
-  const itemGap = Math.min(70, Math.max(0, (tabWidth - 210) / 4));
+  const tabWidth = viewportWidth;
+  const itemTotalWidth = 70 + 104 + 70;
+  const itemGap = Math.min(70, Math.max(8, (tabWidth - itemTotalWidth) / 4));
 
   return (
     <View
@@ -52,7 +53,7 @@ function BottomTab({ activeTab = 'db', onDbClick, onManageClick, onMenuClick }) 
       style={[
         styles.shell,
         {
-          left: sideOffset,
+          left: 0,
           width: tabWidth,
           height: 84 + bottomInset,
           paddingBottom: bottomInset,
@@ -74,6 +75,7 @@ function BottomTab({ activeTab = 'db', onDbClick, onManageClick, onMenuClick }) 
         name="database"
         onPress={onManageClick}
         tone={activeTab === 'manage' ? 'accent' : 'muted'}
+        wide
       />
       <BottomTabButton
         active={activeTab === 'menu'}
@@ -138,6 +140,10 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1,
   },
+  itemWide: {
+    width: 104,
+    minWidth: 104,
+  },
   itemInactive: {
     color: 'var(--color-text-tertiary)',
   },
@@ -149,7 +155,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 11,
     fontWeight: '600',
-    letterSpacing: -0.11,
+    letterSpacing: 0,
     textAlign: 'center',
     whiteSpace: 'nowrap',
   },

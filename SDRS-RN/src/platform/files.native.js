@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as FilePicker from 'expo-\u0064ocument-picker';
 import * as Sharing from 'expo-sharing';
@@ -6,23 +7,26 @@ const BASE64_ENCODING = 'base64';
 const UTF8_ENCODING = 'utf8';
 
 function base64ToArrayBuffer(base64) {
-  const binary = globalThis.atob(base64);
-  const length = binary.length;
-  const bytes = new Uint8Array(length);
-
-  for (let index = 0; index < length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-
-  return bytes.buffer;
+  const bytes = Uint8Array.from(Buffer.from(base64, 'base64'));
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 }
 
 function uint8ArrayToBase64(bytes) {
-  let binary = '';
-  for (let index = 0; index < bytes.length; index += 1) {
-    binary += String.fromCharCode(bytes[index]);
+  return Buffer.from(bytes).toString('base64');
+}
+
+function getMimeTypeForFileName(fileName) {
+  const lowered = String(fileName ?? '').toLowerCase();
+
+  if (lowered.endsWith('.zip')) {
+    return 'application/zip';
   }
-  return globalThis.btoa(binary);
+
+  if (lowered.endsWith('.csv')) {
+    return 'text/csv;charset=utf-8';
+  }
+
+  return 'application/octet-stream';
 }
 
 async function arrayBufferLikeToBase64(value) {
@@ -35,7 +39,7 @@ async function arrayBufferLikeToBase64(value) {
   }
 
   if (typeof value === 'string') {
-    return globalThis.btoa(value);
+    return Buffer.from(value, 'utf8').toString('base64');
   }
 
   if (value && typeof value.arrayBuffer === 'function') {
@@ -107,6 +111,7 @@ export async function downloadBlob(blob, fileName) {
   const safeFileName = fileName && fileName.length > 0 ? fileName : 'download.bin';
   const base64 = await arrayBufferLikeToBase64(blob);
   const fileUri = `${FileSystem.cacheDirectory}${safeFileName}`;
+  const mimeType = blob?.type || getMimeTypeForFileName(safeFileName);
 
   await FileSystem.writeAsStringAsync(fileUri, base64, {
     encoding: BASE64_ENCODING,
@@ -114,7 +119,7 @@ export async function downloadBlob(blob, fileName) {
 
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(fileUri, {
-      mimeType: blob?.type || undefined,
+      mimeType,
       dialogTitle: safeFileName,
       UTI: undefined,
     });
