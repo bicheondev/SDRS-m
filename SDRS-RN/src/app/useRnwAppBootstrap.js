@@ -15,9 +15,17 @@ async function loadDefaultBundledDatabaseState() {
 async function loadBundledDatabaseOrEmpty({ loadBundledState, createEmptyState }) {
   try {
     return await loadBundledState();
-  } catch {
+  } catch (error) {
+    console.error('[bootstrap] bundled database load failed:', error);
     return createEmptyState();
   }
+}
+
+function hasUsableStoredDatabaseState(state) {
+  return (
+    Array.isArray(state?.shipRecords) &&
+    state.shipRecords.length > 0
+  ) || Boolean(state?.files?.ship?.imported || state?.files?.images?.imported);
 }
 
 export async function resolveRnwInitialDatabaseState({
@@ -29,10 +37,11 @@ export async function resolveRnwInitialDatabaseState({
   try {
     const storedState = await loadStoredState();
 
-    if (storedState) {
+    if (hasUsableStoredDatabaseState(storedState)) {
       return upgradeState(storedState);
     }
-  } catch {
+  } catch (error) {
+    console.error('[bootstrap] stored database load failed:', error);
     return loadBundledDatabaseOrEmpty({ createEmptyState, loadBundledState });
   }
 
@@ -44,7 +53,7 @@ async function loadInitialDatabaseSnapshot() {
   const nextDatabase = await resolveRnwInitialDatabaseState({
     loadStoredState: async () => {
       const storedState = await loadStoredDatabaseState();
-      loadedStoredState = Boolean(storedState);
+      loadedStoredState = hasUsableStoredDatabaseState(storedState);
       return storedState;
     },
   });
@@ -99,7 +108,8 @@ export function useRnwAppBootstrap() {
       setDatabaseReady(true);
     };
 
-    initializeDatabase().catch(() => {
+    initializeDatabase().catch((error) => {
+      console.error('[bootstrap] initial database failed:', error);
       if (!cancelled) {
         setDatabaseState(createEmptyDatabaseState());
         setDatabaseReady(true);
@@ -124,7 +134,9 @@ export function useRnwAppBootstrap() {
       }
     }
 
-    saveStoredDatabaseState(databaseState).catch(() => {});
+    saveStoredDatabaseState(databaseState).catch((error) => {
+      console.error('[bootstrap] database save failed:', error);
+    });
   }, [databaseReady, databaseState]);
 
   return {

@@ -1,9 +1,7 @@
 import Svg, { G, Path } from 'react-native-svg';
 
-import { resolveCssVariableString } from '../../theme.js';
-
 export default function Logo({
-  color = resolveCssVariableString('var(--color-text-muted)'),
+  color = '#62748E',
   height = 18,
   width = 62.6374,
   ...props

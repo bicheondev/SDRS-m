@@ -1,6 +1,6 @@
 import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 
 import { RnwApp } from './RnwApp.jsx';
@@ -37,12 +37,9 @@ function AppShell() {
   return (
     <>
       <StatusBar barStyle={barStyle} />
-      <SafeAreaView
-        edges={['top', 'bottom']}
-        style={[styles.container, { backgroundColor: theme['color-bg-app'] }]}
-      >
+      <View style={[styles.container, { backgroundColor: theme['color-bg-app'] }]}>
         <RnwApp />
-      </SafeAreaView>
+      </View>
     </>
   );
 }

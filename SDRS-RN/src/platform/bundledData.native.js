@@ -26,14 +26,18 @@ function base64ToArrayBuffer(base64) {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 }
 
-async function ensureAssetReady(assetSource) {
+async function ensureAssetReady(assetSource, assetName) {
   const asset = Asset.fromModule(assetSource);
 
-  if (!asset.localUri) {
+  try {
     await asset.downloadAsync();
+  } catch (error) {
+    console.error(`[bundledData] ${assetName} download failed:`, error);
+    throw error;
   }
 
-  const localUri = asset.localUri ?? asset.uri;
+  const localUri = asset.localUri;
+  console.log(`[bundledData] ${assetName} asset localUri:`, localUri);
 
   if (!localUri) {
     throw createImportError('기본 파일을 불러오지 못했어요.');
@@ -42,8 +46,26 @@ async function ensureAssetReady(assetSource) {
   return localUri;
 }
 
+async function logCsvAssetPreview(localUri) {
+  try {
+    const csv = await FileSystem.readAsStringAsync(localUri);
+    console.log(
+      '[bundledData] csv length:',
+      csv.length,
+      'first 100:',
+      csv.slice(0, 100),
+    );
+  } catch (error) {
+    console.error('[bundledData] csv preview failed:', error);
+  }
+}
+
 async function loadAssetAsFileLike({ asset, name, type }) {
-  const localUri = await ensureAssetReady(asset);
+  const localUri = await ensureAssetReady(asset, name);
+
+  if (type === 'text/csv') {
+    await logCsvAssetPreview(localUri);
+  }
 
   const readBase64 = () =>
     FileSystem.readAsStringAsync(localUri, {
@@ -70,10 +92,15 @@ async function loadAssetAsFileLike({ asset, name, type }) {
 }
 
 export async function loadBundledDatabaseState(files = DEFAULT_BUNDLED_FILES) {
-  const [shipFile, imagesFile] = await Promise.all([
-    loadAssetAsFileLike(files.ship),
-    loadAssetAsFileLike(files.images),
-  ]);
+  try {
+    const [shipFile, imagesFile] = await Promise.all([
+      loadAssetAsFileLike(files.ship),
+      loadAssetAsFileLike(files.images),
+    ]);
 
-  return loadBundledDatabaseStateFromFiles({ imagesFile, shipFile });
+    return await loadBundledDatabaseStateFromFiles({ imagesFile, shipFile });
+  } catch (error) {
+    console.error('[bundledData] FAILED:', error);
+    throw error;
+  }
 }

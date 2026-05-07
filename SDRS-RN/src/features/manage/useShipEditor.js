@@ -175,31 +175,36 @@ export function useShipEditor({
   };
 
   const handleManageShipSave = () => {
-    const nextShipRecords = normalizeShipCardsForStorage(manageShipCardsState);
-    const nextImageEntries = rebuildImageEntriesFromShips(nextShipRecords);
-    const nextDatabase = cloneDatabaseState(databaseState);
-    const shipImported = nextDatabase.files.ship.imported || nextShipRecords.length > 0;
-    const imagesImported = nextDatabase.files.images.imported || nextImageEntries.length > 0;
-    const imagesChanged = !areImageEntriesEqual(nextImageEntries, nextDatabase.imageEntries);
+    try {
+      const nextShipRecords = normalizeShipCardsForStorage(manageShipCardsState);
+      const nextImageEntries = rebuildImageEntriesFromShips(nextShipRecords);
+      const nextDatabase = cloneDatabaseState(databaseState);
+      const shipImported = nextDatabase.files.ship.imported || nextShipRecords.length > 0;
+      const imagesImported = nextDatabase.files.images.imported || nextImageEntries.length > 0;
+      const imagesChanged = !areImageEntriesEqual(nextImageEntries, nextDatabase.imageEntries);
 
-    nextDatabase.imageEntries = nextImageEntries;
-    nextDatabase.shipRecords = applyImagesToShipRecords(nextShipRecords, nextImageEntries, {
-      preserveExisting: true,
-    });
-    nextDatabase.files.ship = {
-      ...nextDatabase.files.ship,
-      imported: shipImported,
-      modified: shipImported,
-    };
-    nextDatabase.files.images = {
-      ...nextDatabase.files.images,
-      imported: imagesImported,
-      modified: imagesImported && imagesChanged,
-    };
+      nextDatabase.imageEntries = nextImageEntries;
+      nextDatabase.shipRecords = applyImagesToShipRecords(nextShipRecords, nextImageEntries, {
+        preserveExisting: true,
+      });
+      nextDatabase.files.ship = {
+        ...nextDatabase.files.ship,
+        imported: shipImported,
+        modified: shipImported,
+      };
+      nextDatabase.files.images = {
+        ...nextDatabase.files.images,
+        imported: imagesImported,
+        modified: imagesImported && imagesChanged,
+      };
 
-    setDatabaseState(nextDatabase);
-    syncShipEditor(nextDatabase.shipRecords);
-    showManageSaveToast('DB가 업데이트되었어요.');
+      setDatabaseState(nextDatabase);
+      syncShipEditor(nextDatabase.shipRecords);
+      showManageSaveToast('DB가 업데이트되었어요.');
+    } catch (error) {
+      console.error('[manage] DB save failed:', error);
+      showManageSaveToast('DB 저장에 실패했어요.');
+    }
   };
 
   const handleShipImport = async (file) => {

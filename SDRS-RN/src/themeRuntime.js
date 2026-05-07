@@ -180,7 +180,7 @@ function adaptValue(key, value, theme) {
     if (looksLikeCssDimension(value)) {
       return adaptDimensionValue(value);
     }
-    if (value === 'currentColor') {
+    if (value === 'currentColor' || value === 'inherit') {
       return undefined;
     }
   }
@@ -303,7 +303,7 @@ export function resolveInlineStyle(style) {
   if (Array.isArray(style)) {
     return style
       .map((entry) => resolveInlineStyle(entry))
-      .filter((entry) => entry !== undefined && entry !== null);
+      .filter((entry) => entry !== undefined && entry !== null && entry !== false);
   }
 
   if (!isPlainObject(style)) {

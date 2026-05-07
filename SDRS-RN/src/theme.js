@@ -260,7 +260,7 @@ export function getActiveTheme() {
   return themes[activeColorMode] ?? themes.light;
 }
 
-const VAR_PATTERN = /^var\(--([a-z0-9-]+)\)$/i;
+const VAR_PATTERN = /^var\(--([a-z0-9-]+)(?:,\s*(.+?))?\)$/i;
 
 export function resolveCssVariableString(value, theme = getActiveTheme()) {
   if (typeof value !== 'string') {
@@ -273,13 +273,14 @@ export function resolveCssVariableString(value, theme = getActiveTheme()) {
   }
 
   const tokenName = match[1];
+  const fallback = match[2]?.trim();
 
   if (Object.prototype.hasOwnProperty.call(theme, tokenName)) {
     const resolved = theme[tokenName];
     return resolved === null ? undefined : resolved;
   }
 
-  return value;
+  return fallback ?? value;
 }
 
 export function getThemeCssVariables() {

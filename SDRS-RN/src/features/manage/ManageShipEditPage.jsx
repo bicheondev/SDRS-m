@@ -1,12 +1,16 @@
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
+  LayoutAnimation,
   PanResponder,
+  Platform,
   ScrollView,
   StyleSheet,
+  UIManager,
   Vibration,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { emptyManageShipCard } from '../../appDomain.js';
 import manageImage from '../../assets/ui/manageImage.png';
@@ -45,6 +49,29 @@ const MANAGE_ITEM_REMOVE_REDUCED_MS = 100;
 const REORDER_AUTO_SCROLL_EDGE_PX = 88;
 const REORDER_AUTO_SCROLL_MAX_STEP_PX = 24;
 const ADD_SCROLL_MAX_ATTEMPTS = 18;
+
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
+
+function configureManageListLayoutAnimation(reducedMotion = false) {
+  const duration = reducedMotion ? MANAGE_ITEM_REMOVE_REDUCED_MS : MANAGE_ITEM_REMOVE_MS;
+
+  LayoutAnimation.configureNext({
+    duration,
+    create: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+      property: LayoutAnimation.Properties.opacity,
+    },
+    update: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+    },
+    delete: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+      property: LayoutAnimation.Properties.opacity,
+    },
+  });
+}
 
 function joinClassNames(...tokens) {
   return tokens.filter(Boolean).join(' ');
@@ -493,9 +520,17 @@ function SectionDivider({ style }) {
 }
 
 function ManageSubpageTopBar({ saveActive = false, title, onAdd, onBack, onSave }) {
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, 0);
+
   return (
     <>
-      <View style={styles.manageSubpageTopBar}>
+      <View
+        style={[
+          styles.manageSubpageTopBar,
+          { height: 64 + topInset, paddingTop: topInset },
+        ]}
+      >
         <InteractivePressable
           accessibilityLabel="뒤로가기"
           accessibilityRole="button"
@@ -551,14 +586,22 @@ function ManageSubpageTopBar({ saveActive = false, title, onAdd, onBack, onSave 
         </View>
       </View>
 
-      <Text style={styles.manageScreenTitle}>{title}</Text>
+      <Text style={[styles.manageScreenTitle, { paddingTop: 77 + topInset }]}>{title}</Text>
     </>
   );
 }
 
 function ManageSearchBar({ onChange, onClear, placeholder = '검색', value = '' }) {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
+
   return (
-    <View style={styles.manageSearchBar}>
+    <View
+      style={[
+        styles.manageSearchBar,
+        { height: 64 + bottomInset, paddingBottom: bottomInset },
+      ]}
+    >
       <AppIcon name="search" preset="search" style={styles.iconSlot24} tone="muted" />
       <TextInput
         autoCorrect={false}
@@ -1435,6 +1478,8 @@ export function ManageShipEditPage({
   onSearchClear,
 }) {
   const reducedMotion = useReducedMotionSafe();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
   const normalizedQuery = searchQuery.trim();
   const deferredSearchQuery = useDeferredValue(normalizedQuery);
   const reorderEnabled = normalizedQuery === '';
@@ -1956,6 +2001,7 @@ export function ManageShipEditPage({
       const showDividerAtRemoval =
         removalIndex >= 0 && removalIndex < removalList.length - 1;
 
+      configureManageListLayoutAnimation(reducedMotion);
       setRemovingCards((current) => {
         if (current.has(cardId)) {
           return current;
@@ -1972,6 +2018,7 @@ export function ManageShipEditPage({
 
       const frameId = requestAnimationFrame(() => {
         removalFrameRef.current.delete(cardId);
+        configureManageListLayoutAnimation(reducedMotion);
         setRemovingCards((current) => {
           const removalState = current.get(cardId);
 
@@ -1989,6 +2036,7 @@ export function ManageShipEditPage({
 
         const timerId = setTimeout(() => {
           removalTimerRef.current.delete(cardId);
+          configureManageListLayoutAnimation(reducedMotion);
           onDeleteRef.current(cardId);
           setRemovingCards((current) => {
             if (!current.has(cardId)) {
@@ -2165,7 +2213,7 @@ export function ManageShipEditPage({
         ref={contentRefCallback}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator
-        style={styles.manageEditContent}
+        style={[styles.manageEditContent, { marginBottom: 64 + bottomInset }]}
       >
         {reorderEnabled ? (
           <View style={styles.manageEditReorderList}>
@@ -2359,7 +2407,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
     marginTop: 28,
-    marginBottom: 'calc(64px + env(safe-area-inset-bottom, 0px))',
+    marginBottom: 64,
     scrollPaddingTop: 116,
     overflowAnchor: 'none',
     overflowX: 'hidden',
@@ -2465,7 +2513,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 10px 24px -18px rgb(37 99 235 / 0.42)',
   },
   reorderLabel: {
-    color: 'inherit',
+    color: 'var(--color-text-muted)',
     fontSize: 13,
     lineHeight: 13,
     fontWeight: '600',
@@ -2477,9 +2525,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     zIndex: 2,
-    height: 'calc(64px + env(safe-area-inset-bottom, 0px))',
+    flex: 0,
+    height: 64,
+    minHeight: 64,
     paddingRight: 18,
-    paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+    paddingBottom: 0,
     paddingLeft: 18,
     display: 'flex',
     flexDirection: 'row',

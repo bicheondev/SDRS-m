@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
-import MenuInfoLogo from '../../assets/ui/menuInfoLogo.svg';
-import MenuInfoMark from '../../assets/ui/menuInfoMark.svg';
+import MenuInfoLogo from '../../assets/ui/menuInfoLogo';
+import MenuInfoMark from '../../assets/ui/menuInfoMark';
 import { AppScreenShell, screenLayoutStyles } from '../../components/layout/ScreenLayout.jsx';
 import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 import { MenuSubpageTopBar } from './MenuShared.jsx';
@@ -16,12 +16,7 @@ export function MenuInfoPage({ onBack }) {
         <View style={styles.content}>
           <MenuInfoMark accessibilityLabel="" style={styles.mark} />
           <View style={styles.logoWrap}>
-            <MenuInfoLogo
-              accessibilityLabel="SDRS 선박DB조회체계"
-              width={120}
-              height={48}
-              style={styles.logo}
-            />
+            <MenuInfoLogo accessibilityLabel="SDRS 선박DB조회체계" style={styles.logo} />
           </View>
           <Text style={styles.version}>버전 1.0</Text>
         </View>
@@ -66,10 +61,10 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
+    width: '100%',
   },
   logo: {
-    width: 120,
-    height: 48,
+    alignSelf: 'center',
   },
   version: {
     margin: 0,

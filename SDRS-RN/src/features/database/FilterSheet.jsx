@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { filterVessels } from '../../domain/ships.js';
 import { motionDurationsMs, motionTokens } from '../../motion.js';
@@ -14,7 +15,7 @@ import { applySearchQuery } from './useVesselSearch.js';
 import { TopBar } from './DatabaseTopBars.jsx';
 import { VesselResults } from './VesselResults.jsx';
 
-const FILTER_COLUMN_TOP = 122;
+const FILTER_COLUMN_TOP = 108;
 const FILTER_COLUMN_EDGE = 18;
 const FILTER_BUTTON_GAP = 24;
 const FILTER_DISCLOSURE_WIDTH = 24;
@@ -55,6 +56,8 @@ export function FilterScreen({
   vesselTypeOptions,
 }) {
   const viewportDimensions = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const filterColumnTop = FILTER_COLUMN_TOP + Math.max(insets.top, 0);
   const [naturalHarborLabelWidth, setNaturalHarborLabelWidth] = useState(0);
   const [naturalVesselTypeLabelWidth, setNaturalVesselTypeLabelWidth] = useState(0);
   const [harborOptionWidth, setHarborOptionWidth] = useState(0);
@@ -62,7 +65,7 @@ export function FilterScreen({
   const [displayedHarborLabelWidth, setDisplayedHarborLabelWidth] = useState(0);
   const [displayedVesselTypeLabelWidth, setDisplayedVesselTypeLabelWidth] = useState(0);
   const [columnLayout, setColumnLayout] = useState({
-    top: FILTER_COLUMN_TOP,
+    top: filterColumnTop,
     harborLeft: FILTER_COLUMN_EDGE,
     vesselTypeLeft: FILTER_COLUMN_EDGE,
   });
@@ -216,11 +219,11 @@ export function FilterScreen({
     const harborLeft = Math.max(FILTER_COLUMN_EDGE, harborButtonRect.left - panelRect.left);
 
     setColumnLayout({
-      top: FILTER_COLUMN_TOP,
+      top: filterColumnTop,
       harborLeft,
       vesselTypeLeft: harborLeft + harborColumnWidth + FILTER_DISCLOSURE_WIDTH + FILTER_BUTTON_GAP,
     });
-  }, [harborColumnWidth]);
+  }, [filterColumnTop, harborColumnWidth]);
 
   useLayoutEffect(() => {
     if (layoutAnimationFrameRef.current !== null) {
@@ -244,6 +247,7 @@ export function FilterScreen({
     filterMode,
     harborColumnWidth,
     harborFilter,
+    filterColumnTop,
     updateColumnLayout,
     vesselTypeFilter,
     viewportDimensions.height,
@@ -480,8 +484,9 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    zIndex: 100,
+    zIndex: 200,
     elevation: 10,
+    backgroundColor: 'var(--color-bg-screen)',
   },
   panelMeasureHost: {
     overflow: 'visible',
@@ -492,10 +497,13 @@ const styles = StyleSheet.create({
   },
   column: {
     position: 'absolute',
+    zIndex: 200,
+    elevation: 10,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
     gap: 24,
+    backgroundColor: 'var(--color-bg-screen)',
   },
   option: {
     textAlign: 'left',

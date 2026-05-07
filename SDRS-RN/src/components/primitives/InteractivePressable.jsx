@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { getHighResolutionTime } from '../../platform/index';
 import { resolveCssVariableString } from '../../theme.js';
+import { resolveInlineStyle } from '../../themeRuntime.js';
 
 const GUIDE_VARIANTS = {
   default: {
@@ -283,12 +284,12 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
 
   const resolvedStyle = useMemo(() => {
     if (typeof style !== 'function') {
-      return [pressGuideStyle, style];
+      return [pressGuideStyle, resolveInlineStyle(style)];
     }
 
     return (interactionState) => [
       pressGuideStyle,
-      style(resolveInteractionState(interactionState)),
+      resolveInlineStyle(style(resolveInteractionState(interactionState))),
     ];
   }, [pressGuideStyle, resolveInteractionState, style]);
 
