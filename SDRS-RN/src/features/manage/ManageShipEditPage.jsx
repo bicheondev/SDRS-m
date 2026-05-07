@@ -1495,7 +1495,7 @@ function ManageSavedToast({ message, onDismiss }) {
 
   const dragOpacity = 1 - dragOffset / maxVisibleDragOffset;
   const fadeOpacity = dragging ? dragOpacity : dismissing ? dismissOpacity : 1;
-  const toastBottom = Math.max(64 + bottomInset + 12, keyboardInset + 18);
+  const toastBottom = Math.max(52 + bottomInset, keyboardInset + 18);
 
   return (
     <View
