@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { BlurView } from 'expo-blur';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -40,8 +41,16 @@ function BottomTabButton({ active, label, name, onPress, tone }) {
   );
 }
 
-function BottomTab({ activeTab = 'db', contained = false, onDbClick, onManageClick, onMenuClick }) {
-  useTheme();
+function BottomTab({
+  activeTab = 'db',
+  blurred = false,
+  blurTargetRef,
+  contained = false,
+  onDbClick,
+  onManageClick,
+  onMenuClick,
+}) {
+  const { resolvedColorMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { width: viewportWidth } = useWindowDimensions();
   const bottomInset = Math.max(insets.bottom, 0);
@@ -49,9 +58,19 @@ function BottomTab({ activeTab = 'db', contained = false, onDbClick, onManageCli
   const tabLeft = contained ? 0 : (viewportWidth - tabWidth) / 2;
   const itemTotalWidth = 70 * 3;
   const itemGap = Math.min(70, Math.max(0, (tabWidth - itemTotalWidth) / 4));
+  const isDark = resolvedColorMode === 'dark';
+  const blurModeKey = blurTargetRef ? 'targeted' : 'fallback';
+  const nativeBlurProps = blurred && blurTargetRef
+    ? {
+        blurMethod: 'dimezisBlurViewSdk31Plus',
+        blurReductionFactor: 3,
+        blurTarget: blurTargetRef,
+      }
+    : null;
 
   return (
     <View
+      pointerEvents={blurred ? 'box-none' : 'auto'}
       style={[
         styles.shell,
         {
@@ -63,7 +82,31 @@ function BottomTab({ activeTab = 'db', contained = false, onDbClick, onManageCli
         },
       ]}
     >
-      <View className="bottom-tab__backdrop" style={[styles.backdrop, styles.pointerEventsNone]} />
+      <View
+        className="bottom-tab__backdrop"
+        style={[
+          styles.backdrop,
+          blurred ? styles.backdropBlurred : styles.backdropNormal,
+          styles.pointerEventsNone,
+        ]}
+      >
+        {blurred ? (
+          <BlurView
+            key={`bottom-tab-${blurModeKey}`}
+            {...nativeBlurProps}
+            intensity={52}
+            pointerEvents="none"
+            style={styles.backdropBlur}
+            tint={isDark ? 'dark' : 'light'}
+          />
+        ) : null}
+        {blurred ? (
+          <>
+            <View style={[styles.backdropFill, styles.backdropFillBlurred]} />
+            <View style={[styles.backdropStroke, styles.backdropStrokeBlurred]} />
+          </>
+        ) : null}
+      </View>
       <BottomTabButton
         active={activeTab === 'db'}
         label="DB"
@@ -112,9 +155,44 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
+    overflow: 'hidden',
+  },
+  backdropNormal: {
     borderWidth: 1,
     borderColor: 'var(--color-border-subtle)',
     backgroundColor: 'var(--color-bg-tab)',
+  },
+  backdropBlurred: {
+    backgroundColor: 'transparent',
+  },
+  backdropBlur: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  backdropFill: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'var(--color-bg-tab)',
+  },
+  backdropFillBlurred: {
+    backgroundColor: 'var(--color-bg-tab-blur)',
+  },
+  backdropStroke: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    left: 0,
+    height: 1,
+    backgroundColor: 'var(--color-border-subtle)',
+  },
+  backdropStrokeBlurred: {
+    backgroundColor: 'var(--color-border-tab-blur)',
   },
   pointerEventsNone: {
     pointerEvents: 'none',

@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
@@ -36,6 +37,7 @@ export function RnwAuthScreen({
 }) {
   useTheme();
   const passwordInputRef = useRef(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isCompactViewport = width <= 480;
@@ -49,6 +51,7 @@ export function RnwAuthScreen({
   const keyboardBehavior = 'padding';
   const topInset = Math.max(insets.top, 0);
   const bottomInset = Math.max(insets.bottom, 0);
+  const dockBottomInset = keyboardVisible ? 0 : bottomInset;
   const usernameFocused = focusedField === 'username';
   const passwordFocused = focusedField === 'password';
   const inputBgColor = resolveCssVariableString('var(--color-bg-input)');
@@ -85,6 +88,19 @@ export function RnwAuthScreen({
       easing: Easing.bezier(...motionTokens.ease.ios),
     });
   }, [passwordFocusProgress, passwordFocused]);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const handleSubmit = () => {
     if (isFilled) {
@@ -188,7 +204,15 @@ export function RnwAuthScreen({
               선박DB정보체계 버전 1.0
             </Text>
 
-            <View style={[styles.loginButtonDock, { height: 64 + bottomInset, paddingBottom: bottomInset }]}>
+            <View
+              style={[
+                styles.loginButtonDock,
+                {
+                  height: 64 + dockBottomInset,
+                  paddingBottom: dockBottomInset,
+                },
+              ]}
+            >
               <Pressable
                 accessibilityRole="button"
                 disabled={!isFilled}

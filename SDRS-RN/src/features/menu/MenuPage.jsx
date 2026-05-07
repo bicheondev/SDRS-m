@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
@@ -23,10 +23,10 @@ function MenuRow({ children, detail, onPress, showArrow = false }) {
         { transform: [{ scale: pressed ? getInteractiveScale('row') : 1 }] },
       ]}
     >
-      <Text style={styles.rowLabel}>{children}</Text>
+      <Text numberOfLines={1} style={styles.rowLabel}>{children}</Text>
       {detail || showArrow ? (
         <View style={styles.detailGroup}>
-          {detail ? <Text style={styles.detailText}>{detail}</Text> : null}
+          {detail ? <Text numberOfLines={1} style={styles.detailText}>{detail}</Text> : null}
           <AppIcon
             className="menu-row__arrow"
             name="arrow_forward_ios"
@@ -47,10 +47,15 @@ export function MenuPage({ colorMode, onColorModeOpen, onInfoOpen, onLogout }) {
     <AppScreenShell screenStyle={screenLayoutStyles.screenColumn}>
       <Text style={screenLayoutStyles.title}>메뉴</Text>
 
-      <View style={[styles.content, { paddingBottom: 24 + bottomInset }]}>
+      <ScrollView
+        bounces={false}
+        contentContainerStyle={[styles.contentBody, { paddingBottom: 24 + bottomInset }]}
+        showsVerticalScrollIndicator={false}
+        style={styles.content}
+      >
         <MenuRow detail={colorModeLabels[colorMode]} onPress={onColorModeOpen}>
-            화면 모드
-          </MenuRow>
+          화면 모드
+        </MenuRow>
 
         <View style={styles.divider} />
 
@@ -60,7 +65,7 @@ export function MenuPage({ colorMode, onColorModeOpen, onInfoOpen, onLogout }) {
           </MenuRow>
           <MenuRow onPress={onLogout}>로그아웃</MenuRow>
         </View>
-      </View>
+      </ScrollView>
     </AppScreenShell>
   );
 }
@@ -69,6 +74,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     minHeight: 0,
+  },
+  contentBody: {
+    flexGrow: 1,
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
@@ -94,6 +102,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   rowLabel: {
+    flexShrink: 0,
     color: 'var(--slate-500)',
     fontSize: 18,
     lineHeight: 20,
@@ -101,12 +110,16 @@ const styles = StyleSheet.create({
     letterSpacing: -0.36,
   },
   detailGroup: {
+    flexShrink: 1,
+    minWidth: 0,
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: 12,
   },
   detailText: {
+    flexShrink: 1,
     color: 'var(--color-text-tertiary)',
     fontSize: 18,
     lineHeight: 20,

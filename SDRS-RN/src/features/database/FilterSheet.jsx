@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { BlurView } from 'expo-blur';
+import { BlurTargetView, BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -117,6 +117,8 @@ export function FilterScreen({
   });
   const reducedMotion = useReducedMotionSafe();
   const enterFrameRef = useRef(null);
+  const resultsBlurTargetRef = useRef(null);
+  const [resultsBlurTargetReady, setResultsBlurTargetReady] = useState(false);
   const widthAnimationFrameRef = useRef(null);
   const layoutAnimationFrameRef = useRef(null);
   const panelRef = useRef(null);
@@ -139,6 +141,15 @@ export function FilterScreen({
   const backdropBaseColor = colorWithAlpha(screenColor, 0);
   const backdropTopColor = colorWithAlpha(screenColor, isDark ? 0.84 : 0.86);
   const backdropMidColor = colorWithAlpha(screenColor, 0.5);
+  const activeBlurTargetRef = resultsBlurTargetReady ? resultsBlurTargetRef : null;
+  const blurModeKey = activeBlurTargetRef ? 'targeted' : 'fallback';
+  const nativeBlurProps = activeBlurTargetRef
+    ? {
+        blurMethod: 'dimezisBlurViewSdk31Plus',
+        blurReductionFactor: 3,
+        blurTarget: activeBlurTargetRef,
+      }
+    : null;
   const layerProgress = useSharedValue(phase === 'closing' ? 1 : 0);
   const panelProgress = useSharedValue(phase === 'closing' ? 1 : 0);
   const panelTranslateY = useSharedValue(phase === 'closing' ? 0 : motionTokens.offset.sheetLift);
@@ -204,6 +215,19 @@ export function FilterScreen({
   useEffect(() => {
     setVesselTypeOptionWidth(0);
   }, [vesselTypeOptions]);
+
+  const setResultsBlurTargetNode = useCallback((node) => {
+    resultsBlurTargetRef.current = node;
+    if (!node) {
+      setResultsBlurTargetReady(false);
+    }
+  }, []);
+
+  const handleResultsBlurTargetLayout = useCallback(() => {
+    if (resultsBlurTargetRef.current) {
+      setResultsBlurTargetReady(true);
+    }
+  }, []);
 
   useLayoutEffect(() => {
     if (enterFrameRef.current !== null) {
@@ -338,6 +362,7 @@ export function FilterScreen({
       screenStyle={[screenLayoutStyles.screenColumn, styles.filterScreen]}
     >
       <TopBar
+        blurTargetRef={activeBlurTargetRef}
         blurViewOptions
         compact={compact}
         harborFilter={harborFilter}
@@ -354,8 +379,10 @@ export function FilterScreen({
         vesselTypeLabelWidth={displayedVesselTypeLabelWidth || undefined}
       />
 
-      <View
+      <BlurTargetView
         className="filter-screen__results"
+        ref={setResultsBlurTargetNode}
+        onLayout={handleResultsBlurTargetLayout}
         style={[
           styles.resultsShell,
           { paddingTop: 108 + topInset },
@@ -370,7 +397,7 @@ export function FilterScreen({
           style={styles.filterResults}
           vessels={filteredVessels}
         />
-      </View>
+      </BlurTargetView>
 
       <Animated.View className="filter-screen__overlay" style={[styles.overlay, layerAnimatedStyle]}>
         <Pressable
@@ -381,6 +408,8 @@ export function FilterScreen({
           style={[styles.backdrop, { backgroundColor: backdropBaseColor }]}
         >
           <BlurView
+            key={`filter-backdrop-${blurModeKey}`}
+            {...nativeBlurProps}
             intensity={52}
             pointerEvents="none"
             style={styles.backdropBlur}
@@ -532,6 +561,8 @@ export function FilterScreen({
 
       <BottomTab
         activeTab="db"
+        blurred
+        blurTargetRef={activeBlurTargetRef}
         contained
         onDbClick={onClose}
         onManageClick={onManageOpen}

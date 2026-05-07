@@ -54,9 +54,17 @@ function colorWithAlpha(color, alpha) {
   return color;
 }
 
-function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInset = 0 }) {
+function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter = false, topInset = 0 }) {
   const { resolvedColorMode } = useTheme();
   const isDark = resolvedColorMode === 'dark';
+  const blurModeKey = blurTargetRef ? 'targeted' : 'fallback';
+  const nativeBlurProps = blurTargetRef
+    ? {
+        blurMethod: 'dimezisBlurViewSdk31Plus',
+        blurReductionFactor: 3,
+        blurTarget: blurTargetRef,
+      }
+    : null;
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
   const topBand = colorWithAlpha(screenColor, isDark ? 0.84 : 0.86);
   const midBand = colorWithAlpha(screenColor, isDark ? 0.74 : 0.78);
@@ -78,6 +86,8 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInse
         ]}
       >
         <BlurView
+          key={`top-frost-${blurModeKey}`}
+          {...nativeBlurProps}
           intensity={72}
           pointerEvents="none"
           style={styles.frostBlur}
@@ -93,6 +103,8 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInse
       {filterSheet ? (
         <View className="top-bar__filter-sheet-layer" style={[styles.filterSheetLayer, styles.pointerEventsNone]}>
           <BlurView
+            key={`filter-sheet-frost-${blurModeKey}`}
+            {...nativeBlurProps}
             intensity={52}
             pointerEvents="none"
             style={styles.frostBlur}
@@ -115,6 +127,8 @@ function FrostBackground({ filterSheet = false, scrollbarGutter = false, topInse
         ]}
       >
         <BlurView
+          key={`filters-frost-${blurModeKey}`}
+          {...nativeBlurProps}
           intensity={42}
           pointerEvents="none"
           style={styles.frostBlur}
@@ -318,6 +332,7 @@ function FiltersRow({
 }
 
 export const TopBar = memo(function TopBar({
+  blurTargetRef,
   blurViewOptions = false,
   compact,
   harborFilter,
@@ -367,6 +382,7 @@ export const TopBar = memo(function TopBar({
       ]}
     >
       <FrostBackground
+        blurTargetRef={blurTargetRef}
         filterSheet={inFilterSheet}
         scrollbarGutter={scrollbarGutter}
         topInset={topInset}
@@ -427,6 +443,7 @@ export const TopBar = memo(function TopBar({
 });
 
 export const SearchTopBar = memo(function SearchTopBar({
+  blurTargetRef,
   compact,
   harborFilter,
   query,
@@ -476,7 +493,7 @@ export const SearchTopBar = memo(function SearchTopBar({
       }`.trim()}
       style={[styles.searchTopBar, { height: barHeight, paddingTop: topInset }]}
     >
-      <FrostBackground scrollbarGutter={scrollbarGutter} topInset={topInset} />
+      <FrostBackground blurTargetRef={blurTargetRef} scrollbarGutter={scrollbarGutter} topInset={topInset} />
 
       <View
         className="search-top-bar__main"
