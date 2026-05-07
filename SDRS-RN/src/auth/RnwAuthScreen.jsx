@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext.js';
 import { motionDurationsMs, motionTokens } from '../motion.js';
 import { APP_FONT_FAMILY, resolveCssVariableString } from '../theme.js';
-import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../components/layout/ScreenLayout.jsx';
+import { AppShellGradient, SCREEN_HEIGHT, SCREEN_WIDTH } from '../components/layout/ScreenLayout.jsx';
 
 export function RnwAuthScreen({
   focusedField,
@@ -114,6 +114,7 @@ export function RnwAuthScreen({
             },
           ]}
         >
+          <AppShellGradient />
           <View
             style={[
               styles.phoneScreen,
@@ -233,8 +234,10 @@ const styles = StyleSheet.create({
   },
   appShell: {
     flex: 1,
+    position: 'relative',
     alignItems: 'center',
     backgroundColor: 'var(--color-bg-app)',
+    overflow: 'hidden',
   },
   phoneScreen: {
     position: 'relative',
