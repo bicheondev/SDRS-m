@@ -132,10 +132,11 @@ function ManageAlertModal({
   const isPresented = useMountTransition(reducedMotion);
 
   return (
-    <View className="manage-discard-modal">
+    <View className="manage-discard-modal" style={styles.modalShell}>
       <View
         className="manage-discard-modal__scrim"
         style={[
+          styles.modalScrim,
           {
             opacity: isPresented ? 1 : 0,
             transitionDuration: `${motionDurationsMs.fast}ms`,
@@ -147,6 +148,7 @@ function ManageAlertModal({
       <View
         className="manage-discard-modal__card"
         style={[
+          styles.modalCard,
           {
             opacity: isPresented ? 1 : 0,
             transform: [
@@ -159,16 +161,20 @@ function ManageAlertModal({
           },
         ]}
       >
-        <Text className="manage-discard-modal__title">{title}</Text>
-        <Text className="manage-discard-modal__copy">{copy}</Text>
-        <View className="manage-discard-modal__actions">
+        <Text className="manage-discard-modal__title" style={styles.modalTitle}>{title}</Text>
+        <Text className="manage-discard-modal__copy" style={styles.modalCopy}>{copy}</Text>
+        <View className="manage-discard-modal__actions" style={styles.modalActions}>
           {!hideCancel ? (
             <InteractivePressable
               accessibilityRole="button"
               className="manage-discard-modal__button manage-discard-modal__button--ghost pressable-control pressable-control--surface"
               onPress={onCancel}
               pressGuideVariant="surface"
-              style={({ pressed }) => getPressScaleStyle(pressed, 'button')}
+              style={({ pressed }) => [
+                styles.modalButton,
+                styles.modalButtonGhost,
+                getPressScaleStyle(pressed, 'button'),
+              ]}
             >
               <Text style={styles.modalButtonGhostLabel}>{cancelLabel}</Text>
             </InteractivePressable>
@@ -185,7 +191,11 @@ function ManageAlertModal({
             )}
             onPress={onConfirm}
             pressGuideVariant="filled"
-            style={({ pressed }) => getPressScaleStyle(pressed, 'button')}
+            style={({ pressed }) => [
+              styles.modalButton,
+              confirmTone === 'danger' ? styles.modalButtonDanger : styles.modalButtonNeutral,
+              getPressScaleStyle(pressed, 'button'),
+            ]}
           >
             <Text style={styles.modalButtonLabel}>{confirmLabel}</Text>
           </InteractivePressable>
@@ -206,13 +216,14 @@ function ManageShipImportModal({
   const isPresented = useMountTransition(reducedMotion);
 
   return (
-    <View className="manage-discard-modal">
+    <View className="manage-discard-modal" style={styles.modalShell}>
       <Pressable
         accessibilityLabel="선박 DB 불러오기 닫기"
         accessibilityRole="button"
         className="manage-discard-modal__scrim-button interaction-reset"
         onPress={onDismiss}
         style={[
+          styles.modalScrimButton,
           {
             opacity: isPresented ? 1 : 0,
             transitionDuration: `${motionDurationsMs.fast}ms`,
@@ -224,6 +235,7 @@ function ManageShipImportModal({
       <View
         className="manage-discard-modal__card"
         style={[
+          styles.modalCard,
           {
             opacity: isPresented ? 1 : 0,
             transform: [
@@ -236,10 +248,10 @@ function ManageShipImportModal({
           },
         ]}
       >
-        <View className="manage-ship-import-modal__content">
-          <View className="manage-ship-import-modal__header">
-            <Text className="manage-discard-modal__title">선박 DB 불러오기</Text>
-            <Text className="manage-discard-modal__copy">기존에 있던 데이터는 삭제할까요?</Text>
+        <View className="manage-ship-import-modal__content" style={styles.importContent}>
+          <View className="manage-ship-import-modal__header" style={styles.importHeader}>
+            <Text className="manage-discard-modal__title" style={styles.modalTitle}>선박 DB 불러오기</Text>
+            <Text className="manage-discard-modal__copy" style={styles.modalCopy}>기존에 있던 데이터는 삭제할까요?</Text>
           </View>
 
           <Pressable
@@ -247,12 +259,17 @@ function ManageShipImportModal({
             accessibilityState={{ checked: replaceSameRegistration }}
             className="manage-ship-import-modal__checkbox-row interaction-reset"
             onPress={() => onReplaceSameRegistrationChange(!replaceSameRegistration)}
+            style={styles.importCheckboxRow}
           >
             <View
               className={joinClassNames(
                 'manage-ship-import-modal__checkbox-box',
                 replaceSameRegistration && 'manage-ship-import-modal__checkbox-box--checked',
               )}
+              style={[
+                styles.importCheckboxBox,
+                replaceSameRegistration && styles.importCheckboxBoxChecked,
+              ]}
             >
               {replaceSameRegistration ? (
                 <AppIcon
@@ -263,17 +280,21 @@ function ManageShipImportModal({
                 />
               ) : null}
             </View>
-            <Text className="manage-ship-import-modal__checkbox-label">어선정보가 같은 어선은 대체하기</Text>
+            <Text className="manage-ship-import-modal__checkbox-label" style={styles.importCheckboxLabel}>어선정보가 같은 어선은 대체하기</Text>
           </Pressable>
         </View>
 
-        <View className="manage-discard-modal__actions">
+        <View className="manage-discard-modal__actions" style={styles.modalActions}>
           <InteractivePressable
             accessibilityRole="button"
             className="manage-discard-modal__button manage-ship-import-modal__button manage-ship-import-modal__button--overwrite pressable-control pressable-control--surface"
             onPress={onReplaceAll}
             pressGuideVariant="surface"
-            style={({ pressed }) => getPressScaleStyle(pressed, 'button')}
+            style={({ pressed }) => [
+              styles.modalButton,
+              styles.importOverwriteButton,
+              getPressScaleStyle(pressed, 'button'),
+            ]}
           >
             <Text style={styles.importOverwriteLabel}>기존 데이터 삭제</Text>
           </InteractivePressable>
@@ -282,7 +303,11 @@ function ManageShipImportModal({
             className="manage-discard-modal__button manage-ship-import-modal__button manage-ship-import-modal__button--keep pressable-control pressable-control--filled"
             onPress={onKeepExisting}
             pressGuideVariant="filled"
-            style={({ pressed }) => getPressScaleStyle(pressed, 'button')}
+            style={({ pressed }) => [
+              styles.modalButton,
+              styles.modalButtonNeutral,
+              getPressScaleStyle(pressed, 'button'),
+            ]}
           >
             <Text style={styles.modalButtonLabel}>기존 데이터 유지</Text>
           </InteractivePressable>
@@ -458,6 +483,115 @@ const styles = StyleSheet.create({
   sectionDivider: {
     height: 16,
     backgroundColor: 'var(--color-bg-divider)',
+  },
+  modalShell: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 25,
+  },
+  modalScrim: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'var(--color-overlay-scrim)',
+  },
+  modalScrimButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'var(--color-overlay-scrim)',
+  },
+  modalCard: {
+    position: 'relative',
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 20,
+    backgroundColor: 'var(--color-bg-modal)',
+    boxShadow: 'var(--shadow-modal)',
+    padding: 20,
+  },
+  modalTitle: {
+    color: 'var(--color-text-primary)',
+    fontSize: 20,
+    lineHeight: 29,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+  },
+  modalCopy: {
+    marginTop: 10,
+    color: 'var(--color-text-tertiary)',
+    fontSize: 17,
+    lineHeight: 21.75,
+    fontWeight: '500',
+    letterSpacing: -0.34,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonGhost: {
+    backgroundColor: 'var(--color-bg-danger-soft)',
+  },
+  modalButtonDanger: {
+    backgroundColor: 'var(--color-danger-solid)',
+  },
+  modalButtonNeutral: {
+    backgroundColor: 'var(--color-accent-solid)',
+  },
+  importContent: {
+    gap: 18,
+  },
+  importHeader: {
+    gap: 0,
+  },
+  importCheckboxRow: {
+    minHeight: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  importCheckboxBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'var(--color-border-subtle)',
+    backgroundColor: 'var(--color-bg-surface)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  importCheckboxBoxChecked: {
+    borderColor: 'var(--color-accent-solid)',
+    backgroundColor: 'var(--color-accent-solid)',
+  },
+  importCheckboxLabel: {
+    flex: 1,
+    color: 'var(--color-text-tertiary)',
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '600',
+    letterSpacing: -0.32,
+  },
+  importOverwriteButton: {
+    backgroundColor: 'var(--color-bg-accent-soft)',
   },
   modalButtonGhostLabel: {
     color: 'var(--color-text-danger)',

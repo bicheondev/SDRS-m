@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIcon } from '../Icons.jsx';
@@ -40,12 +40,25 @@ function BottomTabButton({ active, label, name, onPress, tone }) {
 
 function BottomTab({ activeTab = 'db', onDbClick, onManageClick, onMenuClick }) {
   const insets = useSafeAreaInsets();
+  const { width: viewportWidth } = useWindowDimensions();
   const bottomInset = Math.max(insets.bottom, 0);
+  const tabWidth = Math.min(viewportWidth, 390);
+  const sideOffset = Math.max(0, (viewportWidth - tabWidth) / 2);
+  const itemGap = Math.min(70, Math.max(0, (tabWidth - 210) / 4));
 
   return (
     <View
       accessibilityRole="tablist"
-      style={[styles.shell, { height: 84 + bottomInset, paddingBottom: bottomInset }]}
+      style={[
+        styles.shell,
+        {
+          left: sideOffset,
+          width: tabWidth,
+          height: 84 + bottomInset,
+          paddingBottom: bottomInset,
+          gap: itemGap,
+        },
+      ]}
     >
       <View className="bottom-tab__backdrop" style={[styles.backdrop, styles.pointerEventsNone]} />
       <BottomTabButton
@@ -53,21 +66,21 @@ function BottomTab({ activeTab = 'db', onDbClick, onManageClick, onMenuClick }) 
         label="DB"
         name="data_table"
         onPress={onDbClick}
-        tone={activeTab === 'db' ? 'blue-500' : 'slate-400'}
+        tone={activeTab === 'db' ? 'accent' : 'muted'}
       />
       <BottomTabButton
         active={activeTab === 'manage'}
         label="데이터 관리"
         name="database"
         onPress={onManageClick}
-        tone={activeTab === 'manage' ? 'blue-500' : 'slate-400'}
+        tone={activeTab === 'manage' ? 'accent' : 'muted'}
       />
       <BottomTabButton
         active={activeTab === 'menu'}
         label="메뉴"
         name="dehaze"
         onPress={onMenuClick}
-        tone={activeTab === 'menu' ? 'blue-500' : 'slate-400'}
+        tone={activeTab === 'menu' ? 'accent' : 'muted'}
       />
     </View>
   );
@@ -78,17 +91,14 @@ export default memo(BottomTab);
 const styles = StyleSheet.create({
   shell: {
     position: 'absolute',
-    right: 0,
     bottom: 0,
     left: 0,
-    width: '100%',
     height: 84,
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     paddingTop: 8,
-    paddingHorizontal: 18,
     zIndex: 4,
     overflow: 'hidden',
     isolation: 'isolate',
@@ -115,6 +125,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
+    width: 70,
     minWidth: 70,
     minHeight: 44,
     height: 44,
@@ -131,7 +142,7 @@ const styles = StyleSheet.create({
     color: 'var(--color-text-tertiary)',
   },
   itemActive: {
-    color: 'var(--blue-500)',
+    color: 'var(--color-accent)',
   },
   label: {
     color: 'var(--color-text-tertiary)',
@@ -143,6 +154,6 @@ const styles = StyleSheet.create({
     whiteSpace: 'nowrap',
   },
   labelActive: {
-    color: 'var(--blue-500)',
+    color: 'var(--color-accent)',
   },
 });

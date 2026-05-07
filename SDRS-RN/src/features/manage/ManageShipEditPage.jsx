@@ -10,6 +10,13 @@ import {
   Vibration,
   View,
 } from 'react-native';
+import Animated, {
+  Easing,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { emptyManageShipCard } from '../../appDomain.js';
@@ -22,10 +29,8 @@ import { AppText as Text, AppTextInput as TextInput } from '../../components/pri
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe.js';
 import { motionDurationsMs, motionTokens } from '../../motion.js';
 import {
-  capturePointer,
   getComputedStyleValue,
   getElementRectSnapshot,
-  releasePointerCapture,
 } from '../../platform/index';
 import {
   buildSearchIndex,
@@ -36,6 +41,7 @@ import { pickFile } from '../../services/filePicker.js';
 import { resolveCssVariableString } from '../../theme.js';
 
 const IOS_EASE = `cubic-bezier(${motionTokens.ease.ios.join(', ')})`;
+const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
 const LIST_ITEM_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
 const MANAGE_EDIT_CONTENT_PADDING_BOTTOM = 24;
 const MANAGE_EDIT_REORDER_DIVIDER_HEIGHT = 16;
@@ -482,37 +488,36 @@ function scrollElementIntoNearestManageView({
   return true;
 }
 
-function getEventPoint(event, gestureState) {
-  return {
-    pageX:
-      event?.clientX ??
-      event?.nativeEvent?.clientX ??
-      event?.pageX ??
-      event?.nativeEvent?.pageX ??
-      gestureState?.moveX ??
-      gestureState?.x0 ??
-      0,
-    pageY:
-      event?.clientY ??
-      event?.nativeEvent?.clientY ??
-      event?.pageY ??
-      event?.nativeEvent?.pageY ??
-      gestureState?.moveY ??
-      gestureState?.y0 ??
-      0,
-  };
-}
-
-function getPointerId(event) {
-  return event?.pointerId ?? event?.nativeEvent?.pointerId ?? 0;
-}
-
 function getPressableStyle(state, kind, baseStyle) {
   return [
     interactiveStyles.base,
     baseStyle,
     { transform: [{ scale: state.pressed ? getInteractiveScale(kind) : 1 }] },
   ];
+}
+
+function useEditedBackgroundStyle(edited) {
+  const progress = useSharedValue(edited ? 1 : 0);
+  const idleBackground = resolveCssVariableString('var(--color-bg-surface-muted)');
+  const editedBackground = resolveCssVariableString('var(--color-bg-accent-soft)');
+
+  useEffect(() => {
+    progress.value = withTiming(edited ? 1 : 0, {
+      duration: motionDurationsMs.fast,
+      easing: IOS_EASING,
+    });
+  }, [edited, progress]);
+
+  return useAnimatedStyle(
+    () => ({
+      backgroundColor: interpolateColor(
+        progress.value,
+        [0, 1],
+        [idleBackground, editedBackground],
+      ),
+    }),
+    [editedBackground, idleBackground],
+  );
 }
 
 function SectionDivider({ style }) {
@@ -629,8 +634,10 @@ function ManageSearchBar({ onChange, onClear, placeholder = '검색', value = ''
 }
 
 function ManageFieldInput({ edited = false, onChange, readOnly = false, value }) {
+  const editedBackgroundStyle = useEditedBackgroundStyle(edited);
+
   return (
-    <View style={[styles.manageFieldPill, edited && styles.manageFieldPillEdited]}>
+    <Animated.View style={[styles.manageFieldPill, editedBackgroundStyle, edited && styles.manageFieldPillEdited]}>
       <TextInput
         autoCorrect={false}
         editable={!readOnly}
@@ -643,7 +650,7 @@ function ManageFieldInput({ edited = false, onChange, readOnly = false, value })
         ]}
         value={value}
       />
-    </View>
+    </Animated.View>
   );
 }
 
@@ -655,11 +662,14 @@ function ManageTextBox({
   value,
   variant = 'title',
 }) {
+  const editedBackgroundStyle = useEditedBackgroundStyle(edited);
+
   return (
-    <View
+    <Animated.View
       style={[
         styles.manageTextBox,
         variant === 'title' ? styles.manageTextBoxTitle : styles.manageTextBoxSubtitle,
+        editedBackgroundStyle,
         edited && styles.manageTextBoxEdited,
       ]}
     >
@@ -677,7 +687,7 @@ function ManageTextBox({
         ]}
         value={value}
       />
-    </View>
+    </Animated.View>
   );
 }
 
@@ -797,7 +807,18 @@ function ManageShipCard({
             ])
           }
         >
-          <Text style={styles.manageShipEquipmentLabel}>소나</Text>
+          <Text
+            style={[
+              styles.manageShipEquipmentLabel,
+              sonarEdited
+                ? styles.manageShipEquipmentLabelBlue
+                : card.sonar
+                  ? styles.manageShipEquipmentLabelViolet
+                  : styles.manageShipEquipmentLabelMuted,
+            ]}
+          >
+            소나
+          </Text>
           <AppIcon
             className="status-icon status-icon--manage status-icon--equipment-small"
             glyphSize={18}
@@ -827,7 +848,18 @@ function ManageShipCard({
             ])
           }
         >
-          <Text style={styles.manageShipEquipmentLabel}>어군 탐지기</Text>
+          <Text
+            style={[
+              styles.manageShipEquipmentLabel,
+              detectorEdited
+                ? styles.manageShipEquipmentLabelBlue
+                : card.detector
+                  ? styles.manageShipEquipmentLabelViolet
+                  : styles.manageShipEquipmentLabelMuted,
+            ]}
+          >
+            어군 탐지기
+          </Text>
           <AppIcon
             className="status-icon status-icon--manage status-icon--equipment-small"
             glyphSize={18}
@@ -890,8 +922,6 @@ function ManageShipReorderItem({
   const isCollapsing = Boolean(removalState?.collapsing);
   const [measuredEntryHeight, setMeasuredEntryHeight] = useState(0);
   const longPressTimerRef = useRef(null);
-  const pointerIdRef = useRef(null);
-  const pointerStartRef = useRef({ x: 0, y: 0 });
   const dragStartedRef = useRef(false);
   const [isArmed, setIsArmed] = useState(false);
 
@@ -904,7 +934,6 @@ function ManageShipReorderItem({
 
   const resetLongPressState = useCallback(() => {
     clearLongPressTimer();
-    pointerIdRef.current = null;
     dragStartedRef.current = false;
     setIsArmed(false);
   }, [clearLongPressTimer]);
@@ -928,80 +957,64 @@ function ManageShipReorderItem({
     [onItemLayout],
   );
 
-  const handlePointerDown = (event) => {
-    event.preventDefault?.();
-
-    const button = event.button ?? event.nativeEvent?.button;
-
-    if (button !== undefined && button !== 0) {
-      return;
-    }
-
-    const point = getEventPoint(event);
-    const pointerId = getPointerId(event);
-
-    pointerIdRef.current = pointerId;
-    pointerStartRef.current = { x: point.pageX, y: point.pageY };
-    dragStartedRef.current = false;
-
-    capturePointer(event.currentTarget, pointerId);
-
-    longPressTimerRef.current = setTimeout(() => {
-      if (pointerIdRef.current !== pointerId) {
-        return;
-      }
-
+  const startDrag = useCallback(
+    (clientY) => {
       dragStartedRef.current = true;
       setIsArmed(true);
       Vibration.vibrate?.(12);
-      onDragStart({ cardId: card.id, clientY: point.pageY });
-    }, 220);
-  };
+      onDragStart({ cardId: card.id, clientY });
+    },
+    [card.id, onDragStart],
+  );
 
-  const handlePointerMove = (event) => {
-    event.preventDefault?.();
-
-    const pointerId = getPointerId(event);
-
-    if (pointerIdRef.current !== pointerId) {
-      return;
-    }
-
-    const point = getEventPoint(event);
-
-    if (!dragStartedRef.current) {
-      const deltaX = point.pageX - pointerStartRef.current.x;
-      const deltaY = point.pageY - pointerStartRef.current.y;
-
-      if (Math.hypot(deltaX, deltaY) > 8) {
-        clearLongPressTimer();
+  const finishDrag = useCallback(
+    (clientY) => {
+      if (dragStartedRef.current) {
+        onDragEnd({ cardId: card.id, clientY });
+        Vibration.vibrate?.(8);
       }
-      return;
-    }
 
-    onDragMove({ cardId: card.id, clientY: point.pageY });
-  };
+      resetLongPressState();
+    },
+    [card.id, onDragEnd, resetLongPressState],
+  );
 
-  const handlePointerEnd = (event) => {
-    event.preventDefault?.();
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: () => false,
+        onPanResponderGrant: (_, gestureState) => {
+          clearLongPressTimer();
+          dragStartedRef.current = false;
 
-    const pointerId = getPointerId(event);
+          longPressTimerRef.current = setTimeout(() => {
+            longPressTimerRef.current = null;
+            startDrag(gestureState.y0);
+          }, 220);
+        },
+        onPanResponderMove: (_, gestureState) => {
+          const clientY = gestureState.moveY || gestureState.y0 + gestureState.dy;
 
-    if (pointerIdRef.current !== pointerId) {
-      return;
-    }
+          if (!dragStartedRef.current) {
+            if (Math.hypot(gestureState.dx, gestureState.dy) > 8) {
+              clearLongPressTimer();
+            }
+            return;
+          }
 
-    const point = getEventPoint(event);
-
-    releasePointerCapture(event.currentTarget, pointerId);
-
-    if (dragStartedRef.current) {
-      onDragEnd({ cardId: card.id, clientY: point.pageY });
-      Vibration.vibrate?.(8);
-    }
-
-    resetLongPressState();
-  };
+          onDragMove({ cardId: card.id, clientY });
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          finishDrag(gestureState.moveY || gestureState.y0 + gestureState.dy);
+        },
+        onPanResponderTerminate: (_, gestureState) => {
+          finishDrag(gestureState.moveY || gestureState.y0 + gestureState.dy);
+        },
+        onShouldBlockNativeResponder: () => true,
+        onStartShouldSetPanResponder: () => true,
+      }),
+    [card.id, clearLongPressTimer, finishDrag, onDragMove, startDrag],
+  );
 
   const enteringTranslateY = !reducedMotion && isEntering && !isPresented ? 14 : 0;
   const enteringScale = !reducedMotion && isEntering && !isPresented ? 0.992 : 1;
@@ -1089,15 +1102,11 @@ function ManageShipReorderItem({
                 'interaction-reset',
                 (isArmed || isDragging) && 'manage-ship-card__reorder-handle--dragging',
               )}
-              onContextMenu={(event) => event.preventDefault()}
-              onPointerCancel={handlePointerEnd}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerEnd}
               style={[
                 styles.reorderHandle,
                 (isArmed || isDragging) && styles.reorderHandleDragging,
               ]}
+              {...panResponder.panHandlers}
             >
               <AppIcon
                 className="manage-ship-card__reorder-icon"
@@ -1107,7 +1116,7 @@ function ManageShipReorderItem({
                 preset="reorder"
                 slotSize={18}
                 style={styles.iconSlot18}
-                tone="current"
+                tone={isArmed || isDragging ? 'accent' : 'muted'}
               />
               <Text className="manage-ship-card__reorder-label" style={styles.reorderLabel}>
                 길게 눌러 순서 변경
@@ -2208,6 +2217,7 @@ export function ManageShipEditPage({
         }}
         onLayout={(event) => {
           viewportHeightRef.current = event.nativeEvent.layout.height;
+          contentTopRef.current = event.nativeEvent.layout.y;
         }}
         onScroll={handleScroll}
         ref={contentRefCallback}
@@ -2577,7 +2587,6 @@ const styles = StyleSheet.create({
     height: 26,
   },
   manageTextBoxEdited: {
-    backgroundColor: 'var(--color-bg-accent-soft)',
     boxShadow: 'var(--shadow-edit)',
   },
   manageTextBoxInput: {
@@ -2631,7 +2640,6 @@ const styles = StyleSheet.create({
     transitionTimingFunction: IOS_EASE,
   },
   manageFieldPillEdited: {
-    backgroundColor: 'var(--color-bg-accent-soft)',
     boxShadow: 'var(--shadow-edit)',
   },
   manageFieldInput: {
@@ -2742,10 +2750,18 @@ const styles = StyleSheet.create({
   },
   manageShipEquipmentLabel: {
     width: 126,
-    color: 'inherit',
     fontSize: 18,
     lineHeight: 23.4,
     fontWeight: '700',
+  },
+  manageShipEquipmentLabelMuted: {
+    color: 'var(--color-text-violet-muted)',
+  },
+  manageShipEquipmentLabelBlue: {
+    color: 'var(--color-accent)',
+  },
+  manageShipEquipmentLabelViolet: {
+    color: 'var(--color-text-violet)',
   },
   manageShipEquipmentMuted: {
     color: 'var(--color-text-violet-muted)',

@@ -8,6 +8,10 @@ import { createImportError } from '../domain/importExport/shared.js';
 
 const BASE64_ENCODING = 'base64';
 const UTF8_ENCODING = 'utf8';
+const SHOULD_LOG_BUNDLED_DATA =
+  typeof __DEV__ !== 'undefined'
+    ? __DEV__
+    : typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
 
 const SHIP_ASSET = require('../../assets/data/ship.csv');
 const IMAGES_ASSET = require('../../assets/data/images.zip');
@@ -37,7 +41,10 @@ async function ensureAssetReady(assetSource, assetName) {
   }
 
   const localUri = asset.localUri;
-  console.log(`[bundledData] ${assetName} asset localUri:`, localUri);
+
+  if (SHOULD_LOG_BUNDLED_DATA) {
+    console.log(`[bundledData] ${assetName} asset localUri:`, localUri);
+  }
 
   if (!localUri) {
     throw createImportError('기본 파일을 불러오지 못했어요.');
@@ -46,31 +53,20 @@ async function ensureAssetReady(assetSource, assetName) {
   return localUri;
 }
 
-async function logCsvAssetPreview(localUri) {
-  try {
-    const csv = await FileSystem.readAsStringAsync(localUri);
-    console.log(
-      '[bundledData] csv length:',
-      csv.length,
-      'first 100:',
-      csv.slice(0, 100),
-    );
-  } catch (error) {
-    console.error('[bundledData] csv preview failed:', error);
-  }
-}
-
 async function loadAssetAsFileLike({ asset, name, type }) {
   const localUri = await ensureAssetReady(asset, name);
-
-  if (type === 'text/csv') {
-    await logCsvAssetPreview(localUri);
-  }
+  let cachedBase64 = null;
+  let cachedText = null;
 
   const readBase64 = () =>
-    FileSystem.readAsStringAsync(localUri, {
-      encoding: BASE64_ENCODING,
-    });
+    cachedBase64
+      ? Promise.resolve(cachedBase64)
+      : FileSystem.readAsStringAsync(localUri, {
+          encoding: BASE64_ENCODING,
+        }).then((base64) => {
+          cachedBase64 = base64;
+          return base64;
+        });
 
   return {
     name,
@@ -83,7 +79,11 @@ async function loadAssetAsFileLike({ asset, name, type }) {
         });
       }
 
-      return decodeCsvBuffer(base64ToArrayBuffer(await readBase64()));
+      if (!cachedText) {
+        cachedText = decodeCsvBuffer(base64ToArrayBuffer(await readBase64()));
+      }
+
+      return cachedText;
     },
     async arrayBuffer() {
       return base64ToArrayBuffer(await readBase64());
@@ -98,7 +98,24 @@ export async function loadBundledDatabaseState(files = DEFAULT_BUNDLED_FILES) {
       loadAssetAsFileLike(files.images),
     ]);
 
-    return await loadBundledDatabaseStateFromFiles({ imagesFile, shipFile });
+    if (SHOULD_LOG_BUNDLED_DATA) {
+      try {
+        const csvText = await shipFile.text();
+        const firstLine = csvText.split(/\r?\n/, 1)[0] ?? '';
+        console.log('[bundledData] decoded csv first line:', firstLine);
+        console.log('[bundledData] decoded csv first 100:', csvText.slice(0, 100));
+      } catch (error) {
+        console.error('[bundledData] decoded csv preview failed:', error);
+      }
+    }
+
+    const databaseState = await loadBundledDatabaseStateFromFiles({ imagesFile, shipFile });
+
+    if (SHOULD_LOG_BUNDLED_DATA) {
+      console.log('[bundledData] parsed ship rows:', databaseState.shipRecords.length);
+    }
+
+    return databaseState;
   } catch (error) {
     console.error('[bundledData] FAILED:', error);
     throw error;

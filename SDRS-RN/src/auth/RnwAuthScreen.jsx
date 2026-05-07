@@ -1,7 +1,5 @@
 import { useRef } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -9,7 +7,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { motionDurationsMs, motionTokens } from '../motion.js';
 import { APP_FONT_FAMILY, resolveCssVariableString } from '../theme.js';
@@ -19,6 +16,7 @@ const IOS_EASE = `cubic-bezier(${motionTokens.ease.ios.join(', ')})`;
 export function RnwAuthScreen({
   focusedField,
   isFilled,
+  keyboardInset = 0,
   onFieldBlur,
   onFieldFocus,
   onPasswordChange,
@@ -28,10 +26,9 @@ export function RnwAuthScreen({
   username,
 }) {
   const passwordInputRef = useRef(null);
-  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isCompactViewport = width <= 480;
-  const bottomInset = Math.max(insets.bottom, 0);
+  const resolvedKeyboardInset = Math.max(0, keyboardInset);
 
   const handleSubmit = () => {
     if (isFilled) {
@@ -47,11 +44,7 @@ export function RnwAuthScreen({
   const passwordFocused = focusedField === 'password';
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'android' ? 'height' : 'padding'}
-      keyboardVerticalOffset={0}
-      style={styles.keyboardAvoidingView}
-    >
+    <View style={styles.root}>
       <View style={[styles.appShell, isCompactViewport && styles.appShellCompact]}>
         <View style={[styles.phoneScreen, isCompactViewport && styles.phoneScreenCompact]}>
           <View style={[styles.loginHeader, isCompactViewport && styles.loginHeaderCompact]}>
@@ -114,45 +107,40 @@ export function RnwAuthScreen({
             선박DB정보체계 버전 1.0
           </Text>
 
+          <Pressable
+            accessibilityRole="button"
+            disabled={!isFilled}
+            onPress={handleSubmit}
+            style={({ focused }) => [
+              styles.loginButton,
+              isFilled ? styles.loginButtonActive : styles.loginButtonInactive,
+              focused ? styles.loginButtonFocused : null,
+              { transform: [{ translateY: -resolvedKeyboardInset }] },
+            ]}
+          >
+            {({ pressed }) => (
+              <>
+                <View
+                  style={[
+                    styles.loginButtonOverlay,
+                    styles.pointerEventsNone,
+                    isFilled && pressed ? styles.loginButtonOverlayPressed : null,
+                  ]}
+                />
+                <Text style={[styles.loginButtonText, isFilled && styles.loginButtonTextActive]}>
+                  로그인
+                </Text>
+              </>
+            )}
+          </Pressable>
         </View>
       </View>
-
-      <View
-        pointerEvents="box-none"
-        style={[styles.loginButtonContainer, { paddingBottom: bottomInset }]}
-      >
-        <Pressable
-          accessibilityRole="button"
-          disabled={!isFilled}
-          onPress={handleSubmit}
-          style={({ focused }) => [
-            styles.loginButton,
-            isFilled ? styles.loginButtonActive : styles.loginButtonInactive,
-            focused ? styles.loginButtonFocused : null,
-          ]}
-        >
-          {({ pressed }) => (
-            <>
-              <View
-                style={[
-                  styles.loginButtonOverlay,
-                  styles.pointerEventsNone,
-                  isFilled && pressed ? styles.loginButtonOverlayPressed : null,
-                ]}
-              />
-              <Text style={[styles.loginButtonText, isFilled && styles.loginButtonTextActive]}>
-                로그인
-              </Text>
-            </>
-          )}
-        </Pressable>
-      </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboardAvoidingView: {
+  root: {
     flex: 1,
     width: '100%',
   },
@@ -271,16 +259,12 @@ const styles = StyleSheet.create({
   appVersionHidden: {
     opacity: 0,
   },
-  loginButtonContainer: {
+  loginButton: {
     position: 'absolute',
     right: 0,
     bottom: 0,
     left: 0,
     zIndex: 10,
-    backgroundColor: 'transparent',
-  },
-  loginButton: {
-    position: 'relative',
     height: 64,
     alignItems: 'center',
     justifyContent: 'center',

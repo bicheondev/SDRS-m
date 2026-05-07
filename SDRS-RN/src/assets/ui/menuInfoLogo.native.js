@@ -1,25 +1,18 @@
-import { useWindowDimensions } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 
 const PRIMARY = '#62748E';
 const SECONDARY = '#90A1B9';
 const VIEWBOX_WIDTH = 120;
 const VIEWBOX_HEIGHT = 48;
-const ASPECT_RATIO = VIEWBOX_HEIGHT / VIEWBOX_WIDTH;
 
-export default function MenuInfoLogo({ height, width, ...props }) {
-  const { width: viewportWidth } = useWindowDimensions();
-  const resolvedWidth =
-    typeof width === 'number' ? width : Math.min(Math.max(viewportWidth - 96, 120), 233);
-  const resolvedHeight = typeof height === 'number' ? height : resolvedWidth * ASPECT_RATIO;
-
+export default function MenuInfoLogo({ height = VIEWBOX_HEIGHT, width = VIEWBOX_WIDTH, ...props }) {
   return (
     <Svg
       fill="none"
-      height={resolvedHeight}
+      height={height}
       preserveAspectRatio="xMidYMid meet"
       viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
-      width={resolvedWidth}
+      width={width}
       {...props}
     >
       <G>

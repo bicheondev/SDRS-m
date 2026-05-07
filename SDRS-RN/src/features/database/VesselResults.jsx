@@ -1,5 +1,6 @@
 import { forwardRef, memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIcon } from '../../components/Icons.jsx';
 import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
@@ -314,6 +315,7 @@ const VesselResultsBase = forwardRef(function VesselResults(
   {
     chromeScrollbar = false,
     compact,
+    contentTopPadding = 88,
     hiddenThumbnailId = null,
     onImageClick,
     onScroll,
@@ -324,6 +326,8 @@ const VesselResultsBase = forwardRef(function VesselResults(
   ref,
 ) {
   const reducedMotion = useReducedMotionSafe();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
   const modeAnimationId = useViewModeTransition(compact, reducedMotion);
   const scrollRef = useRef(null);
   const setScrollRef = useCallback(
@@ -357,11 +361,18 @@ const VesselResultsBase = forwardRef(function VesselResults(
     <ScrollView
       className={`main-content ${chromeScrollbar ? 'main-content--chrome-scrollbar' : ''}`.trim()}
       ref={setScrollRef}
-      contentContainerStyle={styles.mainContentContainer}
+      contentContainerStyle={[
+        styles.mainContentContainer,
+        { paddingTop: contentTopPadding },
+      ]}
       onScroll={onScroll}
       scrollEventThrottle={16}
       showsVerticalScrollIndicator
-      style={[styles.mainContent, chromeScrollbar && styles.mainContentChromeScrollbar, style]}
+      style={[
+        styles.mainContent,
+        chromeScrollbar && { marginBottom: 84 + bottomInset },
+        style,
+      ]}
     >
       <View
         key={`${compact ? 'compact' : 'card'}-${modeAnimationId}`}
@@ -407,10 +418,6 @@ const styles = StyleSheet.create({
     msOverflowStyle: 'auto',
     scrollbarWidth: 'auto',
     backgroundColor: 'var(--color-bg-card)',
-    paddingTop: 88,
-  },
-  mainContentChromeScrollbar: {
-    marginBottom: 84,
   },
   mainContentContainer: {
     flexGrow: 1,

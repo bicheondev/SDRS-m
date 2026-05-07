@@ -1,3 +1,6 @@
+import { Buffer } from 'buffer';
+import iconv from 'iconv-lite';
+
 import { stripBom } from './shared.js';
 
 export function parseCsvLine(line) {
@@ -72,16 +75,61 @@ export function serializeCsv(headers, rows) {
   return lines.join('\r\n');
 }
 
-export function decodeCsvBuffer(buffer) {
-  const decoders = ['utf-8', 'euc-kr'];
-
-  for (const encoding of decoders) {
-    try {
-      return new TextDecoder(encoding, { fatal: true }).decode(buffer);
-    } catch {
-      continue;
-    }
+function normalizeArrayBuffer(buffer) {
+  if (buffer instanceof ArrayBuffer) {
+    return new Uint8Array(buffer);
   }
 
-  return new TextDecoder().decode(buffer);
+  if (ArrayBuffer.isView(buffer)) {
+    return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  }
+
+  return new Uint8Array(buffer);
+}
+
+function decodeWithTextDecoder(bytes, encoding) {
+  if (typeof TextDecoder !== 'function') {
+    return null;
+  }
+
+  try {
+    return new TextDecoder(encoding, { fatal: true }).decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+function decodeWithIconv(bytes, encoding) {
+  try {
+    return iconv.decode(Buffer.from(bytes), encoding);
+  } catch {
+    return null;
+  }
+}
+
+export function decodeCsvBuffer(buffer) {
+  const bytes = normalizeArrayBuffer(buffer);
+  const utf8Text = decodeWithTextDecoder(bytes, 'utf-8');
+
+  if (utf8Text !== null) {
+    return utf8Text;
+  }
+
+  const eucKrText = decodeWithTextDecoder(bytes, 'euc-kr');
+
+  if (eucKrText !== null) {
+    return eucKrText;
+  }
+
+  const cp949Text = decodeWithIconv(bytes, 'cp949') ?? decodeWithIconv(bytes, 'euc-kr');
+
+  if (cp949Text !== null) {
+    return cp949Text;
+  }
+
+  if (typeof TextDecoder === 'function') {
+    return new TextDecoder().decode(bytes);
+  }
+
+  return Buffer.from(bytes).toString('utf8');
 }

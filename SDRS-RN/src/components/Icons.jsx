@@ -163,6 +163,38 @@ const LEGACY_CLASS_STYLES = StyleSheet.create({
   },
 });
 
+const MATERIAL_SYMBOL_CODEPOINTS = {
+  add: 0xe145,
+  arrow_back_ios_new: 0xe2ea,
+  arrow_forward_ios: 0xe5e1,
+  cancel: 0xe5c9,
+  check: 0xe5ca,
+  check_circle: 0xe86c,
+  check_small: 0xf88b,
+  close: 0xe5cd,
+  data_table: 0xe99c,
+  database: 0xf20e,
+  dehaze: 0xe3c7,
+  delete: 0xe872,
+  drag_indicator: 0xe945,
+  event_list: 0xf683,
+  keyboard_arrow_down: 0xe313,
+  keyboard_arrow_up: 0xe316,
+  search: 0xe8b6,
+  sticky_note_2: 0xf1fc,
+  view_stream: 0xe8f2,
+};
+
+function getMaterialSymbolGlyph(name) {
+  const codepoint = MATERIAL_SYMBOL_CODEPOINTS[name];
+
+  if (Number.isInteger(codepoint)) {
+    return String.fromCodePoint(codepoint);
+  }
+
+  return name;
+}
+
 function getLegacyClassStyles(className) {
   if (!className) {
     return [];
@@ -243,11 +275,8 @@ export function AppIcon({
   const basePreset = ICON_PRESETS[preset] ?? ICON_PRESETS.default;
   const resolvedSlotSize = slotSize ?? basePreset.slotSize;
   const resolvedGlyphSize = glyphSize ?? basePreset.glyphSize;
-  const resolvedOpticalSize = opticalSize ?? basePreset.opticalSize;
   const resolvedOffsetX = offsetX ?? basePreset.offsetX;
   const resolvedOffsetY = offsetY ?? basePreset.offsetY;
-  const resolvedWeight = weight ?? basePreset.weight ?? 400;
-  const resolvedWeightValue = Number(resolvedWeight) || 400;
 
   return (
     <Text
@@ -260,9 +289,8 @@ export function AppIcon({
           color: getToneColor(tone),
           fontFamily: 'MaterialSymbolsRounded',
           fontSize: resolvedGlyphSize,
-          fontWeight: String(resolvedWeight),
           height: resolvedSlotSize,
-          lineHeight: resolvedGlyphSize,
+          lineHeight: resolvedSlotSize,
           textAlign: 'center',
           width: resolvedSlotSize,
           transform: [{ translateX: resolvedOffsetX }, { translateY: resolvedOffsetY }],
@@ -271,7 +299,7 @@ export function AppIcon({
         style,
       ]}
     >
-      {name}
+      {getMaterialSymbolGlyph(name)}
     </Text>
   );
 }

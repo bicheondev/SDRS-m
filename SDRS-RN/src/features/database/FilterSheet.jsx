@@ -15,10 +15,11 @@ import { applySearchQuery } from './useVesselSearch.js';
 import { TopBar } from './DatabaseTopBars.jsx';
 import { VesselResults } from './VesselResults.jsx';
 
-const FILTER_COLUMN_TOP = 108;
+const FILTER_COLUMN_TOP = 122;
 const FILTER_COLUMN_EDGE = 18;
 const FILTER_BUTTON_GAP = 24;
 const FILTER_DISCLOSURE_WIDTH = 24;
+const FILTER_MENU_MIN_WIDTH = 156;
 const reverseBezier = ([x1, y1, x2, y2]) => [1 - x2, 1 - y2, 1 - x1, 1 - y1];
 const IOS_EASE = `cubic-bezier(${motionTokens.ease.ios.join(', ')})`;
 const IOS_EASE_REVERSE = `cubic-bezier(${reverseBezier(motionTokens.ease.ios).join(', ')})`;
@@ -95,6 +96,29 @@ export function FilterScreen({
   const filterOpenState = phase === 'closing' ? 'closed' : filterMode;
   const layerOpacity = visualPhase === 'open' ? 1 : 0;
   const panelOpacity = visualPhase === 'open' ? 1 : 0;
+  const menuMaxWidth = Math.max(
+    FILTER_MENU_MIN_WIDTH,
+    viewportDimensions.width - FILTER_COLUMN_EDGE * 2,
+  );
+  const harborMenuWidth = Math.min(
+    menuMaxWidth,
+    Math.max(FILTER_MENU_MIN_WIDTH, harborColumnWidth + 44),
+  );
+  const vesselTypeMenuWidth = Math.min(
+    menuMaxWidth,
+    Math.max(FILTER_MENU_MIN_WIDTH, vesselTypeColumnWidth + 44),
+  );
+  const harborMenuLeft = Math.min(
+    columnLayout.harborLeft,
+    Math.max(FILTER_COLUMN_EDGE, viewportDimensions.width - FILTER_COLUMN_EDGE - harborMenuWidth),
+  );
+  const vesselTypeMenuLeft = Math.min(
+    columnLayout.vesselTypeLeft,
+    Math.max(
+      FILTER_COLUMN_EDGE,
+      viewportDimensions.width - FILTER_COLUMN_EDGE - vesselTypeMenuWidth,
+    ),
+  );
   const filterTranslateY =
     reducedMotion || visualPhase === 'open' ? 0 : motionTokens.offset.sheetLift;
   const transitionTimingFunction = visualPhase === 'closing' ? IOS_EASE_REVERSE : IOS_EASE;
@@ -287,6 +311,7 @@ export function FilterScreen({
       <View className="filter-screen__results" style={[styles.resultsShell, styles.pointerEventsNone]}>
         <VesselResults
           compact={compact}
+          contentTopPadding={0}
           onImageClick={onImageClick}
           scrollResetKey={filterScrollResetKey}
           style={styles.filterResults}
@@ -306,6 +331,7 @@ export function FilterScreen({
 
       <View
         className="filter-screen__panel"
+        pointerEvents="box-none"
         style={[
           styles.panel,
           styles.pointerEventsBoxNone,
@@ -320,79 +346,103 @@ export function FilterScreen({
         ]}
         ref={panelRef}
       >
-        <View className="filter-screen__columns" style={[styles.columns, styles.pointerEventsBoxNone]}>
-          <View
-            className="filter-screen__column"
-            style={[styles.column, { top: columnLayout.top, left: columnLayout.harborLeft }]}
-          >
-            {harborOptions.map((option) => (
-              <InteractivePressable
-                key={option}
-                accessibilityRole="button"
-                className={`filter-screen__option pressable-control pressable-control--option ${
-                  harborFilter === option ? 'filter-screen__option--active' : ''
-                }`.trim()}
-                onLayout={updateMaxWidth(setHarborOptionWidth)}
-                onPress={() => {
-                  onHarborSelect(option);
-                  onClose();
-                }}
-                pressGuideVariant="option"
-                style={({ focused, pressed }) => [
-                  interactiveStyles.base,
-                  styles.option,
-                  harborFilter === option && styles.optionActive,
-                  focused && interactiveStyles.focus,
-                  { transform: [{ scale: pressed ? getInteractiveScale('row') : 1 }] },
-                ]}
-              >
-                <Text
-                  className="filter-screen__option-label filter-button__label"
-                  style={[styles.optionLabel, harborFilter === option && styles.optionLabelActive]}
-                >
-                  {option}
-                </Text>
-              </InteractivePressable>
-            ))}
-          </View>
-
-          <View
-            className="filter-screen__column"
-            style={[styles.column, { top: columnLayout.top, left: columnLayout.vesselTypeLeft }]}
-          >
-            {vesselTypeOptions.map((option) => (
-              <InteractivePressable
-                key={option}
-                accessibilityRole="button"
-                className={`filter-screen__option pressable-control pressable-control--option ${
-                  vesselTypeFilter === option ? 'filter-screen__option--active' : ''
-                }`.trim()}
-                onLayout={updateMaxWidth(setVesselTypeOptionWidth)}
-                onPress={() => {
-                  onVesselTypeSelect(option);
-                  onClose();
-                }}
-                pressGuideVariant="option"
-                style={({ focused, pressed }) => [
-                  interactiveStyles.base,
-                  styles.option,
-                  vesselTypeFilter === option && styles.optionActive,
-                  focused && interactiveStyles.focus,
-                  { transform: [{ scale: pressed ? getInteractiveScale('row') : 1 }] },
-                ]}
-              >
-                <Text
-                  className="filter-screen__option-label filter-button__label"
-                  style={[
-                    styles.optionLabel,
-                    vesselTypeFilter === option && styles.optionLabelActive,
+        <View
+          className="filter-screen__columns"
+          pointerEvents="box-none"
+          style={[styles.columns, styles.pointerEventsBoxNone]}
+        >
+          {filterMode === 'harbor' ? (
+            <View
+              className="filter-screen__column"
+              style={[
+                styles.column,
+                {
+                  top: columnLayout.top,
+                  left: harborMenuLeft,
+                  width: harborMenuWidth,
+                },
+              ]}
+            >
+              {harborOptions.map((option) => (
+                <InteractivePressable
+                  key={option}
+                  accessibilityRole="button"
+                  className={`filter-screen__option pressable-control pressable-control--option ${
+                    harborFilter === option ? 'filter-screen__option--active' : ''
+                  }`.trim()}
+                  onLayout={updateMaxWidth(setHarborOptionWidth)}
+                  onPress={() => {
+                    onHarborSelect(option);
+                    onClose();
+                  }}
+                  pressGuideVariant="option"
+                  style={({ focused, pressed }) => [
+                    interactiveStyles.base,
+                    styles.option,
+                    harborFilter === option && styles.optionActive,
+                    focused && interactiveStyles.focus,
+                    { transform: [{ scale: pressed ? getInteractiveScale('row') : 1 }] },
                   ]}
                 >
-                  {option}
-                </Text>
-              </InteractivePressable>
-            ))}
-          </View>
+                  <Text
+                    className="filter-screen__option-label filter-button__label"
+                    numberOfLines={1}
+                    style={[styles.optionLabel, harborFilter === option && styles.optionLabelActive]}
+                  >
+                    {option}
+                  </Text>
+                </InteractivePressable>
+              ))}
+            </View>
+          ) : null}
+
+          {filterMode === 'vesselType' ? (
+            <View
+              className="filter-screen__column"
+              style={[
+                styles.column,
+                {
+                  top: columnLayout.top,
+                  left: vesselTypeMenuLeft,
+                  width: vesselTypeMenuWidth,
+                },
+              ]}
+            >
+              {vesselTypeOptions.map((option) => (
+                <InteractivePressable
+                  key={option}
+                  accessibilityRole="button"
+                  className={`filter-screen__option pressable-control pressable-control--option ${
+                    vesselTypeFilter === option ? 'filter-screen__option--active' : ''
+                  }`.trim()}
+                  onLayout={updateMaxWidth(setVesselTypeOptionWidth)}
+                  onPress={() => {
+                    onVesselTypeSelect(option);
+                    onClose();
+                  }}
+                  pressGuideVariant="option"
+                  style={({ focused, pressed }) => [
+                    interactiveStyles.base,
+                    styles.option,
+                    vesselTypeFilter === option && styles.optionActive,
+                    focused && interactiveStyles.focus,
+                    { transform: [{ scale: pressed ? getInteractiveScale('row') : 1 }] },
+                  ]}
+                >
+                  <Text
+                    className="filter-screen__option-label filter-button__label"
+                    numberOfLines={1}
+                    style={[
+                      styles.optionLabel,
+                      vesselTypeFilter === option && styles.optionLabelActive,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </InteractivePressable>
+              ))}
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -502,14 +552,25 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
-    gap: 24,
-    backgroundColor: 'var(--color-bg-screen)',
+    gap: 0,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'var(--color-border-subtle)',
+    backgroundColor: 'var(--color-bg-surface-elevated)',
+    shadowColor: '#000000',
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
   },
   option: {
+    width: '100%',
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
     textAlign: 'left',
   },
   optionLabel: {
-    display: 'inline-block',
     color: 'var(--color-text-tertiary)',
     fontSize: 18,
     lineHeight: 23.4,
