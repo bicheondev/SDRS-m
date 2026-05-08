@@ -67,12 +67,12 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
       }
     : null;
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
-  const topBand = colorWithAlpha(screenColor, isDark ? 0.7 : 0.74);
-  const midBand = colorWithAlpha(screenColor, isDark ? 0.48 : 0.54);
+  const topBand = colorWithAlpha(screenColor, isDark ? 0.84 : 0.86);
+  const midBand = colorWithAlpha(screenColor, isDark ? 0.74 : 0.78);
   const fadeBand = colorWithAlpha(screenColor, 0);
-  const filterTopBand = colorWithAlpha(screenColor, isDark ? 0.28 : 0.26);
-  const filterMidBand = colorWithAlpha(screenColor, isDark ? 0.14 : 0.12);
-  const filterLowBand = colorWithAlpha(screenColor, 0.04);
+  const filterTopBand = colorWithAlpha(screenColor, isDark ? 0.78 : 0.82);
+  const filterMidBand = colorWithAlpha(screenColor, isDark ? 0.62 : 0.68);
+  const filterLowBand = colorWithAlpha(screenColor, 0);
   const filterBackdropTop = colorWithAlpha(screenColor, 1);
   const filterBackdropLow = colorWithAlpha(screenColor, 0.5);
 
@@ -89,7 +89,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
         <BlurView
           key={`top-frost-${blurModeKey}`}
           {...nativeBlurProps}
-          intensity={42}
+          intensity={64}
           pointerEvents="none"
           style={styles.frostBlur}
           tint={blurTint}
@@ -106,7 +106,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
           <BlurView
             key={`filter-sheet-frost-${blurModeKey}`}
             {...nativeBlurProps}
-            intensity={32}
+            intensity={20}
             pointerEvents="none"
             style={styles.frostBlur}
             tint={blurTint}
@@ -130,7 +130,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
         <BlurView
           key={`filters-frost-${blurModeKey}`}
           {...nativeBlurProps}
-          intensity={24}
+          intensity={36}
           pointerEvents="none"
           style={styles.frostBlur}
           tint={blurTint}
@@ -835,6 +835,6 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   viewOptionsBlurred: {
-    opacity: 0.24,
+    opacity: 0.2,
   },
 });

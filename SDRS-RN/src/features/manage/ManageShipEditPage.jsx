@@ -1520,7 +1520,7 @@ function ManageSavedToast({ message, onDismiss }) {
         >
           <View style={styles.toast}>
             <BlurView
-              intensity={44}
+              intensity={72}
               pointerEvents="none"
               style={styles.toastBlurLayer}
               tint={isDark ? 'dark' : 'default'}
@@ -1529,7 +1529,7 @@ function ManageSavedToast({ message, onDismiss }) {
               colors={
                 isDark
                   ? ['rgba(30, 41, 59, 0.76)', 'rgba(30, 41, 59, 0.58)']
-                  : ['rgba(248, 250, 252, 0.72)', 'rgba(241, 245, 249, 0.52)']
+                  : ['rgba(248, 250, 252, 0.82)', 'rgba(241, 245, 249, 0.6)']
               }
               locations={[0, 1]}
               pointerEvents="none"
@@ -2587,11 +2587,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'var(--color-bg-accent-soft)',
     color: 'var(--color-accent)',
     transform: [{ translateY: -1 }],
-    shadowColor: 'var(--color-accent)',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   reorderLabel: {
     color: 'var(--color-text-muted)',

@@ -450,13 +450,18 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
+    width: '100%',
+    alignSelf: 'stretch',
   },
   manageHomeGroup: {
     display: 'flex',
     flexDirection: 'column',
+    width: '100%',
+    alignSelf: 'stretch',
   },
   manageHomeRow: {
     width: '100%',
+    alignSelf: 'stretch',
     minHeight: 52,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -469,6 +474,7 @@ const styles = StyleSheet.create({
   manageHomeLabel: {
     color: 'var(--color-text-tertiary)',
     flexShrink: 0,
+    minWidth: 0,
     fontSize: 18,
     lineHeight: 20,
     fontWeight: '500',

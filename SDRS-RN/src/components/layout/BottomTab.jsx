@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { BlurView } from 'expo-blur';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
 import { AppIcon } from '../Icons.jsx';
@@ -51,12 +52,15 @@ function BottomTab({
   onMenuClick,
 }) {
   const { resolvedColorMode } = useTheme();
+  const insets = useSafeAreaInsets();
   const { width: viewportWidth } = useWindowDimensions();
+  const bottomInset = Math.max(insets.bottom, 0);
   const tabWidth = getScreenWidthForViewport(viewportWidth);
   const tabLeft = contained ? 0 : (viewportWidth - tabWidth) / 2;
   const itemTotalWidth = 70 * 3;
   const itemGap = Math.min(70, Math.max(0, (tabWidth - itemTotalWidth) / 4));
   const isDark = resolvedColorMode === 'dark';
+  const blurTint = isDark ? 'dark' : 'default';
   const blurModeKey = blurTargetRef ? 'targeted' : 'fallback';
   const nativeBlurProps = blurred && blurTargetRef
     ? {
@@ -74,8 +78,8 @@ function BottomTab({
         {
           left: tabLeft,
           width: tabWidth,
-          height: 84,
-          paddingBottom: 0,
+          height: 84 + bottomInset,
+          paddingBottom: bottomInset,
           gap: itemGap,
         },
       ]}
@@ -95,7 +99,7 @@ function BottomTab({
             intensity={52}
             pointerEvents="none"
             style={styles.backdropBlur}
-            tint={isDark ? 'dark' : 'light'}
+            tint={blurTint}
           />
         ) : null}
         {blurred ? (
@@ -226,7 +230,7 @@ const styles = StyleSheet.create({
     color: 'var(--color-accent)',
   },
   itemBlurred: {
-    opacity: 0.54,
+    opacity: 0.38,
   },
   label: {
     color: 'var(--color-text-tertiary)',
