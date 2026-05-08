@@ -57,6 +57,7 @@ function colorWithAlpha(color, alpha) {
 function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter = false, topInset = 0 }) {
   const { resolvedColorMode } = useTheme();
   const isDark = resolvedColorMode === 'dark';
+  const blurTint = isDark ? 'dark' : 'default';
   const blurModeKey = blurTargetRef ? 'targeted' : 'fallback';
   const nativeBlurProps = blurTargetRef
     ? {
@@ -91,7 +92,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
           intensity={42}
           pointerEvents="none"
           style={styles.frostBlur}
-          tint={isDark ? 'dark' : 'light'}
+          tint={blurTint}
         />
         <LinearGradient
           colors={[topBand, topBand, midBand, colorWithAlpha(screenColor, 0.1), fadeBand]}
@@ -108,7 +109,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
             intensity={32}
             pointerEvents="none"
             style={styles.frostBlur}
-            tint={isDark ? 'dark' : 'light'}
+            tint={blurTint}
           />
           <LinearGradient
             colors={[filterBackdropTop, filterBackdropLow]}
@@ -132,7 +133,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
           intensity={24}
           pointerEvents="none"
           style={styles.frostBlur}
-          tint={isDark ? 'dark' : 'light'}
+          tint={blurTint}
         />
         <LinearGradient
           colors={[filterLowBand, filterTopBand, filterMidBand, filterLowBand]}
@@ -834,6 +835,6 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   viewOptionsBlurred: {
-    opacity: 0.32,
+    opacity: 0.24,
   },
 });

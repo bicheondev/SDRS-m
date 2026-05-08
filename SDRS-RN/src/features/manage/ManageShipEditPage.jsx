@@ -1513,39 +1513,41 @@ function ManageSavedToast({ message, onDismiss }) {
       >
         <Animated.View
           style={[
-            styles.toast,
+            styles.toastShadow,
             { shadowColor: isDark ? '#0f172a' : '#475569' },
             toastAnimatedStyle,
           ]}
         >
-          <BlurView
-            intensity={32}
-            pointerEvents="none"
-            style={styles.toastBlurLayer}
-            tint={isDark ? 'dark' : 'light'}
-          />
-          <LinearGradient
-            colors={
-              isDark
-                ? ['rgba(30, 41, 59, 0.72)', 'rgba(30, 41, 59, 0.54)']
-                : ['rgba(248, 250, 252, 0.66)', 'rgba(241, 245, 249, 0.46)']
-            }
-            locations={[0, 1]}
-            pointerEvents="none"
-            style={styles.toastFrostLayer}
-          />
-          <View pointerEvents="none" style={styles.toastInsetStroke} />
-          <View style={styles.toastIconCircle}>
-            <AppIcon
-              glyphSize={17}
-              name="check"
-              opticalSize={20}
-              preset="toastCheck"
-              slotSize={18}
-              tone="on-accent"
+          <View style={styles.toast}>
+            <BlurView
+              intensity={44}
+              pointerEvents="none"
+              style={styles.toastBlurLayer}
+              tint={isDark ? 'dark' : 'default'}
             />
+            <LinearGradient
+              colors={
+                isDark
+                  ? ['rgba(30, 41, 59, 0.76)', 'rgba(30, 41, 59, 0.58)']
+                  : ['rgba(248, 250, 252, 0.72)', 'rgba(241, 245, 249, 0.52)']
+              }
+              locations={[0, 1]}
+              pointerEvents="none"
+              style={styles.toastFrostLayer}
+            />
+            <View pointerEvents="none" style={styles.toastInsetStroke} />
+            <View style={styles.toastIconCircle}>
+              <AppIcon
+                glyphSize={17}
+                name="check"
+                opticalSize={20}
+                preset="toastCheck"
+                slotSize={18}
+                tone="on-accent"
+              />
+            </View>
+            <Text style={styles.toastMessage}>{message}</Text>
           </View>
-          <Text style={styles.toastMessage}>{message}</Text>
         </Animated.View>
       </View>
     </View>
@@ -2942,6 +2944,18 @@ const styles = StyleSheet.create({
   },
   toastFadeDismissing: {
   },
+  toastShadow: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    backgroundColor: 'transparent',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 7,
+  },
   toast: {
     display: 'flex',
     flexDirection: 'row',
@@ -2955,11 +2969,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     backgroundColor: 'var(--color-bg-toast)',
-    shadowColor: '#475569',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 5,
   },
   toastBlurLayer: {
     position: 'absolute',

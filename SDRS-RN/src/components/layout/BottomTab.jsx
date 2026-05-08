@@ -1,7 +1,6 @@
 import { memo } from 'react';
 import { BlurView } from 'expo-blur';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
 import { AppIcon } from '../Icons.jsx';
@@ -10,7 +9,7 @@ import { InteractivePressable } from '../primitives/InteractivePressable.jsx';
 import { AppText as Text } from '../primitives/AppTypography.jsx';
 import { getScreenWidthForViewport } from './ScreenLayout.jsx';
 
-function BottomTabButton({ active, label, name, onPress, tone }) {
+function BottomTabButton({ active, blurred = false, label, name, onPress, tone }) {
   return (
     <InteractivePressable
       accessibilityRole="button"
@@ -25,6 +24,7 @@ function BottomTabButton({ active, label, name, onPress, tone }) {
         interactiveStyles.base,
         styles.item,
         active ? styles.itemActive : styles.itemInactive,
+        blurred && styles.itemBlurred,
         focused && interactiveStyles.focus,
         { transform: [{ scale: pressed ? getInteractiveScale('button') : 1 }] },
       ]}
@@ -51,9 +51,7 @@ function BottomTab({
   onMenuClick,
 }) {
   const { resolvedColorMode } = useTheme();
-  const insets = useSafeAreaInsets();
   const { width: viewportWidth } = useWindowDimensions();
-  const bottomInset = Math.max(insets.bottom, 0);
   const tabWidth = getScreenWidthForViewport(viewportWidth);
   const tabLeft = contained ? 0 : (viewportWidth - tabWidth) / 2;
   const itemTotalWidth = 70 * 3;
@@ -76,8 +74,8 @@ function BottomTab({
         {
           left: tabLeft,
           width: tabWidth,
-          height: 84 + bottomInset,
-          paddingBottom: bottomInset,
+          height: 84,
+          paddingBottom: 0,
           gap: itemGap,
         },
       ]}
@@ -113,6 +111,7 @@ function BottomTab({
         name="data_table"
         onPress={onDbClick}
         tone={activeTab === 'db' ? 'accent' : 'muted'}
+        blurred={blurred}
       />
       <BottomTabButton
         active={activeTab === 'manage'}
@@ -120,6 +119,7 @@ function BottomTab({
         name="database"
         onPress={onManageClick}
         tone={activeTab === 'manage' ? 'accent' : 'muted'}
+        blurred={blurred}
       />
       <BottomTabButton
         active={activeTab === 'menu'}
@@ -127,6 +127,7 @@ function BottomTab({
         name="dehaze"
         onPress={onMenuClick}
         tone={activeTab === 'menu' ? 'accent' : 'muted'}
+        blurred={blurred}
       />
     </View>
   );
@@ -223,6 +224,9 @@ const styles = StyleSheet.create({
   },
   itemActive: {
     color: 'var(--color-accent)',
+  },
+  itemBlurred: {
+    opacity: 0.54,
   },
   label: {
     color: 'var(--color-text-tertiary)',
