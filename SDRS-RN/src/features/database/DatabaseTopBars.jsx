@@ -70,8 +70,8 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
   const topBand = colorWithAlpha(screenColor, isDark ? 0.84 : 0.86);
   const midBand = colorWithAlpha(screenColor, isDark ? 0.74 : 0.78);
   const fadeBand = colorWithAlpha(screenColor, 0);
-  const filterTopBand = colorWithAlpha(screenColor, isDark ? 0.78 : 0.82);
-  const filterMidBand = colorWithAlpha(screenColor, isDark ? 0.62 : 0.68);
+  const filterTopBand = colorWithAlpha(screenColor, isDark ? 0.4 : 0.34);
+  const filterMidBand = colorWithAlpha(screenColor, isDark ? 0.22 : 0.18);
   const filterLowBand = colorWithAlpha(screenColor, 0);
   const filterBackdropTop = colorWithAlpha(screenColor, 1);
   const filterBackdropLow = colorWithAlpha(screenColor, 0.5);
