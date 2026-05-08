@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,6 +26,8 @@ import { APP_FONT_FAMILY, resolveCssVariableString } from '../theme.js';
 import { AppShellGradient } from '../components/layout/ScreenLayout.jsx';
 
 const LOGIN_TITLE_FONT_FAMILY = 'PretendardGOV-SemiBold';
+const LOGIN_PLACEHOLDER_COLOR = '#94a3b8';
+const IS_WEB = Platform.OS === 'web';
 
 export function RnwAuthScreen({
   focusedField,
@@ -51,11 +54,15 @@ export function RnwAuthScreen({
   const passwordFocused = focusedField === 'password';
   const inputBgColor = resolveCssVariableString('var(--color-bg-input)');
   const inputFocusBgColor = resolveCssVariableString('var(--color-bg-input-focus)');
-  const placeholderColor = resolveCssVariableString('var(--color-text-muted)');
+  const inputFocusRingColor = resolveCssVariableString('var(--color-border-accent-focus)');
   const placeholderFocusedColor = resolveCssVariableString('var(--color-text-accent-strong)');
   const selectionColor = resolveCssVariableString('var(--color-text-accent)');
+  const inputFocusRingStyle = IS_WEB
+    ? { boxShadow: `0 0 0 1px ${inputFocusRingColor}` }
+    : null;
   const usernameFocusProgress = useSharedValue(usernameFocused ? 1 : 0);
   const passwordFocusProgress = useSharedValue(passwordFocused ? 1 : 0);
+  const loginButtonPressProgress = useSharedValue(0);
   const usernameInputShellStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
       usernameFocusProgress.value,
@@ -72,6 +79,9 @@ export function RnwAuthScreen({
     ),
     transform: [{ translateY: -passwordFocusProgress.value }],
   }));
+  const loginButtonOverlayStyle = useAnimatedStyle(() => ({
+    opacity: loginButtonPressProgress.value,
+  }));
 
   useEffect(() => {
     usernameFocusProgress.value = withTiming(usernameFocused ? 1 : 0, {
@@ -86,6 +96,15 @@ export function RnwAuthScreen({
       easing: Easing.bezier(...motionTokens.ease.ios),
     });
   }, [passwordFocusProgress, passwordFocused]);
+
+  useEffect(() => {
+    if (!isFilled) {
+      loginButtonPressProgress.value = withTiming(0, {
+        duration: motionDurationsMs.fast,
+        easing: Easing.bezier(...motionTokens.ease.ios),
+      });
+    }
+  }, [isFilled, loginButtonPressProgress]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -108,6 +127,24 @@ export function RnwAuthScreen({
 
   const handleUsernameSubmit = () => {
     passwordInputRef.current?.focus();
+  };
+
+  const handleLoginPressIn = () => {
+    if (!isFilled) {
+      return;
+    }
+
+    loginButtonPressProgress.value = withTiming(1, {
+      duration: motionDurationsMs.fast,
+      easing: Easing.bezier(...motionTokens.ease.ios),
+    });
+  };
+
+  const handleLoginPressOut = () => {
+    loginButtonPressProgress.value = withTiming(0, {
+      duration: motionDurationsMs.fast,
+      easing: Easing.bezier(...motionTokens.ease.ios),
+    });
   };
 
   return (
@@ -142,11 +179,12 @@ export function RnwAuthScreen({
               contentContainerStyle={styles.loginScrollContent}
             >
               <View style={[styles.loginHeader, { paddingTop: 77 + topInset }]}>
-                <Text style={styles.loginTitle}>
-                  <Text style={styles.loginTitleAccent}>로그인 정보</Text>를
-                  {'\n'}
-                  입력하세요
-                </Text>
+                <View style={styles.loginTitle}>
+                  <Text style={styles.loginTitleLine}>
+                    <Text style={styles.loginTitleAccent}>로그인 정보</Text>를
+                  </Text>
+                  <Text style={styles.loginTitleLine}>입력하세요.</Text>
+                </View>
               </View>
 
               <View style={styles.loginForm}>
@@ -154,6 +192,7 @@ export function RnwAuthScreen({
                   style={[
                     styles.inputShell,
                     usernameFocused && styles.inputShellFocused,
+                    usernameFocused && inputFocusRingStyle,
                     usernameInputShellStyle,
                   ]}
                 >
@@ -167,7 +206,9 @@ export function RnwAuthScreen({
                     onFocus={() => onFieldFocus('username')}
                     onSubmitEditing={handleUsernameSubmit}
                     placeholder="아이디"
-                    placeholderTextColor={usernameFocused ? placeholderFocusedColor : placeholderColor}
+                    placeholderTextColor={
+                      usernameFocused ? placeholderFocusedColor : LOGIN_PLACEHOLDER_COLOR
+                    }
                     returnKeyType="next"
                     selectionColor={selectionColor}
                     spellCheck={false}
@@ -181,6 +222,7 @@ export function RnwAuthScreen({
                     styles.inputShell,
                     styles.passwordShell,
                     passwordFocused && styles.inputShellFocused,
+                    passwordFocused && inputFocusRingStyle,
                     passwordInputShellStyle,
                   ]}
                 >
@@ -192,7 +234,9 @@ export function RnwAuthScreen({
                     onFocus={() => onFieldFocus('password')}
                     onSubmitEditing={handleSubmit}
                     placeholder="비밀번호"
-                    placeholderTextColor={passwordFocused ? placeholderFocusedColor : placeholderColor}
+                    placeholderTextColor={
+                      passwordFocused ? placeholderFocusedColor : LOGIN_PLACEHOLDER_COLOR
+                    }
                     returnKeyType="go"
                     secureTextEntry
                     selectionColor={selectionColor}
@@ -220,19 +264,21 @@ export function RnwAuthScreen({
                 accessibilityRole="button"
                 disabled={!isFilled}
                 onPress={handleSubmit}
+                onPressIn={handleLoginPressIn}
+                onPressOut={handleLoginPressOut}
                 style={({ focused }) => [
                   styles.loginButton,
                   isFilled ? styles.loginButtonActive : styles.loginButtonInactive,
                   focused ? styles.loginButtonFocused : null,
                 ]}
               >
-                {({ pressed }) => (
+                {() => (
                   <>
-                    <View
+                    <Animated.View
                       style={[
                         styles.loginButtonOverlay,
                         styles.pointerEventsNone,
-                        isFilled && pressed ? styles.loginButtonOverlayPressed : null,
+                        loginButtonOverlayStyle,
                       ]}
                     />
                     <Text style={[styles.loginButtonText, isFilled && styles.loginButtonTextActive]}>
@@ -285,6 +331,10 @@ const styles = StyleSheet.create({
   },
   loginTitle: {
     margin: 0,
+    alignItems: 'flex-start',
+  },
+  loginTitleLine: {
+    margin: 0,
     color: 'var(--color-text-primary)',
     fontFamily: LOGIN_TITLE_FONT_FAMILY,
     fontSize: 26,
@@ -307,7 +357,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
-    borderWidth: 1,
+    borderWidth: IS_WEB ? 0 : 1,
     borderColor: 'transparent',
     borderRadius: 14,
     backgroundColor: 'var(--color-bg-input)',
@@ -390,9 +440,6 @@ const styles = StyleSheet.create({
   },
   pointerEventsNone: {
     pointerEvents: 'none',
-  },
-  loginButtonOverlayPressed: {
-    opacity: 1,
   },
   loginButtonText: {
     color: 'var(--color-text-disabled)',
