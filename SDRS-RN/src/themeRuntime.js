@@ -1,4 +1,4 @@
-import { Appearance, StyleSheet } from 'react-native';
+import { Appearance, Platform, StyleSheet } from 'react-native';
 
 import {
   getActiveTheme,
@@ -105,6 +105,7 @@ const PRETENDARD_FONT_FAMILIES = new Set([
   'PretendardGOV-SemiBold',
   'PretendardGOV-Bold',
 ]);
+const SHOULD_RESET_PRETENDARD_FONT_WEIGHT = Platform.OS !== 'web';
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -371,7 +372,9 @@ function resolveStyleObject(style, theme, context = createStyleResolutionContext
 
     if (shouldApplyPretendardWeight(next)) {
       next.fontFamily = getPretendardFontFamilyForWeight(next.fontWeight);
-      next.fontWeight = '400';
+      if (SHOULD_RESET_PRETENDARD_FONT_WEIGHT) {
+        next.fontWeight = '400';
+      }
     } else if (isPretendardFontFamily(next.fontFamily)) {
       next.fontFamily = getPretendardFontFamilyForWeight(next.fontWeight);
     }

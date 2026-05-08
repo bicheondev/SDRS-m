@@ -24,6 +24,8 @@ import { motionDurationsMs, motionTokens } from '../motion.js';
 import { APP_FONT_FAMILY, resolveCssVariableString } from '../theme.js';
 import { AppShellGradient } from '../components/layout/ScreenLayout.jsx';
 
+const LOGIN_TITLE_FONT_FAMILY = 'PretendardGOV-SemiBold';
+
 export function RnwAuthScreen({
   focusedField,
   isFilled,
@@ -49,6 +51,9 @@ export function RnwAuthScreen({
   const passwordFocused = focusedField === 'password';
   const inputBgColor = resolveCssVariableString('var(--color-bg-input)');
   const inputFocusBgColor = resolveCssVariableString('var(--color-bg-input-focus)');
+  const placeholderColor = resolveCssVariableString('var(--color-text-muted)');
+  const placeholderFocusedColor = resolveCssVariableString('var(--color-text-accent-strong)');
+  const selectionColor = resolveCssVariableString('var(--color-text-accent)');
   const usernameFocusProgress = useSharedValue(usernameFocused ? 1 : 0);
   const passwordFocusProgress = useSharedValue(passwordFocused ? 1 : 0);
   const usernameInputShellStyle = useAnimatedStyle(() => ({
@@ -140,12 +145,18 @@ export function RnwAuthScreen({
                 <Text style={styles.loginTitle}>
                   <Text style={styles.loginTitleAccent}>로그인 정보</Text>를
                   {'\n'}
-                  입력하세요.
+                  입력하세요
                 </Text>
               </View>
 
               <View style={styles.loginForm}>
-                <Animated.View style={[styles.inputShell, usernameInputShellStyle]}>
+                <Animated.View
+                  style={[
+                    styles.inputShell,
+                    usernameFocused && styles.inputShellFocused,
+                    usernameInputShellStyle,
+                  ]}
+                >
                   <TextInput
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -156,20 +167,23 @@ export function RnwAuthScreen({
                     onFocus={() => onFieldFocus('username')}
                     onSubmitEditing={handleUsernameSubmit}
                     placeholder="아이디"
-                    placeholderTextColor={resolveCssVariableString(
-                      usernameFocused
-                        ? 'var(--color-text-accent-strong)'
-                        : 'var(--color-text-muted)',
-                    )}
+                    placeholderTextColor={usernameFocused ? placeholderFocusedColor : placeholderColor}
                     returnKeyType="next"
-                    selectionColor={resolveCssVariableString('var(--color-text-accent)')}
+                    selectionColor={selectionColor}
                     spellCheck={false}
                     style={[styles.loginInput, usernameFocused && styles.loginInputFocused]}
                     value={username}
                   />
                 </Animated.View>
 
-                <Animated.View style={[styles.inputShell, styles.passwordShell, passwordInputShellStyle]}>
+                <Animated.View
+                  style={[
+                    styles.inputShell,
+                    styles.passwordShell,
+                    passwordFocused && styles.inputShellFocused,
+                    passwordInputShellStyle,
+                  ]}
+                >
                   <TextInput
                     ref={passwordInputRef}
                     enterKeyHint="go"
@@ -178,14 +192,10 @@ export function RnwAuthScreen({
                     onFocus={() => onFieldFocus('password')}
                     onSubmitEditing={handleSubmit}
                     placeholder="비밀번호"
-                    placeholderTextColor={resolveCssVariableString(
-                      passwordFocused
-                        ? 'var(--color-text-accent-strong)'
-                        : 'var(--color-text-muted)',
-                    )}
+                    placeholderTextColor={passwordFocused ? placeholderFocusedColor : placeholderColor}
                     returnKeyType="go"
                     secureTextEntry
-                    selectionColor={resolveCssVariableString('var(--color-text-accent)')}
+                    selectionColor={selectionColor}
                     style={[styles.loginInput, passwordFocused && styles.loginInputFocused]}
                     value={password}
                   />
@@ -276,7 +286,7 @@ const styles = StyleSheet.create({
   loginTitle: {
     margin: 0,
     color: 'var(--color-text-primary)',
-    fontFamily: APP_FONT_FAMILY,
+    fontFamily: LOGIN_TITLE_FONT_FAMILY,
     fontSize: 26,
     lineHeight: 33.8,
     fontWeight: '600',
