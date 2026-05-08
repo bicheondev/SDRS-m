@@ -22,7 +22,6 @@ export function AppShellGradient({ style }) {
     <LinearGradient
       colors={isDark ? ['#0f172a', '#0f172a', '#020617'] : ['#f3f7fd', '#edf3fa', '#dde6f2']}
       locations={isDark ? [0, 0.3, 1] : [0, 0.24, 1]}
-      pointerEvents="none"
       style={[screenLayoutStyles.appShellGradient, style]}
     />
   );
@@ -80,6 +79,7 @@ export const screenLayoutStyles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
+    pointerEvents: 'none',
   },
   appShellCompact: {
     padding: 0,

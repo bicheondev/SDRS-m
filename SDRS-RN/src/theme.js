@@ -287,27 +287,131 @@ export function getActiveTheme() {
   return themes[activeColorMode] ?? themes.light;
 }
 
-const VAR_PATTERN = /^var\(--([a-z0-9-]+)(?:,\s*(.+?))?\)$/i;
+const CSS_VAR_NAME_PATTERN = /^--([a-z0-9-]+)$/i;
+const MAX_CSS_VARIABLE_DEPTH = 20;
 
-export function resolveCssVariableString(value, theme = getActiveTheme()) {
+function parseCssVariableString(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('var(') || !trimmed.endsWith(')')) {
+    return null;
+  }
+
+  const body = trimmed.slice(4, -1).trim();
+  let splitIndex = -1;
+  let depth = 0;
+
+  for (let index = 0; index < body.length; index += 1) {
+    const char = body[index];
+    if (char === '(') {
+      depth += 1;
+    } else if (char === ')') {
+      depth -= 1;
+      if (depth < 0) {
+        return null;
+      }
+    } else if (char === ',' && depth === 0) {
+      splitIndex = index;
+      break;
+    }
+  }
+
+  if (depth !== 0) {
+    return null;
+  }
+
+  const tokenPart = (splitIndex === -1 ? body : body.slice(0, splitIndex)).trim();
+  const tokenMatch = tokenPart.match(CSS_VAR_NAME_PATTERN);
+  if (!tokenMatch) {
+    return null;
+  }
+
+  const fallback =
+    splitIndex === -1 ? undefined : body.slice(splitIndex + 1).trim() || undefined;
+
+  return {
+    fallback,
+    tokenName: tokenMatch[1],
+  };
+}
+
+function getThemeToken(theme, tokenName) {
+  if (!theme) {
+    return { found: false, value: undefined };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(theme, tokenName)) {
+    return { found: true, value: theme[tokenName] };
+  }
+
+  const cssTokenName = `--${tokenName}`;
+  if (Object.prototype.hasOwnProperty.call(theme, cssTokenName)) {
+    return { found: true, value: theme[cssTokenName] };
+  }
+
+  return { found: false, value: undefined };
+}
+
+export function resolveCssVariableString(value, theme = getActiveTheme(), options = {}) {
   if (typeof value !== 'string') {
     return value;
   }
 
-  const match = value.match(VAR_PATTERN);
-  if (!match) {
-    return value;
+  const maxDepth = options.maxDepth ?? MAX_CSS_VARIABLE_DEPTH;
+  const seenTokens = options.seenTokens ?? new Set();
+  const seenValues = options.seenValues ?? new Set();
+
+  function resolve(currentValue, depth) {
+    if (typeof currentValue !== 'string') {
+      return currentValue;
+    }
+
+    if (depth >= maxDepth) {
+      return currentValue;
+    }
+
+    const parsed = parseCssVariableString(currentValue);
+    if (!parsed) {
+      return currentValue;
+    }
+
+    const rawValue = currentValue.trim();
+    const resolveFallback = () =>
+      parsed.fallback === undefined ? currentValue : resolve(parsed.fallback, depth + 1);
+
+    if (seenValues.has(rawValue) || seenTokens.has(parsed.tokenName)) {
+      return resolveFallback();
+    }
+
+    seenValues.add(rawValue);
+    seenTokens.add(parsed.tokenName);
+
+    try {
+      const { found, value: resolved } = getThemeToken(theme, parsed.tokenName);
+
+      if (!found) {
+        return resolveFallback();
+      }
+
+      if (resolved === null || resolved === undefined) {
+        return parsed.fallback === undefined ? undefined : resolve(parsed.fallback, depth + 1);
+      }
+
+      if (typeof resolved === 'string' && resolved.trim() === rawValue) {
+        return resolveFallback();
+      }
+
+      return resolve(resolved, depth + 1);
+    } finally {
+      seenValues.delete(rawValue);
+      seenTokens.delete(parsed.tokenName);
+    }
   }
 
-  const tokenName = match[1];
-  const fallback = match[2]?.trim();
-
-  if (Object.prototype.hasOwnProperty.call(theme, tokenName)) {
-    const resolved = theme[tokenName];
-    return resolved === null ? undefined : resolved;
-  }
-
-  return fallback ?? value;
+  return resolve(value, options.depth ?? 0);
 }
 
 export function getThemeCssVariables() {

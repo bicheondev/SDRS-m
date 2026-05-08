@@ -222,6 +222,14 @@ function adaptShadowOrFilter(key, value) {
   return value;
 }
 
+function createStyleResolutionContext() {
+  return {
+    arrayStack: new WeakSet(),
+    objectStack: new WeakSet(),
+    valueStack: new Set(),
+  };
+}
+
 function adaptDisplayValue(value) {
   if (value === 'flex' || value === 'none') {
     return value;
@@ -243,7 +251,7 @@ function adaptDisplayValue(value) {
   return value;
 }
 
-function adaptValue(key, value, theme) {
+function adaptValue(key, value, theme, context = createStyleResolutionContext()) {
   if (UNSUPPORTED_STYLE_KEYS.has(key)) {
     return undefined;
   }
@@ -253,11 +261,28 @@ function adaptValue(key, value, theme) {
   }
 
   if (isCssVarString(value)) {
-    const resolved = resolveCssVariableString(value, theme);
+    const rawValue = value.trim();
+    if (context.valueStack.has(rawValue)) {
+      return undefined;
+    }
+
+    context.valueStack.add(rawValue);
+    let resolved;
+    try {
+      resolved = resolveCssVariableString(value, theme);
+    } finally {
+      context.valueStack.delete(rawValue);
+    }
+
     if (resolved === undefined || resolved === null) {
       return undefined;
     }
-    return adaptValue(key, resolved, theme);
+
+    if (resolved === value || (typeof resolved === 'string' && resolved.trim() === rawValue)) {
+      return undefined;
+    }
+
+    return adaptValue(key, resolved, theme, context);
   }
 
   if (POSITION_FIXED_KEYS.has(key) && value === 'fixed') {
@@ -285,45 +310,76 @@ function adaptValue(key, value, theme) {
   return adaptShadowOrFilter(key, value);
 }
 
-function resolveStyleObject(style, theme) {
+function resolveStyleArray(styleArray, theme, context, key) {
+  if (context.arrayStack.has(styleArray)) {
+    return [];
+  }
+
+  context.arrayStack.add(styleArray);
+  try {
+    return styleArray
+      .map((entry) => {
+        if (isPlainObject(entry)) {
+          return resolveStyleObject(entry, theme, context);
+        }
+
+        if (Array.isArray(entry)) {
+          return resolveStyleArray(entry, theme, context, key);
+        }
+
+        return adaptValue(key, entry, theme, context);
+      })
+      .filter((entry) => entry !== undefined && entry !== null && entry !== false);
+  } finally {
+    context.arrayStack.delete(styleArray);
+  }
+}
+
+function resolveStyleObject(style, theme, context = createStyleResolutionContext()) {
   if (!isPlainObject(style)) {
     return style;
   }
 
+  if (context.objectStack.has(style)) {
+    return undefined;
+  }
+
+  context.objectStack.add(style);
   const next = {};
-  for (const key of Object.keys(style)) {
-    const value = style[key];
+  try {
+    for (const key of Object.keys(style)) {
+      const value = style[key];
 
-    if (isPlainObject(value)) {
-      const inner = resolveStyleObject(value, theme);
-      if (inner !== undefined) {
-        next[key] = inner;
+      if (isPlainObject(value)) {
+        const inner = resolveStyleObject(value, theme, context);
+        if (inner !== undefined) {
+          next[key] = inner;
+        }
+        continue;
       }
-      continue;
+
+      if (Array.isArray(value)) {
+        next[key] = resolveStyleArray(value, theme, context, key);
+        continue;
+      }
+
+      const adapted = adaptValue(key, value, theme, context);
+      if (adapted !== undefined) {
+        next[key] = adapted;
+      }
     }
 
-    if (Array.isArray(value)) {
-      const arr = value
-        .map((entry) => (isPlainObject(entry) ? resolveStyleObject(entry, theme) : entry))
-        .filter((entry) => entry !== undefined && entry !== null);
-      next[key] = arr;
-      continue;
+    if (shouldApplyPretendardWeight(next)) {
+      next.fontFamily = getPretendardFontFamilyForWeight(next.fontWeight);
+      next.fontWeight = '400';
+    } else if (isPretendardFontFamily(next.fontFamily)) {
+      next.fontFamily = getPretendardFontFamilyForWeight(next.fontWeight);
     }
 
-    const adapted = adaptValue(key, value, theme);
-    if (adapted !== undefined) {
-      next[key] = adapted;
-    }
+    return next;
+  } finally {
+    context.objectStack.delete(style);
   }
-
-  if (shouldApplyPretendardWeight(next)) {
-    next.fontFamily = getPretendardFontFamilyForWeight(next.fontWeight);
-    next.fontWeight = '400';
-  } else if (isPretendardFontFamily(next.fontFamily)) {
-    next.fontFamily = getPretendardFontFamilyForWeight(next.fontWeight);
-  }
-
-  return next;
 }
 
 let runtimeColorMode = Appearance.getColorScheme?.() === 'dark' ? 'dark' : 'light';
@@ -401,18 +457,19 @@ export function patchStyleSheet() {
 setActiveColorMode(runtimeColorMode);
 patchStyleSheet();
 
-export function resolveInlineStyle(style) {
-  const theme = getActiveTheme();
-
+function resolveInlineStyleWithContext(style, theme, context) {
   if (Array.isArray(style)) {
-    return style
-      .map((entry) => resolveInlineStyle(entry))
-      .filter((entry) => entry !== undefined && entry !== null && entry !== false);
+    return resolveStyleArray(style, theme, context, 'style');
   }
 
   if (!isPlainObject(style)) {
     return style;
   }
 
-  return resolveStyleObject(style, theme);
+  return resolveStyleObject(style, theme, context);
+}
+
+export function resolveInlineStyle(style) {
+  const theme = getActiveTheme();
+  return resolveInlineStyleWithContext(style, theme, createStyleResolutionContext());
 }
