@@ -1187,7 +1187,13 @@ function ManageShipReorderItem({
                 style={styles.iconSlot18}
                 tone={isArmed || isDragging ? 'accent' : 'muted'}
               />
-              <Text className="manage-ship-card__reorder-label" style={styles.reorderLabel}>
+              <Text
+                className="manage-ship-card__reorder-label"
+                style={[
+                  styles.reorderLabel,
+                  (isArmed || isDragging) && styles.reorderLabelActive,
+                ]}
+              >
                 길게 눌러 순서 변경
               </Text>
             </View>
@@ -1531,13 +1537,12 @@ function ManageSavedToast({ message, onDismiss }) {
           <View pointerEvents="none" style={styles.toastInsetStroke} />
           <View style={styles.toastIconCircle}>
             <AppIcon
-              glyphSize={24}
-              name="check_circle"
-              opticalSize={24}
+              glyphSize={17}
+              name="check"
+              opticalSize={20}
               preset="toastCheck"
-              slotSize={24}
-              style={styles.iconSlot24}
-              tone="accent"
+              slotSize={18}
+              tone="on-accent"
             />
           </View>
           <Text style={styles.toastMessage}>{message}</Text>
@@ -2593,6 +2598,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: -0.26,
   },
+  reorderLabelActive: {
+    color: 'var(--color-accent)',
+  },
   manageSearchBar: {
     position: 'absolute',
     right: 0,
@@ -2948,10 +2956,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: 'var(--color-bg-toast)',
     shadowColor: '#475569',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.24,
-    shadowRadius: 24,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 5,
   },
   toastBlurLayer: {
     position: 'absolute',
@@ -2982,6 +2990,8 @@ const styles = StyleSheet.create({
   toastIconCircle: {
     width: 24,
     height: 24,
+    borderRadius: 999,
+    backgroundColor: 'var(--color-accent)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
@@ -2989,7 +2999,7 @@ const styles = StyleSheet.create({
   toastMessage: {
     color: 'var(--color-text-toast)',
     fontSize: 18,
-    lineHeight: 22,
+    lineHeight: 18,
     fontWeight: '500',
     letterSpacing: -0.36,
     zIndex: 1,

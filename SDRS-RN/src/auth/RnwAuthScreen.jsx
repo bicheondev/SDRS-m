@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ThemeContext.js';
 import { motionDurationsMs, motionTokens } from '../motion.js';
 import { APP_FONT_FAMILY, resolveCssVariableString } from '../theme.js';
-import { AppShellGradient, SCREEN_HEIGHT, SCREEN_WIDTH } from '../components/layout/ScreenLayout.jsx';
+import { AppShellGradient } from '../components/layout/ScreenLayout.jsx';
 
 export function RnwAuthScreen({
   focusedField,
@@ -38,16 +38,9 @@ export function RnwAuthScreen({
   useTheme();
   const passwordInputRef = useRef(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const isCompactViewport = width <= 480;
-  const screenWidth = Math.min(width, SCREEN_WIDTH);
-  const screenHeight = isCompactViewport
-    ? height
-    : Math.min(Math.max(height - 40, 1), SCREEN_HEIGHT);
-  const phoneScreenLayoutStyle = isCompactViewport
-    ? { width: screenWidth, flex: 1, minHeight: 0 }
-    : { width: screenWidth, height: screenHeight, minHeight: screenHeight };
+  const phoneScreenLayoutStyle = { width, flex: 1, minHeight: 0 };
   const keyboardBehavior = 'padding';
   const topInset = Math.max(insets.top, 0);
   const bottomInset = Math.max(insets.bottom, 0);
@@ -124,8 +117,8 @@ export function RnwAuthScreen({
             styles.appShell,
             {
               width,
-              padding: isCompactViewport ? 0 : 20,
-              justifyContent: isCompactViewport ? 'flex-start' : 'center',
+              padding: 0,
+              justifyContent: 'flex-start',
             },
           ]}
         >

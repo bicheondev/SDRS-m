@@ -109,13 +109,6 @@ const ICON_PRESETS = {
     opticalSize: 24,
     slotSize: 24,
   },
-  toastCheck: {
-    glyphSize: 24,
-    offsetX: 0,
-    offsetY: 0,
-    opticalSize: 24,
-    slotSize: 24,
-  },
   viewMode: {
     glyphSize: 24,
     offsetX: 0,

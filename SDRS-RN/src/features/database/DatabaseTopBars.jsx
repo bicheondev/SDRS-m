@@ -66,11 +66,11 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
       }
     : null;
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
-  const topBand = colorWithAlpha(screenColor, isDark ? 0.84 : 0.86);
-  const midBand = colorWithAlpha(screenColor, isDark ? 0.74 : 0.78);
+  const topBand = colorWithAlpha(screenColor, isDark ? 0.7 : 0.74);
+  const midBand = colorWithAlpha(screenColor, isDark ? 0.48 : 0.54);
   const fadeBand = colorWithAlpha(screenColor, 0);
-  const filterTopBand = colorWithAlpha(screenColor, isDark ? 0.38 : 0.34);
-  const filterMidBand = colorWithAlpha(screenColor, isDark ? 0.22 : 0.18);
+  const filterTopBand = colorWithAlpha(screenColor, isDark ? 0.28 : 0.26);
+  const filterMidBand = colorWithAlpha(screenColor, isDark ? 0.14 : 0.12);
   const filterLowBand = colorWithAlpha(screenColor, 0.04);
   const filterBackdropTop = colorWithAlpha(screenColor, 1);
   const filterBackdropLow = colorWithAlpha(screenColor, 0.5);
@@ -88,7 +88,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
         <BlurView
           key={`top-frost-${blurModeKey}`}
           {...nativeBlurProps}
-          intensity={72}
+          intensity={42}
           pointerEvents="none"
           style={styles.frostBlur}
           tint={isDark ? 'dark' : 'light'}
@@ -105,7 +105,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
           <BlurView
             key={`filter-sheet-frost-${blurModeKey}`}
             {...nativeBlurProps}
-            intensity={52}
+            intensity={32}
             pointerEvents="none"
             style={styles.frostBlur}
             tint={isDark ? 'dark' : 'light'}
@@ -129,7 +129,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
         <BlurView
           key={`filters-frost-${blurModeKey}`}
           {...nativeBlurProps}
-          intensity={42}
+          intensity={24}
           pointerEvents="none"
           style={styles.frostBlur}
           tint={isDark ? 'dark' : 'light'}

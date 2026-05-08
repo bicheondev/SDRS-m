@@ -6,7 +6,6 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
 import { AppIcon } from '../../components/Icons.jsx';
@@ -339,8 +338,6 @@ const VesselResultsBase = forwardRef(function VesselResults(
 ) {
   useTheme();
   const reducedMotion = useReducedMotionSafe();
-  const insets = useSafeAreaInsets();
-  const bottomInset = Math.max(insets.bottom, 0);
   const modeAnimationId = useViewModeTransition(compact, reducedMotion);
   const modeProgress = useSharedValue(1);
   const scrollRef = useRef(null);
@@ -405,7 +402,6 @@ const VesselResultsBase = forwardRef(function VesselResults(
       showsVerticalScrollIndicator
       style={[
         styles.mainContent,
-        chromeScrollbar && { marginBottom: 84 + bottomInset },
         style,
       ]}
     >

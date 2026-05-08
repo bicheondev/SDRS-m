@@ -7,7 +7,7 @@ export const SCREEN_WIDTH = 390;
 export const SCREEN_HEIGHT = 844;
 
 export function getScreenWidthForViewport(viewportWidth) {
-  return Math.min(viewportWidth, SCREEN_WIDTH);
+  return viewportWidth;
 }
 
 export function useCompactViewport() {
@@ -31,11 +31,8 @@ export function AppShellGradient({ style }) {
 export function AppScreenShell({ children, shellStyle, screenStyle }) {
   useTheme();
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
-  const isCompactViewport = useCompactViewport();
   const screenWidth = getScreenWidthForViewport(viewportWidth);
-  const screenHeight = isCompactViewport
-    ? viewportHeight
-    : Math.min(Math.max(viewportHeight - 40, 1), SCREEN_HEIGHT);
+  const screenHeight = viewportHeight;
 
   return (
     <View
@@ -45,8 +42,8 @@ export function AppScreenShell({ children, shellStyle, screenStyle }) {
           width: viewportWidth,
           height: viewportHeight,
           minHeight: viewportHeight,
-          padding: isCompactViewport ? 0 : 20,
-          justifyContent: isCompactViewport ? 'flex-start' : 'center',
+          padding: 0,
+          justifyContent: 'flex-start',
         },
         shellStyle,
       ]}
