@@ -194,7 +194,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
         colorWithAlpha(screenColor, 0),
       ];
   const nativeTopFrostLocations = IS_ANDROID
-    ? [0, 0.48, 0.66, 0.86, 1]
+    ? [0, 0.44, 0.58, 0.76, 1]
     : [0, 0.52, 0.72, 1];
   const filterFrostStart = colorWithAlpha(screenColor, isDark ? 0.4 : 0.34);
   const filterFrostMid = colorWithAlpha(screenColor, isDark ? 0.22 : 0.18);
@@ -225,8 +225,11 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
   const filterBackdropGradient =
     `linear-gradient(180deg, ${filterBackdropTop} 0%, ${filterBackdropLow} 100%)`;
   const androidTopFrostStyle = IS_ANDROID
-    ? { bottom: undefined, height: Math.max(0, topInset) + 116 }
+    ? { bottom: undefined, height: Math.max(0, topInset) + 92 }
     : null;
+  const filtersFrostLayerStyle = IS_ANDROID
+    ? { top: Math.max(0, topInset) + 56, height: 72 }
+    : { top: Math.max(0, topInset) + 52 };
 
   return (
     <>
@@ -286,7 +289,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
         <View
           style={[
             styles.filtersFrostLayer,
-            { top: Math.max(0, topInset) + 52 },
+            filtersFrostLayerStyle,
             styles.pointerEventsNone,
           ]}
         >

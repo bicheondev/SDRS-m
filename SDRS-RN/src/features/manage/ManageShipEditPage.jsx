@@ -772,15 +772,9 @@ function ManageSubpageTopBar({ saveActive = false, title, onAdd, onBack, onSave 
 }
 
 function ManageSearchBar({ onChange, onClear, placeholder = '검색', value = '' }) {
-  const insets = useSafeAreaInsets();
-  const bottomInset = Math.max(insets.bottom, 0);
-
   return (
     <View
-      style={[
-        styles.manageSearchBar,
-        { height: 64 + bottomInset, paddingBottom: bottomInset },
-      ]}
+      style={styles.manageSearchBar}
     >
       <View style={styles.manageSearchIconSlot}>
         <AppIcon name="search" preset="search" tone="muted" />
@@ -1857,8 +1851,6 @@ export function ManageShipEditPage({
 }) {
   useTheme();
   const reducedMotion = useReducedMotionSafe();
-  const insets = useSafeAreaInsets();
-  const bottomInset = Math.max(insets.bottom, 0);
   const normalizedQuery = searchQuery.trim();
   const deferredSearchQuery = useDeferredValue(normalizedQuery);
   const reorderEnabled = normalizedQuery === '';
@@ -2704,7 +2696,6 @@ export function ManageShipEditPage({
         style={[
           styles.manageEditContent,
           WEB_BACKDROP_SCROLL_STYLE,
-          { marginBottom: 64 + bottomInset },
         ]}
       >
         {reorderEnabled ? (

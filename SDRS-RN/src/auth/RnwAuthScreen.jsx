@@ -29,6 +29,7 @@ const LOGIN_TITLE_FONT_FAMILY = 'PretendardGOV-SemiBold';
 const LOGIN_REGULAR_FONT_FAMILY = 'PretendardGOV-Regular';
 const LOGIN_MEDIUM_FONT_FAMILY = 'PretendardGOV-Medium';
 const LOGIN_PLACEHOLDER_COLOR = '#94a3b8';
+const LOGIN_FORM_KEYBOARD_LIFT = 129;
 const WEB_LOGIN_FONT_RENDERING_STYLE = Platform.OS === 'web'
   ? { fontSynthesis: 'none' }
   : null;
@@ -64,6 +65,7 @@ export function RnwAuthScreen({
   const passwordFocusProgress = useSharedValue(passwordFocused ? 1 : 0);
   const loginButtonPressProgress = useSharedValue(0);
   const appVersionProgress = useSharedValue(focusedField ? 0 : 1);
+  const keyboardLiftProgress = useSharedValue(0);
   const usernameInputShellStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
       usernameFocusProgress.value,
@@ -100,6 +102,9 @@ export function RnwAuthScreen({
   const appVersionAnimatedStyle = useAnimatedStyle(() => ({
     opacity: appVersionProgress.value,
   }));
+  const loginFormKeyboardStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -LOGIN_FORM_KEYBOARD_LIFT * keyboardLiftProgress.value }],
+  }));
 
   useEffect(() => {
     usernameFocusProgress.value = withTiming(usernameFocused ? 1 : 0, {
@@ -130,6 +135,13 @@ export function RnwAuthScreen({
       easing: Easing.bezier(...motionTokens.ease.ios),
     });
   }, [appVersionProgress, focusedField]);
+
+  useEffect(() => {
+    keyboardLiftProgress.value = withTiming(keyboardVisible ? 1 : 0, {
+      duration: motionDurationsMs.normal,
+      easing: Easing.bezier(...motionTokens.ease.ios),
+    });
+  }, [keyboardLiftProgress, keyboardVisible]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -212,7 +224,7 @@ export function RnwAuthScreen({
                 </View>
               </View>
 
-              <View style={styles.loginForm}>
+              <Animated.View style={[styles.loginForm, loginFormKeyboardStyle]}>
                 <Animated.View
                   style={[
                     styles.inputShell,
@@ -273,7 +285,7 @@ export function RnwAuthScreen({
                     </View>
                   )}
                 </Animated.View>
-              </View>
+              </Animated.View>
             </ScrollView>
 
             <Animated.Text

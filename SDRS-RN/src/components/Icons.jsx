@@ -198,6 +198,7 @@ export function AppIcon({
   const resolvedOffsetY = offsetY ?? basePreset.offsetY;
   const resolvedWeight = weight ?? basePreset.weight ?? 400;
   const nativeFontWeight = Platform.OS === 'web' ? String(resolvedWeight) : '400';
+  const includeNativeFontPadding = Platform.OS === 'android';
 
   return (
     <Text
@@ -212,7 +213,7 @@ export function AppIcon({
           fontFamily: MATERIAL_SYMBOLS_FONT_FAMILY,
           fontSize: resolvedGlyphSize,
           fontWeight: nativeFontWeight,
-          includeFontPadding: false,
+          includeFontPadding: includeNativeFontPadding,
           textAlign: 'center',
           textAlignVertical: 'center',
           width: resolvedSlotSize,

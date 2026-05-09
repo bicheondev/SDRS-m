@@ -10,9 +10,11 @@ import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 export function MenuSubpageTopBar({ title, onBack }) {
   useTheme();
   const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, 0);
+
   return (
     <>
-      <View style={[styles.topBar, { paddingTop: insets.top }]}>
+      <View style={[styles.topBar, { height: 64 + topInset, paddingTop: topInset }]}>
         <InteractivePressable
           accessibilityLabel="뒤로가기"
           accessibilityRole="button"
@@ -34,7 +36,7 @@ export function MenuSubpageTopBar({ title, onBack }) {
           />
         </InteractivePressable>
       </View>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, { paddingTop: 77 + topInset }]}>{title}</Text>
     </>
   );
 }
@@ -46,7 +48,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     width: '100%',
-    minHeight: 64,
+    height: 64,
     paddingHorizontal: 18,
     display: 'flex',
     flexDirection: 'row',
