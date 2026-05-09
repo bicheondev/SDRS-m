@@ -21,8 +21,12 @@ import { measureNodeInWindow } from '../../utils/layout.js';
 const VIEW_MODE_TRANSITION_MS = 180;
 const VIEW_MODE_EASING = Easing.bezier(...motionTokens.ease.ios);
 
+function isObjectLike(value) {
+  return (typeof value === 'object' || typeof value === 'function') && value !== null;
+}
+
 function getScrollableNode(node) {
-  if (!node) {
+  if (!isObjectLike(node)) {
     return null;
   }
 
@@ -36,11 +40,11 @@ function scrollNodeToY(node, y) {
 
   const scrollableNode = getScrollableNode(node);
 
-  if (scrollableNode && 'scrollTop' in scrollableNode) {
+  if (isObjectLike(scrollableNode) && 'scrollTop' in scrollableNode) {
     scrollableNode.scrollTop = y;
   }
 
-  if (typeof node.scrollTo === 'function') {
+  if (isObjectLike(node) && typeof node.scrollTo === 'function') {
     try {
       node.scrollTo({ y, animated: false });
     } catch {
@@ -48,7 +52,11 @@ function scrollNodeToY(node, y) {
     }
   }
 
-  if (scrollableNode && scrollableNode !== node && typeof scrollableNode.scrollTo === 'function') {
+  if (
+    isObjectLike(scrollableNode) &&
+    scrollableNode !== node &&
+    typeof scrollableNode.scrollTo === 'function'
+  ) {
     try {
       scrollableNode.scrollTo({ top: y, left: 0, behavior: 'auto' });
     } catch {
