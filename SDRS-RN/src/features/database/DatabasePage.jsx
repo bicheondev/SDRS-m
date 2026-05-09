@@ -64,6 +64,12 @@ export const DatabasePage = memo(function DatabasePage({
       setResultsBlurTargetReady(true);
     }
   }, [shouldUseBlurTarget]);
+  const handleHarborFilterOpen = useCallback(() => {
+    onFilterOpen('harbor');
+  }, [onFilterOpen]);
+  const handleVesselTypeFilterOpen = useCallback(() => {
+    onFilterOpen('vesselType');
+  }, [onFilterOpen]);
 
   return (
     <>
@@ -77,10 +83,10 @@ export const DatabasePage = memo(function DatabasePage({
             onBack={onSearchClose}
             blurTargetRef={chromeBlurTargetRef}
             onClear={onSearchClear}
-            onHarborFilterOpen={() => onFilterOpen('harbor')}
+            onHarborFilterOpen={handleHarborFilterOpen}
             onQueryChange={onSearchQueryChange}
             onToggleCompact={onToggleCompact}
-            onVesselTypeFilterOpen={() => onFilterOpen('vesselType')}
+            onVesselTypeFilterOpen={handleVesselTypeFilterOpen}
           />
         ) : (
           <TopBar
@@ -88,10 +94,10 @@ export const DatabasePage = memo(function DatabasePage({
             harborFilter={harborFilter}
             hidden={topBarHidden}
             blurTargetRef={chromeBlurTargetRef}
-            onHarborFilterOpen={() => onFilterOpen('harbor')}
+            onHarborFilterOpen={handleHarborFilterOpen}
             onSearchOpen={onSearchOpen}
             onToggleCompact={onToggleCompact}
-            onVesselTypeFilterOpen={() => onFilterOpen('vesselType')}
+            onVesselTypeFilterOpen={handleVesselTypeFilterOpen}
             vesselTypeFilter={vesselTypeFilter}
           />
         )}

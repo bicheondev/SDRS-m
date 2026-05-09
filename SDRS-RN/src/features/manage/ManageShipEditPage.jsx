@@ -1895,6 +1895,32 @@ export function ManageShipEditPage({
     };
   }, []);
 
+  const cardSearchIndexes = useMemo(() => {
+    const nextIndexes = new Map();
+
+    cards.forEach((card) => {
+      nextIndexes.set(
+        card.id,
+        buildSearchIndex(
+          [card.searchKey, card.title, card.registration, card.port, card.business],
+          {
+            choseongFields: [card.searchKey, card.title],
+          },
+        ),
+      );
+    });
+
+    return nextIndexes;
+  }, [cards]);
+  const originalCardsById = useMemo(() => {
+    const nextOriginalCards = new Map();
+
+    originalCards.forEach((card) => {
+      nextOriginalCards.set(card.id, card);
+    });
+
+    return nextOriginalCards;
+  }, [originalCards]);
   const visibleCards = useMemo(() => {
     const compiledQuery = compileSearchQuery(deferredSearchQuery);
 
@@ -1904,24 +1930,37 @@ export function ManageShipEditPage({
 
     return cards.filter((card) =>
       matchesCompiledSearchQuery(
-        buildSearchIndex(
-          [card.searchKey, card.title, card.registration, card.port, card.business],
-          {
-            choseongFields: [card.searchKey, card.title],
-          },
-        ),
+        cardSearchIndexes.get(card.id),
         compiledQuery,
       ),
     );
-  }, [cards, deferredSearchQuery]);
+  }, [cardSearchIndexes, cards, deferredSearchQuery]);
   const cardsAfterRemovals = useMemo(
     () => cards.filter((card) => !removingCards.has(card.id)),
     [cards, removingCards],
   );
+  const cardsAfterRemovalsIndexById = useMemo(() => {
+    const nextIndexes = new Map();
+
+    cardsAfterRemovals.forEach((card, index) => {
+      nextIndexes.set(card.id, index);
+    });
+
+    return nextIndexes;
+  }, [cardsAfterRemovals]);
   const visibleCardsAfterRemovals = useMemo(
     () => visibleCards.filter((card) => !removingCards.has(card.id)),
     [removingCards, visibleCards],
   );
+  const visibleCardsAfterRemovalsIndexById = useMemo(() => {
+    const nextIndexes = new Map();
+
+    visibleCardsAfterRemovals.forEach((card, index) => {
+      nextIndexes.set(card.id, index);
+    });
+
+    return nextIndexes;
+  }, [visibleCardsAfterRemovals]);
   const handleSave = useCallback(() => {
     dismissNativeKeyboard();
     onSave?.();
@@ -2676,7 +2715,7 @@ export function ManageShipEditPage({
               const isSettlingDraggedCard = Boolean(isActiveDragCard && isReorderSettling);
               const isDragging = Boolean(isActiveDragCard && !isReorderSettling);
               const removalState = removingCards.get(card.id);
-              const remainingIndex = cardsAfterRemovals.findIndex((item) => item.id === card.id);
+              const remainingIndex = cardsAfterRemovalsIndexById.get(card.id) ?? -1;
               const showDivider = removalState
                 ? Boolean(removalState.showDivider)
                 : remainingIndex >= 0 && remainingIndex < cardsAfterRemovals.length - 1;
@@ -2704,7 +2743,7 @@ export function ManageShipEditPage({
                   isReorderActive={Boolean(dragState)}
                   isSettling={isReorderSettling}
                   isSettlingDraggedCard={isSettlingDraggedCard}
-                  originalCard={originalCards.find((item) => item.id === card.id)}
+                  originalCard={originalCardsById.get(card.id)}
                   removalState={removalState}
                   shiftOffset={shiftOffset}
                   showDivider={showDivider}
@@ -2734,9 +2773,7 @@ export function ManageShipEditPage({
         ) : (
           visibleCards.map((card, index) => {
             const removalState = removingCards.get(card.id);
-            const remainingIndex = visibleCardsAfterRemovals.findIndex(
-              (item) => item.id === card.id,
-            );
+            const remainingIndex = visibleCardsAfterRemovalsIndexById.get(card.id) ?? -1;
             const showDivider = removalState
               ? Boolean(removalState.showDivider)
               : remainingIndex >= 0 && remainingIndex < visibleCardsAfterRemovals.length - 1;
@@ -2747,7 +2784,7 @@ export function ManageShipEditPage({
                 card={card}
                 itemRef={setItemRef(card.id)}
                 isEntering={card.id === recentlyAddedCardId}
-                originalCard={originalCards.find((item) => item.id === card.id)}
+                originalCard={originalCardsById.get(card.id)}
                 removalState={removalState}
                 showDivider={showDivider}
                 onDelete={handleDeleteRequest}

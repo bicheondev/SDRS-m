@@ -136,6 +136,18 @@ export function findImageEntryForRegistration(imageEntries, registration) {
   );
 }
 
+function buildImageEntryLookup(imageEntries) {
+  const byRegistration = new Map();
+
+  imageEntries.forEach((entry) => {
+    if (entry.registration && !byRegistration.has(entry.registration)) {
+      byRegistration.set(entry.registration, entry);
+    }
+  });
+
+  return byRegistration;
+}
+
 export function isPlaceholderImage(value) {
   return !value || value === noImagePlaceholder;
 }
@@ -176,9 +188,15 @@ function sanitizeFileSegment(value, fallback) {
 
 export function applyImagesToShipRecords(shipRecords, imageEntries, options = {}) {
   const { preserveExisting = false } = options;
+  const imageEntriesByRegistration = buildImageEntryLookup(imageEntries);
 
   return shipRecords.map((record) => {
-    const matchedImage = findImageEntryForRegistration(imageEntries, record.registration);
+    const registrationKey = String(record.registration ?? '').trim();
+    const matchedImage = registrationKey
+      ? imageEntriesByRegistration.get(registrationKey) ??
+        imageEntries.find((entry) => entry.fileName.includes(registrationKey)) ??
+        null
+      : null;
     const hasExistingImage = !isPlaceholderImage(record.image);
 
     if (!matchedImage && preserveExisting && hasExistingImage) {

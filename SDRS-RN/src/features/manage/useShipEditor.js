@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { buildManageHomeRows, cloneDatabaseState } from '../../domain/databaseState.js';
 import {
@@ -57,16 +57,16 @@ export function useShipEditor({
     setManageShipSearch('');
   }, [databaseState.shipRecords, enabled]);
 
-  const hideManageSaveToast = () => {
+  const hideManageSaveToast = useCallback(() => {
     if (manageSaveToastTimeoutRef.current) {
       clearTimeout(manageSaveToastTimeoutRef.current);
       manageSaveToastTimeoutRef.current = null;
     }
 
     setManageSaveToast(null);
-  };
+  }, []);
 
-  const showManageSaveToast = (message) => {
+  const showManageSaveToast = useCallback((message) => {
     const id = Date.now();
 
     if (manageSaveToastTimeoutRef.current) {
@@ -78,35 +78,35 @@ export function useShipEditor({
       setManageSaveToast((current) => (current?.id === id ? null : current));
       manageSaveToastTimeoutRef.current = null;
     }, 2200);
-  };
+  }, []);
 
-  const syncShipEditor = (shipRecords) => {
+  const syncShipEditor = useCallback((shipRecords) => {
     const savedCards = cloneManageItems(shipRecords);
     setManageShipSavedState(savedCards);
     setManageShipCardsState(cloneManageItems(shipRecords));
     setManageShipSearch('');
-  };
+  }, []);
 
-  const resetSession = () => {
+  const resetSession = useCallback(() => {
     syncShipEditor(databaseState.shipRecords);
     setManageDiscardTarget(null);
     setManageImportAlert(null);
     setPendingShipImport(null);
     hideManageSaveToast();
-  };
+  }, [databaseState.shipRecords, hideManageSaveToast, syncShipEditor]);
 
-  const restoreManageShipSaved = () => {
+  const restoreManageShipSaved = useCallback(() => {
     setManageShipCardsState(cloneManageItems(manageShipSavedState));
-  };
+  }, [manageShipSavedState]);
 
-  const showImportAlert = (error, fallbackCopy) => {
+  const showImportAlert = useCallback((error, fallbackCopy) => {
     setManageImportAlert({
       title: '불러오기 실패',
       copy: error instanceof Error && error.message ? error.message : fallbackCopy,
     });
-  };
+  }, []);
 
-  const handleManageShipFieldChange = (cardId, field, value) => {
+  const handleManageShipFieldChange = useCallback((cardId, field, value) => {
     hideManageSaveToast();
     setManageShipCardsState((current) =>
       current.map((card) =>
@@ -120,9 +120,9 @@ export function useShipEditor({
           : card,
       ),
     );
-  };
+  }, [hideManageSaveToast]);
 
-  const handleManageShipAdd = () => {
+  const handleManageShipAdd = useCallback(() => {
     hideManageSaveToast();
     setManageShipCardsState((current) => [
       ...current.map((card) => (card.selected ? { ...card, selected: false } : card)),
@@ -133,14 +133,14 @@ export function useShipEditor({
       },
     ]);
     setManageShipSearch('');
-  };
+  }, [hideManageSaveToast]);
 
-  const handleManageShipDelete = (cardId) => {
+  const handleManageShipDelete = useCallback((cardId) => {
     hideManageSaveToast();
     setManageShipCardsState((current) => current.filter((card) => card.id !== cardId));
-  };
+  }, [hideManageSaveToast]);
 
-  const handleManageShipImageChange = (cardId, file) => {
+  const handleManageShipImageChange = useCallback((cardId, file) => {
     if (!file || !file.type.startsWith('image/')) {
       return;
     }
@@ -167,14 +167,14 @@ export function useShipEditor({
         );
       })
       .catch(() => {});
-  };
+  }, [hideManageSaveToast]);
 
-  const handleManageShipReorder = (nextCards) => {
+  const handleManageShipReorder = useCallback((nextCards) => {
     hideManageSaveToast();
     setManageShipCardsState(nextCards);
-  };
+  }, [hideManageSaveToast]);
 
-  const handleManageShipSave = () => {
+  const handleManageShipSave = useCallback(() => {
     try {
       const nextShipRecords = normalizeShipCardsForStorage(manageShipCardsState);
       const nextImageEntries = rebuildImageEntriesFromShips(nextShipRecords);
@@ -205,9 +205,9 @@ export function useShipEditor({
       console.error('[manage] DB save failed:', error);
       showManageSaveToast('DB 저장에 실패했어요.');
     }
-  };
+  }, [databaseState, manageShipCardsState, setDatabaseState, showManageSaveToast, syncShipEditor]);
 
-  const handleShipImport = async (file) => {
+  const handleShipImport = useCallback(async (file) => {
     if (!file) {
       return;
     }
@@ -243,9 +243,15 @@ export function useShipEditor({
     } catch (error) {
       showImportAlert(error, '선박 DB를 불러오지 못했어요.\n파일 형식을 확인해 주세요.');
     }
-  };
+  }, [
+    databaseState,
+    onShipsChanged,
+    setDatabaseState,
+    showImportAlert,
+    syncShipEditor,
+  ]);
 
-  const applyPendingShipImport = ({ keepExisting }) => {
+  const applyPendingShipImport = useCallback(({ keepExisting }) => {
     if (!pendingShipImport) {
       return;
     }
@@ -277,9 +283,9 @@ export function useShipEditor({
     syncShipEditor(nextDatabase.shipRecords);
     setPendingShipImport(null);
     onShipsChanged?.();
-  };
+  }, [databaseState, onShipsChanged, pendingShipImport, setDatabaseState, syncShipEditor]);
 
-  const handleImagesImport = async (file) => {
+  const handleImagesImport = useCallback(async (file) => {
     if (!file) {
       return;
     }
@@ -304,18 +310,18 @@ export function useShipEditor({
     } catch (error) {
       showImportAlert(error, '이미지 압축 파일을 불러오지 못했어요.\n파일 형식을 확인해 주세요.');
     }
-  };
+  }, [databaseState, setDatabaseState, showImportAlert, syncShipEditor]);
 
-  const handleExportDatabase = async () => {
+  const handleExportDatabase = useCallback(async () => {
     const [{ buildDatabaseExportBlob }, { downloadBlob }] = await Promise.all([
       import('../../domain/importExport/databaseExport.js'),
       import('../../services/fileDownload.js'),
     ]);
     const exportBlob = await buildDatabaseExportBlob(databaseState);
     downloadBlob(exportBlob, 'db_export.zip');
-  };
+  }, [databaseState]);
 
-  return {
+  return useMemo(() => ({
     applyPendingShipImport,
     handleExportDatabase,
     handleImagesImport,
@@ -343,5 +349,29 @@ export function useShipEditor({
     setManageShipSearch,
     setPendingShipImport,
     syncShipEditor,
-  };
+  }), [
+    applyPendingShipImport,
+    handleExportDatabase,
+    handleImagesImport,
+    handleManageShipAdd,
+    handleManageShipDelete,
+    handleManageShipFieldChange,
+    handleManageShipImageChange,
+    handleManageShipReorder,
+    handleManageShipSave,
+    handleShipImport,
+    hideManageSaveToast,
+    manageDiscardTarget,
+    manageHomePrimaryRows,
+    manageImportAlert,
+    manageSaveToast,
+    manageShipCardsState,
+    manageShipDirty,
+    manageShipSavedState,
+    manageShipSearch,
+    pendingShipImport,
+    resetSession,
+    restoreManageShipSaved,
+    syncShipEditor,
+  ]);
 }

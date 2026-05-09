@@ -371,7 +371,7 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
     setSearchQuery('');
   }, []);
 
-  return {
+  return useMemo(() => ({
     closeFilter,
     closeSearch,
     compact,
@@ -396,5 +396,28 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
     setVesselTypeFilter,
     topBarHidden,
     vesselTypeFilter,
-  };
+  }), [
+    closeFilter,
+    closeSearch,
+    compact,
+    clearSearchQuery,
+    databaseView,
+    displayVessels,
+    filterSheet,
+    filteredDisplayVessels,
+    handleCompactChange,
+    handleFilterSearchOpen,
+    handleMainScroll,
+    harborFilter,
+    harborOptions,
+    openFilter,
+    openSearch,
+    resetDatabasePage,
+    searchQuery,
+    searchedDisplayVessels,
+    setHarborFilter,
+    setVesselTypeFilter,
+    topBarHidden,
+    vesselTypeFilter,
+  ]);
 }

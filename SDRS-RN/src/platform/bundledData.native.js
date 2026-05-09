@@ -8,10 +8,6 @@ import { createImportError } from '../domain/importExport/shared.js';
 
 const BASE64_ENCODING = 'base64';
 const UTF8_ENCODING = 'utf8';
-const SHOULD_LOG_BUNDLED_DATA =
-  typeof __DEV__ !== 'undefined'
-    ? __DEV__
-    : typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
 
 const SHIP_ASSET = require('../../assets/data/ship.csv');
 const IMAGES_ASSET = require('../../assets/data/images.zip');
@@ -41,10 +37,6 @@ async function ensureAssetReady(assetSource, assetName) {
   }
 
   const localUri = asset.localUri;
-
-  if (SHOULD_LOG_BUNDLED_DATA) {
-    console.log(`[bundledData] ${assetName} asset localUri:`, localUri);
-  }
 
   if (!localUri) {
     throw createImportError('기본 파일을 불러오지 못했어요.');
@@ -98,22 +90,7 @@ export async function loadBundledDatabaseState(files = DEFAULT_BUNDLED_FILES) {
       loadAssetAsFileLike(files.images),
     ]);
 
-    if (SHOULD_LOG_BUNDLED_DATA) {
-      try {
-        const csvText = await shipFile.text();
-        const firstLine = csvText.split(/\r?\n/, 1)[0] ?? '';
-        console.log('[bundledData] decoded csv first line:', firstLine);
-        console.log('[bundledData] decoded csv first 100:', csvText.slice(0, 100));
-      } catch (error) {
-        console.error('[bundledData] decoded csv preview failed:', error);
-      }
-    }
-
     const databaseState = await loadBundledDatabaseStateFromFiles({ imagesFile, shipFile });
-
-    if (SHOULD_LOG_BUNDLED_DATA) {
-      console.log('[bundledData] parsed ship rows:', databaseState.shipRecords.length);
-    }
 
     return databaseState;
   } catch (error) {

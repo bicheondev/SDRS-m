@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useState } from 'react';
+import { startTransition, useCallback, useMemo, useState } from 'react';
 
 function commitNavigation(deferred, update) {
   if (deferred) {
@@ -20,9 +20,9 @@ export function useRouteNavigation(initialScreen) {
     });
   }, []);
 
-  return {
+  return useMemo(() => ({
     navigate,
     screen,
     transition,
-  };
+  }), [navigate, screen, transition]);
 }

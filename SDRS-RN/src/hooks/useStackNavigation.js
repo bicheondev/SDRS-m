@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useState } from 'react';
+import { startTransition, useCallback, useMemo, useState } from 'react';
 
 function commitNavigation(deferred, update) {
   if (deferred) {
@@ -69,7 +69,7 @@ export function useStackNavigation(initialScreen) {
   );
   const stack = navigationState.stack;
 
-  return {
+  return useMemo(() => ({
     currentScreen: stack[stack.length - 1],
     pop,
     push,
@@ -78,5 +78,13 @@ export function useStackNavigation(initialScreen) {
     transition: navigationState.transition,
     transitionFrom: navigationState.transitionFrom,
     transitionTo: navigationState.transitionTo,
-  };
+  }), [
+    navigationState.transition,
+    navigationState.transitionFrom,
+    navigationState.transitionTo,
+    pop,
+    push,
+    reset,
+    stack,
+  ]);
 }
