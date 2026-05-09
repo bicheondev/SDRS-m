@@ -464,18 +464,28 @@ function getAutoScrollVelocity({ clientY, contentTop, maxScroll, scrollY, viewpo
   return velocity;
 }
 
-function scrollToManageOffset(scrollNode, y, reducedMotion = false) {
-  if (!scrollNode || typeof scrollNode.scrollTo !== 'function') {
+function scrollToManageOffset(scrollNode, y, reducedMotion = false, canScroll = null) {
+  if (
+    !scrollNode ||
+    typeof scrollNode.scrollTo !== 'function' ||
+    (typeof canScroll === 'function' && !canScroll())
+  ) {
     return;
   }
 
   const nextY = Math.max(0, y);
 
   if (typeof scrollNode.getScrollableNode === 'function') {
+    if (typeof canScroll === 'function' && !canScroll()) {
+      return;
+    }
     scrollNode.scrollTo({ y: nextY, animated: !reducedMotion });
     return;
   }
 
+  if (typeof canScroll === 'function' && !canScroll()) {
+    return;
+  }
   scrollNode.scrollTo({
     top: nextY,
     behavior: reducedMotion ? 'auto' : 'smooth',
@@ -493,6 +503,7 @@ function getScrollTop(scrollNode, fallbackScrollY = 0) {
 }
 
 function scrollLayoutIntoNearestView({
+  canScroll,
   currentScrollY = 0,
   layout,
   reducedMotion = false,
@@ -516,11 +527,12 @@ function scrollLayoutIntoNearestView({
   }
 
   if (Math.abs(nextScrollY - viewportTop) > 0.5) {
-    scrollToManageOffset(scrollNode, nextScrollY, reducedMotion);
+    scrollToManageOffset(scrollNode, nextScrollY, reducedMotion, canScroll);
   }
 }
 
 function scrollElementIntoNearestManageView({
+  canScroll,
   currentScrollY = 0,
   reducedMotion = false,
   scrollNode,
@@ -545,7 +557,7 @@ function scrollElementIntoNearestManageView({
   }
 
   if (Math.abs(nextScrollY - currentScrollTop) > 0.5) {
-    scrollToManageOffset(scrollNode, nextScrollY, reducedMotion);
+    scrollToManageOffset(scrollNode, nextScrollY, reducedMotion, canScroll);
   }
 
   return true;
@@ -1858,6 +1870,7 @@ export function ManageShipEditPage({
   const contentTopRef = useRef(0);
   const dragMoveFrameRef = useRef(null);
   const dragStateRef = useRef(null);
+  const isMountedRef = useRef(false);
   const itemRefs = useRef(new Map());
   const itemLayoutsRef = useRef(new Map());
   const lastDragPointRef = useRef(null);
@@ -1872,6 +1885,15 @@ export function ManageShipEditPage({
   const [recentlyAddedCardId, setRecentlyAddedCardId] = useState(null);
   const [dragState, setDragState] = useState(null);
   const [removingCards, setRemovingCards] = useState(() => new Map());
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      contentRef.current = null;
+    };
+  }, []);
 
   const visibleCards = useMemo(() => {
     const compiledQuery = compileSearchQuery(deferredSearchQuery);
@@ -2027,29 +2049,33 @@ export function ManageShipEditPage({
 
       const target = itemRefs.current.get(recentlyAddedCardId);
       const targetLayout = itemLayoutsRef.current.get(recentlyAddedCardId);
+      const scrollNode = contentRef.current;
+      const canScroll = () => !cancelled && isMountedRef.current && contentRef.current === scrollNode;
       const targetRect = getElementRectSnapshot(target);
       const targetRectHeight = targetRect?.height ?? 0;
       const targetHeight = targetRectHeight > 0 ? targetRectHeight : (targetLayout?.height ?? 0);
 
-      if (!target || targetHeight <= 0) {
+      if (!target || !scrollNode || targetHeight <= 0) {
         scheduleRetry();
         return;
       }
 
       if (scrollElementIntoNearestManageView({
+        canScroll,
         currentScrollY: scrollOffsetRef.current,
         reducedMotion,
-        scrollNode: contentRef.current,
+        scrollNode,
         target,
       })) {
         return;
       }
 
       scrollLayoutIntoNearestView({
+        canScroll,
         currentScrollY: scrollOffsetRef.current,
         layout: targetLayout,
         reducedMotion,
-        scrollNode: contentRef.current,
+        scrollNode,
         viewportHeight: viewportHeightRef.current,
       });
     };
@@ -2239,8 +2265,14 @@ export function ManageShipEditPage({
     autoScrollFrameRef.current = null;
 
     const dragPoint = lastDragPointRef.current;
+    const scrollNode = contentRef.current;
 
-    if (!dragPoint || activeDragIdRef.current !== dragPoint.cardId || !contentRef.current) {
+    if (
+      !isMountedRef.current ||
+      !dragPoint ||
+      activeDragIdRef.current !== dragPoint.cardId ||
+      !scrollNode
+    ) {
       return;
     }
 
@@ -2264,9 +2296,13 @@ export function ManageShipEditPage({
     const nextScrollY = Math.min(maxScroll, Math.max(0, currentScrollY + velocity));
 
     if (nextScrollY !== currentScrollY) {
-      contentRef.current.scrollTo?.({ y: nextScrollY, animated: false });
+      if (!isMountedRef.current || contentRef.current !== scrollNode) {
+        return;
+      }
 
-      const observedScrollY = getScrollTop(contentRef.current, currentScrollY);
+      scrollNode.scrollTo?.({ y: nextScrollY, animated: false });
+
+      const observedScrollY = getScrollTop(scrollNode, currentScrollY);
 
       if (Math.abs(observedScrollY - currentScrollY) > 0.5) {
         scrollOffsetRef.current = observedScrollY;
@@ -2281,6 +2317,8 @@ export function ManageShipEditPage({
     if (
       autoScrollVelocityRef.current &&
       activeDragIdRef.current === dragPoint.cardId &&
+      isMountedRef.current &&
+      contentRef.current === scrollNode &&
       nextScrollY > 0 &&
       nextScrollY < maxScroll
     ) {

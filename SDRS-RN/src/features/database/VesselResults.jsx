@@ -375,8 +375,11 @@ const VesselResultsBase = forwardRef(function VesselResults(
   const modeAnimationId = useViewModeTransition(compact, reducedMotion);
   const modeProgress = useSharedValue(1);
   const scrollRef = useRef(null);
+  const mountedRef = useRef(false);
+  const scrollGenerationRef = useRef(0);
   const setScrollRef = useCallback(
     (node) => {
+      scrollGenerationRef.current += 1;
       scrollRef.current = node;
 
       if (typeof ref === 'function') {
@@ -402,8 +405,19 @@ const VesselResultsBase = forwardRef(function VesselResults(
   const initialScrollFrameRef = useRef(null);
 
   useLayoutEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+      scrollGenerationRef.current += 1;
+      scrollRef.current = null;
+    };
+  }, []);
+
+  useLayoutEffect(() => {
     const targetY = initialScrollAppliedRef.current ? 0 : initialScrollY;
     const shouldReapplyInitialScroll = !initialScrollAppliedRef.current && targetY > 0;
+    const scrollGeneration = scrollGenerationRef.current;
     initialScrollAppliedRef.current = true;
 
     if (initialScrollFrameRef.current !== null) {
@@ -411,13 +425,21 @@ const VesselResultsBase = forwardRef(function VesselResults(
       initialScrollFrameRef.current = null;
     }
 
-    scrollNodeToY(scrollRef.current, targetY);
+    const scrollCurrentNodeToTarget = () => {
+      if (!mountedRef.current || scrollGenerationRef.current !== scrollGeneration) {
+        return;
+      }
+
+      scrollNodeToY(scrollRef.current, targetY);
+    };
+
+    scrollCurrentNodeToTarget();
 
     if (shouldReapplyInitialScroll) {
       initialScrollFrameRef.current = requestAnimationFrame(() => {
-        scrollNodeToY(scrollRef.current, targetY);
+        scrollCurrentNodeToTarget();
         initialScrollFrameRef.current = requestAnimationFrame(() => {
-          scrollNodeToY(scrollRef.current, targetY);
+          scrollCurrentNodeToTarget();
           initialScrollFrameRef.current = null;
         });
       });

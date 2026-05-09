@@ -56,6 +56,7 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
   const topBarHiddenRef = useRef(false);
   const revealLockScrollTopRef = useRef(0);
   const filterCloseTimeoutRef = useRef(null);
+  const scrollRestoreFrameRef = useRef(null);
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const displayVessels = useMemo(() => buildDisplayVessels(shipRecords), [shipRecords]);
@@ -91,21 +92,82 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
       return;
     }
 
-    if (typeof mainContentRef.current.scrollTo === 'function') {
-      mainContentRef.current.scrollTo({
-        y: mainScrollPositionRef.current,
-        animated: false,
-      });
+    if (scrollRestoreFrameRef.current !== null) {
+      cancelAnimationFrame(scrollRestoreFrameRef.current);
+      scrollRestoreFrameRef.current = null;
+    }
+
+    const scrollNode = mainContentRef.current;
+    scrollRestoreFrameRef.current = requestAnimationFrame(() => {
+      scrollRestoreFrameRef.current = null;
+
+      if (
+        !isAppVisible ||
+        activeTab !== 'db' ||
+        databaseView !== 'browse' ||
+        mainContentRef.current !== scrollNode
+      ) {
+        return;
+      }
+
+      if (typeof scrollNode.scrollTo === 'function') {
+        scrollNode.scrollTo({
+          y: mainScrollPositionRef.current,
+          animated: false,
+        });
+        return;
+      }
+
+      scrollNode.scrollTop = mainScrollPositionRef.current;
+    });
+
+    return () => {
+      if (scrollRestoreFrameRef.current !== null) {
+        cancelAnimationFrame(scrollRestoreFrameRef.current);
+        scrollRestoreFrameRef.current = null;
+      }
+    };
+  }, [activeTab, databaseView, isAppVisible]);
+
+  const scrollMainContentTo = useCallback((y) => {
+    if (scrollRestoreFrameRef.current !== null) {
+      cancelAnimationFrame(scrollRestoreFrameRef.current);
+      scrollRestoreFrameRef.current = null;
+    }
+
+    const scrollNode = mainContentRef.current;
+
+    if (!scrollNode) {
       return;
     }
 
-    mainContentRef.current.scrollTop = mainScrollPositionRef.current;
-  }, [activeTab, databaseView, isAppVisible]);
+    scrollRestoreFrameRef.current = requestAnimationFrame(() => {
+      scrollRestoreFrameRef.current = null;
+
+      if (mainContentRef.current !== scrollNode) {
+        return;
+      }
+
+      if (typeof scrollNode.scrollTo === 'function') {
+        scrollNode.scrollTo({
+          y,
+          animated: false,
+        });
+        return;
+      }
+
+      scrollNode.scrollTop = y;
+    });
+  }, []);
 
   useEffect(
     () => () => {
       if (filterCloseTimeoutRef.current) {
         clearTimeout(filterCloseTimeoutRef.current);
+      }
+      if (scrollRestoreFrameRef.current !== null) {
+        cancelAnimationFrame(scrollRestoreFrameRef.current);
+        scrollRestoreFrameRef.current = null;
       }
     },
     [],
@@ -213,14 +275,8 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
     revealLockScrollTopRef.current = 0;
     setTopBarHidden(false);
 
-    if (mainContentRef.current) {
-      if (typeof mainContentRef.current.scrollTo === 'function') {
-        mainContentRef.current.scrollTo({ y: 0, animated: false });
-      } else {
-        mainContentRef.current.scrollTop = 0;
-      }
-    }
-  }, []);
+    scrollMainContentTo(0);
+  }, [scrollMainContentTo]);
 
   const setHarborFilter = useCallback(
     (nextHarborFilter) => {
