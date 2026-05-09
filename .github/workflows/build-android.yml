@@ -1,105 +1,66 @@
 name: Build Mobile Apps
 
 on:
-  push: {}
-  workflow_dispatch: {}
-
-permissions:
-  contents: read
-
-concurrency:
-  group: mobile-build-${{ github.ref }}
-  cancel-in-progress: true
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  build:
-    name: Build ${{ matrix.platform }}
+  build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: android
-            extension: apk
-            artifact_name: sdrs-android-apk
-            output_file: sdrs-android.apk
-          - platform: ios
-            extension: ipa
-            artifact_name: sdrs-ios-ipa
-            output_file: sdrs-ios.ipa
     defaults:
       run:
         working-directory: SDRS-RN
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: SDRS-RN/package-lock.json
-
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
       - name: Install dependencies
-        run: npm ci
-
+        run: npm install
       - name: Install EAS CLI
-        run: npm install --global eas-cli@latest
-
-      - name: Check Expo token
-        run: test -n "$EXPO_TOKEN"
+        run: npm install -g eas-cli
+      - name: Build Android APK (local)
+        run: eas build --platform android --profile preview --local --non-interactive --output ../sdrs-android.apk
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Build ${{ matrix.platform }} with EAS
-        run: >
-          eas build
-          --platform "${{ matrix.platform }}"
-          --profile preview
-          --non-interactive
-          --wait
-          --json
-          > "eas-${{ matrix.platform }}-build.json"
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Download ${{ matrix.extension }} artifact
-        run: |
-          node <<'NODE'
-          const { execFileSync } = require('node:child_process');
-          const fs = require('node:fs');
-
-          const buildJsonPath = process.env.BUILD_JSON_PATH;
-          const outputFile = process.env.OUTPUT_FILE;
-          const platform = process.env.PLATFORM;
-          const raw = fs.readFileSync(buildJsonPath, 'utf8');
-          const parsed = JSON.parse(raw);
-          const builds = Array.isArray(parsed) ? parsed : [parsed];
-          const build =
-            builds.find((item) => String(item?.platform ?? '').toLowerCase() === platform) ??
-            builds[0];
-          const artifactUrl =
-            build?.artifacts?.buildUrl ??
-            build?.artifacts?.applicationArchiveUrl ??
-            build?.artifacts?.url;
-
-          if (!artifactUrl) {
-            console.error(`No downloadable artifact URL found in ${buildJsonPath}.`);
-            console.error(JSON.stringify(parsed, null, 2));
-            process.exit(1);
-          }
-
-          execFileSync('curl', ['--fail', '--location', artifactUrl, '--output', outputFile], {
-            stdio: 'inherit',
-          });
-          NODE
-        env:
-          BUILD_JSON_PATH: eas-${{ matrix.platform }}-build.json
-          OUTPUT_FILE: ${{ matrix.output_file }}
-          PLATFORM: ${{ matrix.platform }}
-
-      - name: Upload ${{ matrix.extension }} artifact
+          ANDROID_HOME: /usr/local/lib/android/sdk
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: SDRS-RN/${{ matrix.output_file }}
+          name: sdrs-android-apk
+          path: sdrs-android.apk
+
+  build-ios:
+    name: Build iOS IPA
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: SDRS-RN
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: SDRS-RN/package-lock.json
+      - name: Install dependencies
+        run: npm install
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+      - name: Build iOS IPA (local)
+        run: eas build --platform ios --profile preview --local --non-interactive --output ../sdrs-ios.ipa
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdrs-ios-ipa
+          path: sdrs-ios.ipa
