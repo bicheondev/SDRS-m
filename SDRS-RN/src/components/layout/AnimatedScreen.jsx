@@ -244,6 +244,7 @@ export default function AnimatedScreen({
     : isTransitionRender || isActive || interactive
       ? getScreenZIndex(navDir, isActive)
       : zIndex;
+  const shouldRenderChildren = isActive || interactive || isTransitionRender;
 
   return (
     <Animated.View
@@ -258,7 +259,7 @@ export default function AnimatedScreen({
       ]}
     >
       <Animated.View style={[styles.overlay, styles.pointerEventsNone, overlayStyle]} />
-      <View style={styles.body}>{children}</View>
+      {shouldRenderChildren ? <View style={styles.body}>{children}</View> : null}
     </Animated.View>
   );
 }

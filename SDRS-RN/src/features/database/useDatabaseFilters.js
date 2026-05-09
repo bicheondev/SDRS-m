@@ -110,6 +110,14 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
         return;
       }
 
+      if (typeof scrollNode.scrollToOffset === 'function') {
+        scrollNode.scrollToOffset({
+          offset: mainScrollPositionRef.current,
+          animated: false,
+        });
+        return;
+      }
+
       if (typeof scrollNode.scrollTo === 'function') {
         scrollNode.scrollTo({
           y: mainScrollPositionRef.current,
@@ -145,6 +153,14 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
       scrollRestoreFrameRef.current = null;
 
       if (mainContentRef.current !== scrollNode) {
+        return;
+      }
+
+      if (typeof scrollNode.scrollToOffset === 'function') {
+        scrollNode.scrollToOffset({
+          offset: y,
+          animated: false,
+        });
         return;
       }
 

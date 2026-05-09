@@ -1,5 +1,5 @@
 import { forwardRef, memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Image, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Image, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -42,6 +42,15 @@ function scrollNodeToY(node, y) {
 
   if (isObjectLike(scrollableNode) && 'scrollTop' in scrollableNode) {
     scrollableNode.scrollTop = y;
+  }
+
+  if (isObjectLike(node) && typeof node.scrollToOffset === 'function') {
+    try {
+      node.scrollToOffset({ offset: y, animated: false });
+      return;
+    } catch {
+      // Some scroll targets use the ScrollView-style overload below.
+    }
   }
 
   if (isObjectLike(node) && typeof node.scrollTo === 'function') {
@@ -363,6 +372,14 @@ export function VesselEmptyState() {
   );
 }
 
+function ResultsSeparator() {
+  return <View style={styles.sectionDivider} />;
+}
+
+function getVesselKey(vessel) {
+  return String(vessel.id);
+}
+
 const VesselResultsBase = forwardRef(function VesselResults(
   {
     compact,
@@ -407,6 +424,24 @@ const VesselResultsBase = forwardRef(function VesselResults(
       onImageClick(selectedVessel, vessels, sourceRect);
     },
     [onImageClick, vessels],
+  );
+  const renderVesselItem = useCallback(
+    ({ item }) => (
+      compact ? (
+        <CompactVesselCard
+          hiddenThumbnail={hiddenThumbnailId === item.id}
+          vessel={item}
+          onImageClick={handleImageClick}
+        />
+      ) : (
+        <VesselCard
+          hiddenThumbnail={hiddenThumbnailId === item.id}
+          vessel={item}
+          onImageClick={handleImageClick}
+        />
+      )
+    ),
+    [compact, handleImageClick, hiddenThumbnailId],
   );
 
   const initialScrollAppliedRef = useRef(false);
@@ -483,55 +518,41 @@ const VesselResultsBase = forwardRef(function VesselResults(
   }));
 
   return (
-    <ScrollView
-      ref={setScrollRef}
-      contentOffset={initialScrollY ? { x: 0, y: initialScrollY } : undefined}
-      contentContainerStyle={[
-        styles.mainContentContainer,
-        {
-          paddingTop: contentTopPadding,
-          paddingBottom: contentBottomPadding,
-        },
-      ]}
-      onScroll={onScroll}
-      scrollEventThrottle={16}
-      showsVerticalScrollIndicator
-      style={[
-        styles.mainContent,
-        style,
-      ]}
+    <Animated.View
+      key={`${compact ? 'compact' : 'card'}-${modeAnimationId}`}
+      style={[styles.resultsMode, modeAnimatedStyle]}
     >
-      <Animated.View
-        key={`${compact ? 'compact' : 'card'}-${modeAnimationId}`}
-        style={[styles.resultsMode, modeAnimatedStyle]}
-      >
-        {vessels.length === 0 ? (
-          <VesselEmptyState />
-        ) : compact ? (
-          vessels.map((vessel, index) => (
-            <View key={vessel.id}>
-              <CompactVesselCard
-                hiddenThumbnail={hiddenThumbnailId === vessel.id}
-                vessel={vessel}
-                onImageClick={handleImageClick}
-              />
-              {index < vessels.length - 1 ? <View style={styles.sectionDivider} /> : null}
-            </View>
-          ))
-        ) : (
-          vessels.map((vessel, index) => (
-            <View key={vessel.id}>
-              <VesselCard
-                hiddenThumbnail={hiddenThumbnailId === vessel.id}
-                vessel={vessel}
-                onImageClick={handleImageClick}
-              />
-              {index < vessels.length - 1 ? <View style={styles.sectionDivider} /> : null}
-            </View>
-          ))
-        )}
-      </Animated.View>
-    </ScrollView>
+      <FlatList
+        ref={setScrollRef}
+        contentOffset={initialScrollY ? { x: 0, y: initialScrollY } : undefined}
+        contentContainerStyle={[
+          styles.mainContentContainer,
+          {
+            paddingTop: contentTopPadding,
+            paddingBottom: contentBottomPadding,
+          },
+        ]}
+        data={vessels}
+        extraData={hiddenThumbnailId}
+        initialNumToRender={compact ? 8 : 4}
+        ItemSeparatorComponent={ResultsSeparator}
+        keyExtractor={getVesselKey}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={VesselEmptyState}
+        maxToRenderPerBatch={compact ? 8 : 4}
+        onScroll={onScroll}
+        removeClippedSubviews={Platform.OS === 'android'}
+        renderItem={renderVesselItem}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator
+        style={[
+          styles.mainContent,
+          style,
+        ]}
+        updateCellsBatchingPeriod={32}
+        windowSize={compact ? 7 : 5}
+      />
+    </Animated.View>
   );
 });
 
@@ -547,7 +568,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   resultsMode: {
+    flex: 1,
     flexGrow: 1,
+    minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
   },
