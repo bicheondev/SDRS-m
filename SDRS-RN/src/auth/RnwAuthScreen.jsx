@@ -22,12 +22,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../ThemeContext.js';
 import { motionDurationsMs, motionTokens } from '../motion.js';
-import { APP_FONT_FAMILY, resolveCssVariableString } from '../theme.js';
+import { resolveCssVariableString } from '../theme.js';
 import { AppShellGradient } from '../components/layout/ScreenLayout.jsx';
 
 const LOGIN_TITLE_FONT_FAMILY = 'PretendardGOV-SemiBold';
+const LOGIN_REGULAR_FONT_FAMILY = 'PretendardGOV-Regular';
+const LOGIN_MEDIUM_FONT_FAMILY = 'PretendardGOV-Medium';
 const LOGIN_PLACEHOLDER_COLOR = '#94a3b8';
-const IS_WEB = Platform.OS === 'web';
+const WEB_LOGIN_FONT_RENDERING_STYLE = Platform.OS === 'web'
+  ? { fontSynthesis: 'none' }
+  : null;
 
 export function RnwAuthScreen({
   focusedField,
@@ -54,15 +58,12 @@ export function RnwAuthScreen({
   const passwordFocused = focusedField === 'password';
   const inputBgColor = resolveCssVariableString('var(--color-bg-input)');
   const inputFocusBgColor = resolveCssVariableString('var(--color-bg-input-focus)');
-  const inputFocusRingColor = resolveCssVariableString('var(--color-border-accent-focus)');
   const placeholderFocusedColor = resolveCssVariableString('var(--color-text-accent-strong)');
   const selectionColor = resolveCssVariableString('var(--color-text-accent)');
-  const inputFocusRingStyle = IS_WEB
-    ? { boxShadow: `0 0 0 1px ${inputFocusRingColor}` }
-    : null;
   const usernameFocusProgress = useSharedValue(usernameFocused ? 1 : 0);
   const passwordFocusProgress = useSharedValue(passwordFocused ? 1 : 0);
   const loginButtonPressProgress = useSharedValue(0);
+  const appVersionProgress = useSharedValue(focusedField ? 0 : 1);
   const usernameInputShellStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
       usernameFocusProgress.value,
@@ -79,8 +80,25 @@ export function RnwAuthScreen({
     ),
     transform: [{ translateY: -passwordFocusProgress.value }],
   }));
+  const usernamePlaceholderStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      usernameFocusProgress.value,
+      [0, 1],
+      [LOGIN_PLACEHOLDER_COLOR, placeholderFocusedColor],
+    ),
+  }));
+  const passwordPlaceholderStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      passwordFocusProgress.value,
+      [0, 1],
+      [LOGIN_PLACEHOLDER_COLOR, placeholderFocusedColor],
+    ),
+  }));
   const loginButtonOverlayStyle = useAnimatedStyle(() => ({
     opacity: loginButtonPressProgress.value,
+  }));
+  const appVersionAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: appVersionProgress.value,
   }));
 
   useEffect(() => {
@@ -105,6 +123,13 @@ export function RnwAuthScreen({
       });
     }
   }, [isFilled, loginButtonPressProgress]);
+
+  useEffect(() => {
+    appVersionProgress.value = withTiming(focusedField ? 0 : 1, {
+      duration: motionDurationsMs.fast,
+      easing: Easing.bezier(...motionTokens.ease.ios),
+    });
+  }, [appVersionProgress, focusedField]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -148,7 +173,7 @@ export function RnwAuthScreen({
   };
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, WEB_LOGIN_FONT_RENDERING_STYLE]}>
       <KeyboardAvoidingView
         behavior={keyboardBehavior}
         keyboardVerticalOffset={0}
@@ -192,7 +217,6 @@ export function RnwAuthScreen({
                   style={[
                     styles.inputShell,
                     usernameFocused && styles.inputShellFocused,
-                    usernameFocused && inputFocusRingStyle,
                     usernameInputShellStyle,
                   ]}
                 >
@@ -205,16 +229,19 @@ export function RnwAuthScreen({
                     onChangeText={onUsernameChange}
                     onFocus={() => onFieldFocus('username')}
                     onSubmitEditing={handleUsernameSubmit}
-                    placeholder="아이디"
-                    placeholderTextColor={
-                      usernameFocused ? placeholderFocusedColor : LOGIN_PLACEHOLDER_COLOR
-                    }
                     returnKeyType="next"
                     selectionColor={selectionColor}
                     spellCheck={false}
                     style={[styles.loginInput, usernameFocused && styles.loginInputFocused]}
                     value={username}
                   />
+                  {username ? null : (
+                    <View style={styles.loginPlaceholderOverlay}>
+                      <Animated.Text style={[styles.loginPlaceholderText, usernamePlaceholderStyle]}>
+                        아이디
+                      </Animated.Text>
+                    </View>
+                  )}
                 </Animated.View>
 
                 <Animated.View
@@ -222,7 +249,6 @@ export function RnwAuthScreen({
                     styles.inputShell,
                     styles.passwordShell,
                     passwordFocused && styles.inputShellFocused,
-                    passwordFocused && inputFocusRingStyle,
                     passwordInputShellStyle,
                   ]}
                 >
@@ -233,23 +259,28 @@ export function RnwAuthScreen({
                     onChangeText={onPasswordChange}
                     onFocus={() => onFieldFocus('password')}
                     onSubmitEditing={handleSubmit}
-                    placeholder="비밀번호"
-                    placeholderTextColor={
-                      passwordFocused ? placeholderFocusedColor : LOGIN_PLACEHOLDER_COLOR
-                    }
                     returnKeyType="go"
                     secureTextEntry
                     selectionColor={selectionColor}
                     style={[styles.loginInput, passwordFocused && styles.loginInputFocused]}
                     value={password}
                   />
+                  {password ? null : (
+                    <View style={styles.loginPlaceholderOverlay}>
+                      <Animated.Text style={[styles.loginPlaceholderText, passwordPlaceholderStyle]}>
+                        비밀번호
+                      </Animated.Text>
+                    </View>
+                  )}
                 </Animated.View>
               </View>
             </ScrollView>
 
-            <Text style={[styles.appVersion, { bottom: 82 + bottomInset }, focusedField ? styles.appVersionHidden : null]}>
+            <Animated.Text
+              style={[styles.appVersion, { bottom: 82 + bottomInset }, appVersionAnimatedStyle]}
+            >
               선박DB정보체계 버전 1.0
-            </Text>
+            </Animated.Text>
 
             <View
               style={[
@@ -338,10 +369,8 @@ const styles = StyleSheet.create({
     color: 'var(--color-text-primary)',
     fontFamily: LOGIN_TITLE_FONT_FAMILY,
     fontSize: 26,
-    lineHeight: 33.8,
     fontWeight: '600',
     includeFontPadding: false,
-    letterSpacing: -0.78,
   },
   loginTitleAccent: {
     color: 'var(--color-text-accent)',
@@ -357,7 +386,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
-    borderWidth: IS_WEB ? 0 : 1,
+    borderWidth: 1,
     borderColor: 'transparent',
     borderRadius: 14,
     backgroundColor: 'var(--color-bg-input)',
@@ -378,14 +407,27 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     backgroundColor: 'transparent',
     color: 'var(--color-text-secondary)',
-    fontFamily: APP_FONT_FAMILY,
+    fontFamily: LOGIN_REGULAR_FONT_FAMILY,
     fontSize: 18,
     includeFontPadding: false,
-    lineHeight: 20,
-    letterSpacing: -0.36,
   },
   loginInputFocused: {
     color: 'var(--color-text-accent)',
+  },
+  loginPlaceholderOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 16,
+    bottom: 0,
+    left: 16,
+    justifyContent: 'center',
+    pointerEvents: 'none',
+  },
+  loginPlaceholderText: {
+    color: LOGIN_PLACEHOLDER_COLOR,
+    fontFamily: LOGIN_REGULAR_FONT_FAMILY,
+    fontSize: 18,
+    includeFontPadding: false,
   },
   appVersion: {
     position: 'absolute',
@@ -394,15 +436,10 @@ const styles = StyleSheet.create({
     left: 0,
     margin: 0,
     color: 'var(--color-text-muted)',
-    fontFamily: APP_FONT_FAMILY,
+    fontFamily: LOGIN_REGULAR_FONT_FAMILY,
     fontSize: 15,
     includeFontPadding: false,
-    lineHeight: 20,
-    letterSpacing: -0.3,
     textAlign: 'center',
-  },
-  appVersionHidden: {
-    opacity: 0,
   },
   loginButton: {
     width: '100%',
@@ -443,12 +480,10 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     color: 'var(--color-text-disabled)',
-    fontFamily: APP_FONT_FAMILY,
+    fontFamily: LOGIN_MEDIUM_FONT_FAMILY,
     fontSize: 18,
     fontWeight: '500',
     includeFontPadding: false,
-    lineHeight: 18,
-    letterSpacing: -0.36,
   },
   loginButtonTextActive: {
     color: 'var(--color-text-on-accent)',

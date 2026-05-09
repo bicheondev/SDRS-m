@@ -106,9 +106,30 @@ const PRETENDARD_FONT_FAMILIES = new Set([
   'PretendardGOV-Bold',
 ]);
 const SHOULD_RESET_PRETENDARD_FONT_WEIGHT = Platform.OS !== 'web';
+const WEB_UNRESOLVED_VAR_STYLE_KEYS = new Set(['placeholderTextColor']);
+const WEB_SUPPORTED_STYLE_KEYS = new Set(['whiteSpace', 'wordBreak']);
+const RESOLVED_STYLE_MARKER = Symbol.for('sdrs.rnw.resolvedStyle');
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isResolvedStyleObject(value) {
+  return isPlainObject(value) && value[RESOLVED_STYLE_MARKER] === true;
+}
+
+function markResolvedStyleObject(value) {
+  if (!isPlainObject(value) || value[RESOLVED_STYLE_MARKER] === true) {
+    return value;
+  }
+
+  Object.defineProperty(value, RESOLVED_STYLE_MARKER, {
+    configurable: false,
+    enumerable: false,
+    value: true,
+  });
+
+  return value;
 }
 
 function isCssVarString(value) {
@@ -254,7 +275,7 @@ function adaptDisplayValue(value) {
 
 function adaptValue(key, value, theme, context = createStyleResolutionContext()) {
   if (UNSUPPORTED_STYLE_KEYS.has(key)) {
-    return undefined;
+    return Platform.OS === 'web' && WEB_SUPPORTED_STYLE_KEYS.has(key) ? value : undefined;
   }
 
   if (key === 'display' && typeof value === 'string') {
@@ -264,7 +285,9 @@ function adaptValue(key, value, theme, context = createStyleResolutionContext())
   if (isCssVarString(value)) {
     const rawValue = value.trim();
     if (context.valueStack.has(rawValue)) {
-      return undefined;
+      return Platform.OS === 'web' && WEB_UNRESOLVED_VAR_STYLE_KEYS.has(key)
+        ? rawValue
+        : undefined;
     }
 
     context.valueStack.add(rawValue);
@@ -280,7 +303,9 @@ function adaptValue(key, value, theme, context = createStyleResolutionContext())
     }
 
     if (resolved === value || (typeof resolved === 'string' && resolved.trim() === rawValue)) {
-      return undefined;
+      return Platform.OS === 'web' && WEB_UNRESOLVED_VAR_STYLE_KEYS.has(key)
+        ? rawValue
+        : undefined;
     }
 
     return adaptValue(key, resolved, theme, context);
@@ -320,6 +345,10 @@ function resolveStyleArray(styleArray, theme, context, key) {
   try {
     return styleArray
       .map((entry) => {
+        if (isResolvedStyleObject(entry)) {
+          return entry;
+        }
+
         if (isPlainObject(entry)) {
           return resolveStyleObject(entry, theme, context);
         }
@@ -338,6 +367,10 @@ function resolveStyleArray(styleArray, theme, context, key) {
 
 function resolveStyleObject(style, theme, context = createStyleResolutionContext()) {
   if (!isPlainObject(style)) {
+    return style;
+  }
+
+  if (isResolvedStyleObject(style)) {
     return style;
   }
 
@@ -379,7 +412,7 @@ function resolveStyleObject(style, theme, context = createStyleResolutionContext
       next.fontFamily = getPretendardFontFamilyForWeight(next.fontWeight);
     }
 
-    return next;
+    return markResolvedStyleObject(next);
   } finally {
     context.objectStack.delete(style);
   }
@@ -423,6 +456,13 @@ function resolveAgainstActiveTheme(originalSubStyle) {
   return resolved;
 }
 
+function shouldUseStaticWebCompiler(style) {
+  return (
+    Platform.OS === 'web' &&
+    Object.prototype.hasOwnProperty.call(style, 'placeholderTextColor')
+  );
+}
+
 let originalCreate = null;
 
 export function patchStyleSheet() {
@@ -442,6 +482,11 @@ export function patchStyleSheet() {
       const sub = styles[key];
 
       if (isPlainObject(sub)) {
+        if (shouldUseStaticWebCompiler(sub)) {
+          result[key] = originalCreate({ [key]: sub })[key];
+          continue;
+        }
+
         Object.defineProperty(result, key, {
           enumerable: true,
           configurable: false,

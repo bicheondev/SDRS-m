@@ -1,29 +1,27 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { BlurTargetView, BlurView } from 'expo-blur';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withTiming,
 } from 'react-native-reanimated';
 
 import { useTheme } from '../../ThemeContext.js';
-import { filterVessels } from '../../domain/ships.js';
 import { motionDurationsMs, motionTokens } from '../../motion.js';
 import BottomTab from '../../components/layout/BottomTab.jsx';
-import { AppScreenShell, screenLayoutStyles } from '../../components/layout/ScreenLayout.jsx';
 import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
 import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
 import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe.js';
 import { measureNodeInWindow } from '../../utils/layout.js';
+import { keepAllWordBreakText } from '../../utils/text.js';
 import { resolveCssVariableString } from '../../theme.js';
-import { applySearchQuery } from './useVesselSearch.js';
 import { TopBar } from './DatabaseTopBars.jsx';
-import { VesselResults } from './VesselResults.jsx';
 
 const FILTER_COLUMN_TOP = 122;
 const FILTER_COLUMN_EDGE = 18;
@@ -32,6 +30,9 @@ const FILTER_DISCLOSURE_WIDTH = 24;
 const reverseBezier = ([x1, y1, x2, y2]) => [1 - x2, 1 - y2, 1 - x1, 1 - y1];
 const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
 const IOS_EASING_REVERSE = Easing.bezier(...reverseBezier(motionTokens.ease.ios));
+const filterTextKeepAllStyle = Platform.OS === 'web'
+  ? { wordBreak: 'keep-all' }
+  : null;
 
 function colorWithAlpha(color, alpha) {
   if (typeof color !== 'string') {
@@ -85,11 +86,9 @@ export function FilterScreen({
   harborFilter,
   harborOptions,
   phase = 'open',
-  query = '',
-  vessels,
+  blurTargetRef,
   onClose,
   onHarborSelect,
-  onImageClick,
   onManageOpen,
   onMenuOpen,
   onSearchOpen,
@@ -115,40 +114,59 @@ export function FilterScreen({
     harborLeft: FILTER_COLUMN_EDGE,
     vesselTypeLeft: FILTER_COLUMN_EDGE,
   });
+  const [columnLayoutReady, setColumnLayoutReady] = useState(false);
   const reducedMotion = useReducedMotionSafe();
-  const enterFrameRef = useRef(null);
-  const resultsBlurTargetRef = useRef(null);
-  const [resultsBlurTargetReady, setResultsBlurTargetReady] = useState(false);
+  const shouldUseBlurTarget = Platform.OS !== 'web';
   const widthAnimationFrameRef = useRef(null);
+  const widthPhaseRef = useRef('closed');
+  const columnLayoutReadyRef = useRef(false);
   const layoutAnimationFrameRef = useRef(null);
   const panelRef = useRef(null);
   const harborButtonRef = useRef(null);
   const vesselTypeButtonRef = useRef(null);
-  const [visualPhase, setVisualPhase] = useState(() =>
-    reducedMotion ? (phase === 'closing' ? 'closed' : 'open') : phase === 'closing' ? 'closing' : 'closed',
+  const openHarborFilterRef = useRef(harborFilter);
+  const openVesselTypeFilterRef = useRef(vesselTypeFilter);
+  const selectedDuringCloseRef = useRef({ harbor: false, vesselType: false });
+  const harborWidthOptions = useMemo(
+    () => harborOptions.filter((option) => option !== harborFilter),
+    [harborFilter, harborOptions],
   );
-  const filteredVessels = useMemo(
-    () => applySearchQuery(filterVessels(vessels, harborFilter, vesselTypeFilter), query),
-    [harborFilter, query, vesselTypeFilter, vessels],
+  const vesselTypeWidthOptions = useMemo(
+    () => vesselTypeOptions.filter((option) => option !== vesselTypeFilter),
+    [vesselTypeFilter, vesselTypeOptions],
   );
   const harborColumnWidth = Math.max(naturalHarborLabelWidth, harborOptionWidth);
   const vesselTypeColumnWidth = Math.max(naturalVesselTypeLabelWidth, vesselTypeOptionWidth);
-  const filterScrollResetKey = `${harborFilter}:${vesselTypeFilter}`;
+  const harborOptionsMeasured = harborWidthOptions.length === 0 || harborOptionWidth > 0;
+  const vesselTypeOptionsMeasured = vesselTypeWidthOptions.length === 0 || vesselTypeOptionWidth > 0;
+  const filterWidthsReady = naturalHarborLabelWidth > 0
+    && naturalVesselTypeLabelWidth > 0
+    && harborOptionsMeasured
+    && vesselTypeOptionsMeasured;
   const filterOpenState = phase === 'closing' ? 'closed' : filterMode;
-  const harborMenuLeft = columnLayout.harborLeft;
-  const vesselTypeMenuLeft = columnLayout.vesselTypeLeft;
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
   const backdropBaseColor = colorWithAlpha(screenColor, 0);
-  const backdropTopColor = colorWithAlpha(screenColor, isDark ? 0.84 : 0.86);
+  const backdropTopColor = colorWithAlpha(screenColor, 1);
   const backdropMidColor = colorWithAlpha(screenColor, 0.5);
-  const activeBlurTargetRef = resultsBlurTargetReady ? resultsBlurTargetRef : null;
+  const activeBlurTargetRef = shouldUseBlurTarget && blurTargetRef
+    ? blurTargetRef
+    : null;
   const blurModeKey = activeBlurTargetRef ? 'targeted' : 'fallback';
   const nativeBlurProps = activeBlurTargetRef
     ? {
-        blurMethod: 'dimezisBlurViewSdk31Plus',
-        blurReductionFactor: 3,
+        blurMethod: 'dimezisBlurView',
+        blurReductionFactor: 1.25,
         blurTarget: activeBlurTargetRef,
       }
+    : null;
+  const panelPointerEventsStyle = Platform.OS === 'web'
+    ? styles.pointerEventsNone
+    : styles.pointerEventsBoxNone;
+  const columnsPointerEventsStyle = Platform.OS === 'web'
+    ? styles.pointerEventsNone
+    : styles.pointerEventsBoxNone;
+  const columnPointerEventsStyle = Platform.OS === 'web'
+    ? styles.pointerEventsAuto
     : null;
   const layerProgress = useSharedValue(phase === 'closing' ? 1 : 0);
   const panelProgress = useSharedValue(phase === 'closing' ? 1 : 0);
@@ -160,14 +178,20 @@ export function FilterScreen({
     opacity: panelProgress.value,
     transform: [{ translateY: panelTranslateY.value }],
   }));
+  const columnTopValue = useSharedValue(columnLayout.top);
+  const harborColumnLeftValue = useSharedValue(columnLayout.harborLeft);
+  const vesselTypeColumnLeftValue = useSharedValue(columnLayout.vesselTypeLeft);
+  const harborColumnAnimatedStyle = useAnimatedStyle(() => ({
+    top: columnTopValue.value,
+    left: harborColumnLeftValue.value,
+  }));
+  const vesselTypeColumnAnimatedStyle = useAnimatedStyle(() => ({
+    top: columnTopValue.value,
+    left: vesselTypeColumnLeftValue.value,
+  }));
 
   useEffect(
     () => () => {
-      if (enterFrameRef.current !== null) {
-        cancelAnimationFrame(enterFrameRef.current);
-        enterFrameRef.current = null;
-      }
-
       if (widthAnimationFrameRef.current !== null) {
         cancelAnimationFrame(widthAnimationFrameRef.current);
         widthAnimationFrameRef.current = null;
@@ -186,6 +210,7 @@ export function FilterScreen({
     const targetOpacity = opening ? 1 : 0;
     const targetPanelY = opening || reducedMotion ? 0 : motionTokens.offset.sheetLift;
     const easing = opening ? IOS_EASING : IOS_EASING_REVERSE;
+    const layerCloseDelay = Math.max(0, motionDurationsMs.normal - motionDurationsMs.fast);
 
     if (reducedMotion) {
       layerProgress.value = targetOpacity;
@@ -194,10 +219,18 @@ export function FilterScreen({
       return;
     }
 
-    layerProgress.value = withTiming(targetOpacity, {
-      duration: motionDurationsMs.fast,
-      easing,
-    });
+    layerProgress.value = opening
+      ? withTiming(targetOpacity, {
+          duration: motionDurationsMs.fast,
+          easing,
+        })
+      : withDelay(
+          layerCloseDelay,
+          withTiming(targetOpacity, {
+            duration: motionDurationsMs.fast,
+            easing,
+          }),
+        );
     panelProgress.value = withTiming(targetOpacity, {
       duration: motionDurationsMs.normal,
       easing,
@@ -206,58 +239,60 @@ export function FilterScreen({
       duration: motionDurationsMs.normal,
       easing,
     });
-  }, [layerProgress, panelProgress, panelTranslateY, phase, reducedMotion]);
+  }, [
+    layerProgress,
+    panelProgress,
+    panelTranslateY,
+    phase,
+    reducedMotion,
+  ]);
+
+  useEffect(() => {
+    const easing = phase === 'closing' ? IOS_EASING_REVERSE : IOS_EASING;
+    const timing = {
+      duration: reducedMotion ? 0 : motionDurationsMs.normal,
+      easing,
+    };
+
+    if (reducedMotion) {
+      columnTopValue.value = columnLayout.top;
+      harborColumnLeftValue.value = columnLayout.harborLeft;
+      vesselTypeColumnLeftValue.value = columnLayout.vesselTypeLeft;
+      return;
+    }
+
+    columnTopValue.value = withTiming(columnLayout.top, timing);
+    harborColumnLeftValue.value = withTiming(columnLayout.harborLeft, timing);
+    vesselTypeColumnLeftValue.value = withTiming(columnLayout.vesselTypeLeft, timing);
+  }, [
+    columnLayout.harborLeft,
+    columnLayout.top,
+    columnLayout.vesselTypeLeft,
+    columnTopValue,
+    harborColumnLeftValue,
+    phase,
+    reducedMotion,
+    vesselTypeColumnLeftValue,
+  ]);
 
   useEffect(() => {
     setHarborOptionWidth(0);
-  }, [harborOptions]);
+  }, [harborFilter, harborOptions]);
 
   useEffect(() => {
     setVesselTypeOptionWidth(0);
-  }, [vesselTypeOptions]);
+  }, [vesselTypeFilter, vesselTypeOptions]);
 
-  const setResultsBlurTargetNode = useCallback((node) => {
-    resultsBlurTargetRef.current = node;
-    if (!node) {
-      setResultsBlurTargetReady(false);
+  useEffect(() => {
+    if (phase !== 'closing') {
+      openHarborFilterRef.current = harborFilter;
+      openVesselTypeFilterRef.current = vesselTypeFilter;
     }
-  }, []);
+  }, [harborFilter, phase, vesselTypeFilter]);
 
-  const handleResultsBlurTargetLayout = useCallback(() => {
-    if (resultsBlurTargetRef.current) {
-      setResultsBlurTargetReady(true);
-    }
-  }, []);
-
-  useLayoutEffect(() => {
-    if (enterFrameRef.current !== null) {
-      cancelAnimationFrame(enterFrameRef.current);
-      enterFrameRef.current = null;
-    }
-
-    if (reducedMotion) {
-      setVisualPhase(phase === 'closing' ? 'closed' : 'open');
-      return undefined;
-    }
-
-    if (phase === 'closing') {
-      setVisualPhase('closing');
-      return undefined;
-    }
-
-    setVisualPhase('closed');
-    enterFrameRef.current = requestAnimationFrame(() => {
-      enterFrameRef.current = null;
-      setVisualPhase('open');
-    });
-
-    return () => {
-      if (enterFrameRef.current !== null) {
-        cancelAnimationFrame(enterFrameRef.current);
-        enterFrameRef.current = null;
-      }
-    };
-  }, [phase, reducedMotion]);
+  const handleClose = useCallback(() => {
+    onClose?.();
+  }, [onClose]);
 
   useLayoutEffect(() => {
     if (widthAnimationFrameRef.current !== null) {
@@ -270,25 +305,54 @@ export function FilterScreen({
     const openHarborLabelWidth = harborColumnWidth || closedHarborLabelWidth;
     const openVesselTypeLabelWidth = vesselTypeColumnWidth || closedVesselTypeLabelWidth;
 
-    if (reducedMotion) {
-      setDisplayedHarborLabelWidth(phase === 'closing' ? closedHarborLabelWidth : openHarborLabelWidth);
-      setDisplayedVesselTypeLabelWidth(
-        phase === 'closing' ? closedVesselTypeLabelWidth : openVesselTypeLabelWidth,
-      );
+    if (!closedHarborLabelWidth || !closedVesselTypeLabelWidth) {
       return undefined;
     }
 
     if (phase === 'closing') {
-      setDisplayedHarborLabelWidth(closedHarborLabelWidth);
-      setDisplayedVesselTypeLabelWidth(closedVesselTypeLabelWidth);
+      const harborChangedDuringClose =
+        selectedDuringCloseRef.current.harbor || openHarborFilterRef.current !== harborFilter;
+      const vesselTypeChangedDuringClose =
+        selectedDuringCloseRef.current.vesselType || openVesselTypeFilterRef.current !== vesselTypeFilter;
+      const closingHarborLabelWidth = harborChangedDuringClose
+        ? Math.max(closedHarborLabelWidth, openHarborLabelWidth, displayedHarborLabelWidth)
+        : closedHarborLabelWidth;
+      const closingVesselTypeLabelWidth = vesselTypeChangedDuringClose
+        ? Math.max(
+            closedVesselTypeLabelWidth,
+            openVesselTypeLabelWidth,
+            displayedVesselTypeLabelWidth,
+          )
+        : closedVesselTypeLabelWidth;
+
+      widthPhaseRef.current = 'closed';
+      setDisplayedHarborLabelWidth(closingHarborLabelWidth);
+      setDisplayedVesselTypeLabelWidth(closingVesselTypeLabelWidth);
       return undefined;
     }
 
+    if (!filterWidthsReady) {
+      if (widthPhaseRef.current === 'closed') {
+        setDisplayedHarborLabelWidth(closedHarborLabelWidth);
+        setDisplayedVesselTypeLabelWidth(closedVesselTypeLabelWidth);
+      }
+      return undefined;
+    }
+
+    if (reducedMotion || widthPhaseRef.current === 'open') {
+      widthPhaseRef.current = 'open';
+      setDisplayedHarborLabelWidth(openHarborLabelWidth);
+      setDisplayedVesselTypeLabelWidth(openVesselTypeLabelWidth);
+      return undefined;
+    }
+
+    widthPhaseRef.current = 'opening';
     setDisplayedHarborLabelWidth(closedHarborLabelWidth);
     setDisplayedVesselTypeLabelWidth(closedVesselTypeLabelWidth);
 
     widthAnimationFrameRef.current = requestAnimationFrame(() => {
       widthAnimationFrameRef.current = null;
+      widthPhaseRef.current = 'open';
       setDisplayedHarborLabelWidth(openHarborLabelWidth);
       setDisplayedVesselTypeLabelWidth(openVesselTypeLabelWidth);
     });
@@ -300,15 +364,24 @@ export function FilterScreen({
       }
     };
   }, [
+    filterWidthsReady,
+    harborFilter,
     harborColumnWidth,
+    displayedHarborLabelWidth,
+    displayedVesselTypeLabelWidth,
     naturalHarborLabelWidth,
     naturalVesselTypeLabelWidth,
     phase,
     reducedMotion,
     vesselTypeColumnWidth,
+    vesselTypeFilter,
   ]);
 
   const updateColumnLayout = useCallback(async () => {
+    if (!filterWidthsReady) {
+      return;
+    }
+
     const [panelRect, harborButtonRect] = await Promise.all([
       measureNodeInWindow(panelRef.current),
       measureNodeInWindow(harborButtonRef.current),
@@ -319,13 +392,39 @@ export function FilterScreen({
     }
 
     const harborLeft = Math.max(FILTER_COLUMN_EDGE, harborButtonRect.left - panelRect.left);
+    const vesselTypeLeft =
+      harborLeft + harborColumnWidth + FILTER_DISCLOSURE_WIDTH + FILTER_BUTTON_GAP;
 
-    setColumnLayout({
+    const nextColumnLayout = {
       top: filterColumnTop,
       harborLeft,
-      vesselTypeLeft: harborLeft + harborColumnWidth + FILTER_DISCLOSURE_WIDTH + FILTER_BUTTON_GAP,
+      vesselTypeLeft,
+    };
+
+    if (!columnLayoutReadyRef.current) {
+      columnLayoutReadyRef.current = true;
+      columnTopValue.value = nextColumnLayout.top;
+      harborColumnLeftValue.value = nextColumnLayout.harborLeft;
+      vesselTypeColumnLeftValue.value = nextColumnLayout.vesselTypeLeft;
+      setColumnLayoutReady(true);
+    }
+
+    setColumnLayout((current) => {
+      const sameLayout =
+        Math.abs(current.top - nextColumnLayout.top) < 0.5
+        && Math.abs(current.harborLeft - nextColumnLayout.harborLeft) < 0.5
+        && Math.abs(current.vesselTypeLeft - nextColumnLayout.vesselTypeLeft) < 0.5;
+
+      return sameLayout ? current : nextColumnLayout;
     });
-  }, [filterColumnTop, harborColumnWidth]);
+  }, [
+    columnTopValue,
+    filterWidthsReady,
+    filterColumnTop,
+    harborColumnLeftValue,
+    harborColumnWidth,
+    vesselTypeColumnLeftValue,
+  ]);
 
   useLayoutEffect(() => {
     if (layoutAnimationFrameRef.current !== null) {
@@ -346,6 +445,7 @@ export function FilterScreen({
     };
   }, [
     compact,
+    filterWidthsReady,
     filterMode,
     harborColumnWidth,
     harborFilter,
@@ -357,10 +457,7 @@ export function FilterScreen({
   ]);
 
   return (
-    <AppScreenShell
-      shellStyle={styles.layer}
-      screenStyle={[screenLayoutStyles.screenColumn, styles.filterScreen]}
-    >
+    <View style={[styles.layer, styles.filterScreen]}>
       <TopBar
         blurTargetRef={activeBlurTargetRef}
         blurViewOptions
@@ -369,98 +466,66 @@ export function FilterScreen({
         harborButtonRef={harborButtonRef}
         harborLabelWidth={displayedHarborLabelWidth || undefined}
         inFilterSheet
-        onHarborFilterOpen={onClose}
+        onHarborFilterOpen={handleClose}
         onSearchOpen={onSearchOpen}
         onToggleCompact={onToggleCompact}
-        onVesselTypeFilterOpen={onClose}
+        onVesselTypeFilterOpen={handleClose}
         openState={filterOpenState}
         vesselTypeFilter={vesselTypeFilter}
         vesselTypeButtonRef={vesselTypeButtonRef}
         vesselTypeLabelWidth={displayedVesselTypeLabelWidth || undefined}
       />
 
-      <BlurTargetView
-        className="filter-screen__results"
-        ref={setResultsBlurTargetNode}
-        onLayout={handleResultsBlurTargetLayout}
-        style={[
-          styles.resultsShell,
-          { paddingTop: 108 + topInset },
-          styles.pointerEventsNone,
-        ]}
-      >
-        <VesselResults
-          compact={compact}
-          contentTopPadding={0}
-          onImageClick={onImageClick}
-          scrollResetKey={filterScrollResetKey}
-          style={styles.filterResults}
-          vessels={filteredVessels}
+      <Animated.View style={[styles.overlay, layerAnimatedStyle]}>
+        <BlurView
+          key={`filter-backdrop-${blurModeKey}`}
+          {...nativeBlurProps}
+          intensity={72}
+          style={[styles.backdropBlur, styles.pointerEventsNone]}
+          tint={isDark ? 'dark' : 'default'}
         />
-      </BlurTargetView>
-
-      <Animated.View className="filter-screen__overlay" style={[styles.overlay, layerAnimatedStyle]}>
+        <LinearGradient
+          colors={[backdropTopColor, backdropMidColor]}
+          locations={[0, 1]}
+          style={[styles.backdropGradient, styles.pointerEventsNone]}
+        />
         <Pressable
           accessibilityLabel="필터 닫기"
           accessibilityRole="button"
-          className="filter-screen__backdrop interaction-reset"
-          onPress={onClose}
+          onPress={handleClose}
           style={[styles.backdrop, { backgroundColor: backdropBaseColor }]}
-        >
-          <BlurView
-            key={`filter-backdrop-${blurModeKey}`}
-            {...nativeBlurProps}
-            intensity={52}
-            pointerEvents="none"
-            style={styles.backdropBlur}
-            tint={isDark ? 'dark' : 'light'}
-          />
-          <LinearGradient
-            colors={[backdropTopColor, backdropMidColor]}
-            locations={[0, 1]}
-            pointerEvents="none"
-            style={styles.backdropGradient}
-          />
-        </Pressable>
+        />
       </Animated.View>
 
       <Animated.View
-        className="filter-screen__panel"
-        pointerEvents="box-none"
         style={[
           styles.panel,
-          styles.pointerEventsBoxNone,
+          panelPointerEventsStyle,
           styles.panelMeasureHost,
           panelAnimatedStyle,
+          !columnLayoutReady && styles.panelHidden,
         ]}
         ref={panelRef}
       >
         <View
-          className="filter-screen__columns"
-          pointerEvents="box-none"
-          style={[styles.columns, styles.pointerEventsBoxNone]}
+          style={[styles.columns, columnsPointerEventsStyle]}
         >
-          <View
-            className="filter-screen__column"
+          <Animated.View
             style={[
               styles.column,
-              {
-                top: columnLayout.top,
-                left: harborMenuLeft,
-              },
+              columnPointerEventsStyle,
+              harborColumnAnimatedStyle,
             ]}
           >
             {harborOptions.map((option) => (
               <InteractivePressable
                 key={option}
                 accessibilityRole="button"
-                className={`filter-screen__option pressable-control pressable-control--option ${
-                  harborFilter === option ? 'filter-screen__option--active' : ''
-                }`.trim()}
-                onLayout={updateMaxWidth(setHarborOptionWidth)}
+                onLayout={harborFilter === option ? undefined : updateMaxWidth(setHarborOptionWidth)}
                 onPress={() => {
+                  selectedDuringCloseRef.current.harbor = true;
                   onHarborSelect(option);
-                  onClose();
+                  handleClose();
                 }}
                 pressGuideVariant="option"
                 style={({ focused, pressed }) => [
@@ -472,37 +537,35 @@ export function FilterScreen({
                 ]}
               >
                 <Text
-                  className="filter-screen__option-label filter-button__label"
                   numberOfLines={1}
-                  style={[styles.optionLabel, harborFilter === option && styles.optionLabelActive]}
+                  style={[
+                    styles.optionLabel,
+                    filterTextKeepAllStyle,
+                    harborFilter === option && styles.optionLabelActive,
+                  ]}
                 >
-                  {option}
+                  {keepAllWordBreakText(option)}
                 </Text>
               </InteractivePressable>
             ))}
-          </View>
+          </Animated.View>
 
-          <View
-            className="filter-screen__column"
+          <Animated.View
             style={[
               styles.column,
-              {
-                top: columnLayout.top,
-                left: vesselTypeMenuLeft,
-              },
+              columnPointerEventsStyle,
+              vesselTypeColumnAnimatedStyle,
             ]}
           >
             {vesselTypeOptions.map((option) => (
               <InteractivePressable
                 key={option}
                 accessibilityRole="button"
-                className={`filter-screen__option pressable-control pressable-control--option ${
-                  vesselTypeFilter === option ? 'filter-screen__option--active' : ''
-                }`.trim()}
-                onLayout={updateMaxWidth(setVesselTypeOptionWidth)}
+                onLayout={vesselTypeFilter === option ? undefined : updateMaxWidth(setVesselTypeOptionWidth)}
                 onPress={() => {
+                  selectedDuringCloseRef.current.vesselType = true;
                   onVesselTypeSelect(option);
-                  onClose();
+                  handleClose();
                 }}
                 pressGuideVariant="option"
                 style={({ focused, pressed }) => [
@@ -514,46 +577,53 @@ export function FilterScreen({
                 ]}
               >
                 <Text
-                  className="filter-screen__option-label filter-button__label"
                   numberOfLines={1}
                   style={[
                     styles.optionLabel,
+                    filterTextKeepAllStyle,
                     vesselTypeFilter === option && styles.optionLabelActive,
                   ]}
                 >
-                  {option}
+                  {keepAllWordBreakText(option)}
                 </Text>
               </InteractivePressable>
             ))}
-          </View>
+          </Animated.View>
         </View>
       </Animated.View>
 
       <View style={[styles.measurements, styles.pointerEventsNone]}>
-        <Text onLayout={setMeasuredWidth(setNaturalHarborLabelWidth)} style={styles.measurementFilterLabel}>
-          {harborFilter}
+        <Text
+          onLayout={setMeasuredWidth(setNaturalHarborLabelWidth)}
+          style={[styles.measurementFilterLabel, filterTextKeepAllStyle]}
+        >
+          {keepAllWordBreakText(harborFilter)}
         </Text>
         <Text
           onLayout={setMeasuredWidth(setNaturalVesselTypeLabelWidth)}
-          style={styles.measurementFilterLabel}
+          style={[styles.measurementFilterLabel, filterTextKeepAllStyle]}
         >
-          {vesselTypeFilter}
+          {keepAllWordBreakText(vesselTypeFilter)}
         </Text>
         <View style={styles.measurementColumn}>
-          {harborOptions.map((option) => (
-            <Text key={`harbor-measure-${option}`} onLayout={updateMaxWidth(setHarborOptionWidth)} style={styles.optionLabel}>
-              {option}
+          {harborWidthOptions.map((option) => (
+            <Text
+              key={`harbor-measure-${option}`}
+              onLayout={updateMaxWidth(setHarborOptionWidth)}
+              style={[styles.optionLabel, filterTextKeepAllStyle]}
+            >
+              {keepAllWordBreakText(option)}
             </Text>
           ))}
         </View>
         <View style={styles.measurementColumn}>
-          {vesselTypeOptions.map((option) => (
+          {vesselTypeWidthOptions.map((option) => (
             <Text
               key={`vessel-type-measure-${option}`}
               onLayout={updateMaxWidth(setVesselTypeOptionWidth)}
-              style={styles.optionLabel}
+              style={[styles.optionLabel, filterTextKeepAllStyle]}
             >
-              {option}
+              {keepAllWordBreakText(option)}
             </Text>
           ))}
         </View>
@@ -561,14 +631,13 @@ export function FilterScreen({
 
       <BottomTab
         activeTab="db"
-        blurred
-        blurTargetRef={activeBlurTargetRef}
         contained
-        onDbClick={onClose}
+        onDbClick={handleClose}
         onManageClick={onManageOpen}
         onMenuClick={onMenuOpen}
+        style={styles.bottomTabUnderOverlay}
       />
-    </AppScreenShell>
+    </View>
   );
 }
 
@@ -582,14 +651,6 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   filterScreen: {
-  },
-  resultsShell: {
-    position: 'relative',
-    minHeight: '100%',
-    opacity: 0.72,
-  },
-  filterResults: {
-    overflow: 'hidden',
   },
   overlay: {
     position: 'absolute',
@@ -621,25 +682,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
   },
-  backdropTop: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    left: 0,
-    height: '42%',
-  },
-  backdropMid: {
-    position: 'absolute',
-    top: '42%',
-    right: 0,
-    left: 0,
-    height: '26%',
+  bottomTabUnderOverlay: {
+    zIndex: 2,
   },
   pointerEventsNone: {
     pointerEvents: 'none',
   },
   pointerEventsBoxNone: {
     pointerEvents: 'box-none',
+  },
+  pointerEventsAuto: {
+    pointerEvents: 'auto',
   },
   panel: {
     position: 'absolute',
@@ -654,9 +707,13 @@ const styles = StyleSheet.create({
   panelMeasureHost: {
     overflow: 'visible',
   },
+  panelHidden: {
+    opacity: 0,
+  },
   columns: {
     position: 'relative',
     minHeight: '100%',
+    zIndex: 200,
   },
   column: {
     position: 'absolute',
@@ -680,9 +737,7 @@ const styles = StyleSheet.create({
   optionLabel: {
     color: 'var(--color-text-tertiary)',
     fontSize: 18,
-    lineHeight: 23.4,
     fontWeight: '700',
-    letterSpacing: -0.36,
     opacity: 0.78,
   },
   optionActive: {},
@@ -710,7 +765,6 @@ const styles = StyleSheet.create({
     color: 'var(--color-text-secondary)',
     fontSize: 18,
     fontWeight: '600',
-    letterSpacing: -0.36,
     textAlign: 'left',
   },
 });

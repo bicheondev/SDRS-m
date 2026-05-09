@@ -10,40 +10,64 @@ function commitNavigation(deferred, update) {
 }
 
 export function useStackNavigation(initialScreen) {
-  const [stack, setStack] = useState([initialScreen]);
-  const [transition, setTransition] = useState('none');
+  const [navigationState, setNavigationState] = useState({
+    stack: [initialScreen],
+    transition: 'none',
+    transitionFrom: null,
+    transitionTo: initialScreen,
+  });
 
   const push = useCallback((nextScreen, options = {}) => {
     commitNavigation(options.deferred, () => {
-      setTransition('push');
-      setStack((currentStack) => {
+      setNavigationState((current) => {
+        const currentStack = current.stack;
+        const currentScreen = currentStack[currentStack.length - 1];
         if (currentStack[currentStack.length - 1] === nextScreen) {
-          return currentStack;
+          return current;
         }
 
-        return [...currentStack, nextScreen];
+        return {
+          stack: [...currentStack, nextScreen],
+          transition: 'push',
+          transitionFrom: currentScreen,
+          transitionTo: nextScreen,
+        };
       });
     });
   }, []);
 
   const pop = useCallback((options = {}) => {
     commitNavigation(options.deferred, () => {
-      setTransition('pop');
-      setStack((currentStack) =>
-        currentStack.length > 1 ? currentStack.slice(0, -1) : currentStack,
-      );
+      setNavigationState((current) => {
+        const currentStack = current.stack;
+        if (currentStack.length <= 1) {
+          return current;
+        }
+
+        return {
+          stack: currentStack.slice(0, -1),
+          transition: 'pop',
+          transitionFrom: currentStack[currentStack.length - 1],
+          transitionTo: currentStack[currentStack.length - 2],
+        };
+      });
     });
   }, []);
 
   const reset = useCallback(
     (nextScreen = initialScreen, nextTransition = 'none', options = {}) => {
       commitNavigation(options.deferred, () => {
-        setTransition(nextTransition);
-        setStack([nextScreen]);
+        setNavigationState((current) => ({
+          stack: [nextScreen],
+          transition: nextTransition,
+          transitionFrom: current.stack[current.stack.length - 1] ?? null,
+          transitionTo: nextScreen,
+        }));
       });
     },
     [initialScreen],
   );
+  const stack = navigationState.stack;
 
   return {
     currentScreen: stack[stack.length - 1],
@@ -51,6 +75,8 @@ export function useStackNavigation(initialScreen) {
     push,
     reset,
     stack,
-    transition,
+    transition: navigationState.transition,
+    transitionFrom: navigationState.transitionFrom,
+    transitionTo: navigationState.transitionTo,
   };
 }

@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { BlurView } from 'expo-blur';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
@@ -10,29 +10,25 @@ import { InteractivePressable } from '../primitives/InteractivePressable.jsx';
 import { AppText as Text } from '../primitives/AppTypography.jsx';
 import { getScreenWidthForViewport } from './ScreenLayout.jsx';
 
-function BottomTabButton({ active, blurred = false, label, name, onPress, tone }) {
+function BottomTabButton({ active, label, name, onPress, tone }) {
   return (
     <InteractivePressable
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={`bottom-tab__item pressable-control pressable-control--tab ${
-        active ? 'bottom-tab__item--active' : ''
-      }`.trim()}
       onPress={onPress}
       pressGuideInset="-4px -8px"
       pressGuideVariant="tab"
       style={({ focused, pressed }) => [
         interactiveStyles.base,
         styles.item,
+        styles.itemColumn,
         active ? styles.itemActive : styles.itemInactive,
-        blurred && styles.itemBlurred,
         focused && interactiveStyles.focus,
         { transform: [{ scale: pressed ? getInteractiveScale('button') : 1 }] },
       ]}
     >
-      <AppIcon className="bottom-tab__icon" name={name} preset="tab" tone={tone} />
+      <AppIcon name={name} preset="tab" style={styles.icon} tone={tone} />
       <Text
-        className="bottom-tab__label"
         numberOfLines={1}
         style={[styles.label, active && styles.labelActive]}
       >
@@ -50,6 +46,7 @@ function BottomTab({
   onDbClick,
   onManageClick,
   onMenuClick,
+  style,
 }) {
   const { resolvedColorMode } = useTheme();
   const insets = useSafeAreaInsets();
@@ -61,8 +58,9 @@ function BottomTab({
   const itemGap = Math.min(70, Math.max(0, (tabWidth - itemTotalWidth) / 4));
   const isDark = resolvedColorMode === 'dark';
   const blurTint = isDark ? 'dark' : 'default';
-  const blurModeKey = blurTargetRef ? 'targeted' : 'fallback';
-  const nativeBlurProps = blurred && blurTargetRef
+  const canTargetBlur = Platform.OS !== 'web' && blurTargetRef;
+  const blurModeKey = canTargetBlur ? 'targeted' : 'fallback';
+  const nativeBlurProps = blurred && canTargetBlur
     ? {
         blurMethod: 'dimezisBlurViewSdk31Plus',
         blurReductionFactor: 3,
@@ -72,20 +70,21 @@ function BottomTab({
 
   return (
     <View
-      pointerEvents={blurred ? 'box-none' : 'auto'}
       style={[
         styles.shell,
+        blurred ? styles.pointerEventsBoxNone : styles.pointerEventsAuto,
         {
           left: tabLeft,
           width: tabWidth,
           height: 84 + bottomInset,
           paddingBottom: bottomInset,
           gap: itemGap,
+          flexDirection: 'row',
         },
+        style,
       ]}
     >
       <View
-        className="bottom-tab__backdrop"
         style={[
           styles.backdrop,
           blurred ? styles.backdropBlurred : styles.backdropNormal,
@@ -97,8 +96,7 @@ function BottomTab({
             key={`bottom-tab-${blurModeKey}`}
             {...nativeBlurProps}
             intensity={52}
-            pointerEvents="none"
-            style={styles.backdropBlur}
+            style={[styles.backdropBlur, styles.pointerEventsNone]}
             tint={blurTint}
           />
         ) : null}
@@ -115,7 +113,6 @@ function BottomTab({
         name="data_table"
         onPress={onDbClick}
         tone={activeTab === 'db' ? 'accent' : 'muted'}
-        blurred={blurred}
       />
       <BottomTabButton
         active={activeTab === 'manage'}
@@ -123,7 +120,6 @@ function BottomTab({
         name="database"
         onPress={onManageClick}
         tone={activeTab === 'manage' ? 'accent' : 'muted'}
-        blurred={blurred}
       />
       <BottomTabButton
         active={activeTab === 'menu'}
@@ -131,7 +127,6 @@ function BottomTab({
         name="dehaze"
         onPress={onMenuClick}
         tone={activeTab === 'menu' ? 'accent' : 'muted'}
-        blurred={blurred}
       />
     </View>
   );
@@ -202,6 +197,12 @@ const styles = StyleSheet.create({
   pointerEventsNone: {
     pointerEvents: 'none',
   },
+  pointerEventsBoxNone: {
+    pointerEvents: 'box-none',
+  },
+  pointerEventsAuto: {
+    pointerEvents: 'auto',
+  },
   item: {
     alignSelf: 'flex-start',
     display: 'flex',
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     height: 44,
     paddingVertical: 0,
-    paddingHorizontal: 12,
+    paddingHorizontal: 0,
     gap: 4,
     borderWidth: 0,
     backgroundColor: 'transparent',
@@ -223,21 +224,25 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1,
   },
+  itemColumn: {
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
   itemInactive: {
     color: 'var(--color-text-tertiary)',
   },
   itemActive: {
     color: 'var(--color-accent)',
   },
-  itemBlurred: {
-    opacity: 0.38,
+  icon: {
+    height: 24,
   },
   label: {
+    width: 70,
+    flexShrink: 0,
     color: 'var(--color-text-tertiary)',
     fontSize: 11,
-    lineHeight: 11,
     fontWeight: '600',
-    letterSpacing: -0.11,
     textAlign: 'center',
   },
   labelActive: {

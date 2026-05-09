@@ -103,9 +103,7 @@ export const screenLayoutStyles = StyleSheet.create({
     paddingHorizontal: 18,
     color: 'var(--slate-700)',
     fontSize: 26,
-    lineHeight: 33.8,
     fontWeight: '600',
-    letterSpacing: -0.78,
   },
   subpageTitle: {
     paddingTop: 77,

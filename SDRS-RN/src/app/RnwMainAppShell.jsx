@@ -1,118 +1,39 @@
-import { lazy, Suspense, useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import ImageZoomModal from '../components/ImageZoomModal.jsx';
 import { useDatabaseFilters } from '../features/database/useDatabaseFilters.js';
+import { ManageHomePage } from '../features/manage/ManageHomePage.jsx';
+import { ManageShipEditPage } from '../features/manage/ManageShipEditPage.jsx';
 import { useShipEditor } from '../features/manage/useShipEditor.js';
+import { MenuInfoPage } from '../features/menu/MenuInfoPage.jsx';
+import { MenuModePage } from '../features/menu/MenuModePage.jsx';
+import { MenuPage } from '../features/menu/MenuPage.jsx';
 import { useAndroidBackHandler } from '../hooks/useAndroidBackHandler.js';
 import { useColorMode } from '../hooks/useColorMode.js';
 import { useStackNavigation } from '../hooks/useStackNavigation.js';
 import { motionDurationsMs } from '../motion.js';
 import {
-  getElementRectSnapshot,
-  isHostElement,
-  scheduleIdleTask,
   setDocumentTheme,
-  setElementDataAttribute,
 } from '../platform/index';
 import { getThemeCssVariables } from '../theme.js';
 import { appReducer, initialAppState } from './appReducer.js';
 import { DatabasePage } from '../features/database/DatabasePage.jsx';
+import { SearchTopBar, TopBar } from '../features/database/DatabaseTopBars.jsx';
 import AnimatedScreen from '../components/layout/AnimatedScreen.jsx';
 import BottomTab from '../components/layout/BottomTab.jsx';
 import { useRnwAppBootstrap } from './useRnwAppBootstrap.js';
-
-let manageHomePageModulePromise = null;
-let manageShipEditPageModulePromise = null;
-let menuPageModulePromise = null;
-let menuModePageModulePromise = null;
-let menuInfoPageModulePromise = null;
-let imageZoomModalModulePromise = null;
-
-function loadManageHomePageModule() {
-  if (!manageHomePageModulePromise) {
-    manageHomePageModulePromise = import('../features/manage/ManageHomePage.jsx');
-  }
-
-  return manageHomePageModulePromise;
-}
-
-function loadManageShipEditPageModule() {
-  if (!manageShipEditPageModulePromise) {
-    manageShipEditPageModulePromise = import('../features/manage/ManageShipEditPage.jsx');
-  }
-
-  return manageShipEditPageModulePromise;
-}
-
-function loadMenuPageModule() {
-  if (!menuPageModulePromise) {
-    menuPageModulePromise = import('../features/menu/MenuPage.jsx');
-  }
-
-  return menuPageModulePromise;
-}
-
-function loadMenuModePageModule() {
-  if (!menuModePageModulePromise) {
-    menuModePageModulePromise = import('../features/menu/MenuModePage.jsx');
-  }
-
-  return menuModePageModulePromise;
-}
-
-function loadMenuInfoPageModule() {
-  if (!menuInfoPageModulePromise) {
-    menuInfoPageModulePromise = import('../features/menu/MenuInfoPage.jsx');
-  }
-
-  return menuInfoPageModulePromise;
-}
-
-function loadImageZoomModalModule() {
-  if (!imageZoomModalModulePromise) {
-    imageZoomModalModulePromise = import('../components/ImageZoomModal.jsx');
-  }
-
-  return imageZoomModalModulePromise;
-}
-
-const ManageHomePage = lazy(() =>
-  loadManageHomePageModule().then((module) => ({
-    default: module.ManageHomePage,
-  })),
-);
-const ManageShipEditPage = lazy(() =>
-  loadManageShipEditPageModule().then((module) => ({
-    default: module.ManageShipEditPage,
-  })),
-);
-const MenuPage = lazy(() =>
-  loadMenuPageModule().then((module) => ({
-    default: module.MenuPage,
-  })),
-);
-const MenuModePage = lazy(() =>
-  loadMenuModePageModule().then((module) => ({
-    default: module.MenuModePage,
-  })),
-);
-const MenuInfoPage = lazy(() =>
-  loadMenuInfoPageModule().then((module) => ({
-    default: module.MenuInfoPage,
-  })),
-);
-const ImageZoomModal = lazy(() => loadImageZoomModalModule());
 
 export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
   const [appState, dispatch] = useReducer(appReducer, initialAppState);
   const [hasVisitedManage, setHasVisitedManage] = useState(false);
   const [hasVisitedMenu, setHasVisitedMenu] = useState(false);
+  const [zoomThumbnailReleased, setZoomThumbnailReleased] = useState(false);
   const manageNavigation = useStackNavigation('manageHome');
   const menuNavigation = useStackNavigation('menu');
   const { colorMode, resolvedColorMode, setColorMode } = useColorMode('system');
   const { databaseState, setDatabaseState } = useRnwAppBootstrap();
   const shipEditContentRef = useRef(null);
-  const pendingTabNavigationRef = useRef(0);
   const databasePage = useDatabaseFilters({
     activeTab: appState.activeTab,
     isAppVisible: isActive,
@@ -124,22 +45,6 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
     onShipsChanged: () => databasePage.setHarborFilter('전체 항포구'),
     setDatabaseState,
   });
-
-  useEffect(() => {
-    if (!isActive) {
-      return undefined;
-    }
-
-    const warmSecondaryModules = () => {
-      loadManageHomePageModule();
-      loadMenuPageModule();
-    };
-
-    return scheduleIdleTask(warmSecondaryModules, {
-      fallbackDelay: 900,
-      timeout: 1800,
-    });
-  }, [isActive]);
 
   useEffect(() => {
     if (appState.activeTab === 'manage') {
@@ -161,29 +66,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
 
   const navigateTab = useCallback(
     (nextTab) => {
-      pendingTabNavigationRef.current += 1;
       commitTabNavigation(nextTab);
-    },
-    [commitTabNavigation],
-  );
-
-  const navigateTabAfterPreload = useCallback(
-    (nextTab, preloadPromise) => {
-      const requestId = pendingTabNavigationRef.current + 1;
-      pendingTabNavigationRef.current = requestId;
-
-      preloadPromise.then(
-        () => {
-          if (pendingTabNavigationRef.current === requestId) {
-            commitTabNavigation(nextTab);
-          }
-        },
-        () => {
-          if (pendingTabNavigationRef.current === requestId) {
-            commitTabNavigation(nextTab);
-          }
-        },
-      );
     },
     [commitTabNavigation],
   );
@@ -198,18 +81,15 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
     shipEditor.resetSession();
     manageNavigation.reset('manageHome');
     setHasVisitedManage(true);
-    loadManageShipEditPageModule();
-    navigateTabAfterPreload('manage', loadManageHomePageModule());
-  }, [databasePage, manageNavigation, navigateTabAfterPreload, shipEditor]);
+    navigateTab('manage');
+  }, [databasePage, manageNavigation, navigateTab, shipEditor]);
 
   const openMenu = useCallback(() => {
     databasePage.resetDatabasePage();
     menuNavigation.reset('menu');
     setHasVisitedMenu(true);
-    loadMenuModePageModule();
-    loadMenuInfoPageModule();
-    navigateTabAfterPreload('menu', loadMenuPageModule());
-  }, [databasePage, menuNavigation, navigateTabAfterPreload]);
+    navigateTab('menu');
+  }, [databasePage, menuNavigation, navigateTab]);
 
   const openImageZoom = useCallback((vessel, collection = [vessel], sourceThumbnail = null) => {
     const vessels =
@@ -218,13 +98,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
       0,
       vessels.findIndex((entry) => entry.id === vessel.id),
     );
-    const isSourceElement = isHostElement(sourceThumbnail);
-    const sourceThumbToken = isSourceElement
-      ? `zoom-thumb-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-      : null;
-    const measuredSourceRect = isSourceElement
-      ? getElementRectSnapshot(sourceThumbnail)
-      : sourceThumbnail;
+    const measuredSourceRect = sourceThumbnail;
     const sourceRect =
       measuredSourceRect &&
       typeof measuredSourceRect === 'object' &&
@@ -235,17 +109,13 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
         ? measuredSourceRect
         : null;
 
-    if (isSourceElement && sourceThumbToken) {
-      setElementDataAttribute(sourceThumbnail, 'zoomThumbSource', sourceThumbToken);
-    }
-
+    setZoomThumbnailReleased(false);
     dispatch({
       type: 'open-zoom',
       session: {
         vessels,
         startIndex,
         openedAt: Date.now(),
-        sourceThumbToken,
         sourceRect: sourceRect
           ? {
               top: sourceRect.top,
@@ -256,6 +126,15 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
           : null,
       },
     });
+  }, []);
+
+  const handleZoomThumbnailReveal = useCallback(() => {
+    setZoomThumbnailReleased(true);
+  }, []);
+
+  const handleZoomClose = useCallback(() => {
+    setZoomThumbnailReleased(false);
+    dispatch({ type: 'close-zoom' });
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -295,7 +174,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
   useAndroidBackHandler(
     useCallback(() => {
       if (appState.zoomSession) {
-        dispatch({ type: 'close-zoom' });
+        handleZoomClose();
         return true;
       }
       if (appState.activeTab === 'db' && databasePage.databaseView === 'search') {
@@ -323,6 +202,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
       appState.activeTab,
       appState.zoomSession,
       databasePage,
+      handleZoomClose,
       manageNavigation,
       menuNavigation,
       showDatabaseHome,
@@ -346,6 +226,71 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
     (appState.activeTab === 'manage' && manageNavigation.currentScreen === 'manageHome') ||
     (appState.activeTab === 'menu' && menuNavigation.currentScreen === 'menu');
   const bottomTabCompact = appState.activeTab === 'manage' ? false : databasePage.compact;
+  const zoomHiddenThumbnailIndex = Math.max(
+    0,
+    Math.min(
+      appState.zoomSession?.startIndex ?? 0,
+      Math.max((appState.zoomSession?.vessels?.length ?? 1) - 1, 0),
+    ),
+  );
+  const zoomHiddenThumbnailId = zoomThumbnailReleased
+    ? null
+    : appState.zoomSession?.vessels?.[zoomHiddenThumbnailIndex]?.id ?? null;
+  const renderZoomChromeOverlay = useCallback(() => {
+    if (appState.activeTab !== 'db') {
+      return null;
+    }
+
+    return (
+      <>
+        {databasePage.databaseView === 'search' ? (
+          <SearchTopBar
+            blurTargetRef={null}
+            compact={databasePage.compact}
+            harborFilter={databasePage.harborFilter}
+            query={databasePage.searchQuery}
+            vesselTypeFilter={databasePage.vesselTypeFilter}
+            onBack={databasePage.closeSearch}
+            onClear={databasePage.clearSearchQuery}
+            onHarborFilterOpen={() => databasePage.openFilter('harbor')}
+            onQueryChange={databasePage.setSearchQuery}
+            onToggleCompact={databasePage.handleCompactChange}
+            onVesselTypeFilterOpen={() => databasePage.openFilter('vesselType')}
+          />
+        ) : (
+          <TopBar
+            blurTargetRef={null}
+            compact={databasePage.compact}
+            harborFilter={databasePage.harborFilter}
+            hidden={databasePage.topBarHidden}
+            vesselTypeFilter={databasePage.vesselTypeFilter}
+            onHarborFilterOpen={() => databasePage.openFilter('harbor')}
+            onSearchOpen={databasePage.openSearch}
+            onToggleCompact={databasePage.handleCompactChange}
+            onVesselTypeFilterOpen={() => databasePage.openFilter('vesselType')}
+          />
+        )}
+        {showBottomTab ? (
+          <BottomTab
+            activeTab={appState.activeTab}
+            compact={bottomTabCompact}
+            onDbClick={handleBottomTabDbClick}
+            onManageClick={handleBottomTabManageClick}
+            onMenuClick={handleBottomTabMenuClick}
+            style={styles.zoomChromeBottomTab}
+          />
+        ) : null}
+      </>
+    );
+  }, [
+    appState.activeTab,
+    bottomTabCompact,
+    databasePage,
+    handleBottomTabDbClick,
+    handleBottomTabManageClick,
+    handleBottomTabMenuClick,
+    showBottomTab,
+  ]);
 
   return (
     <View style={[styles.shell, getThemeCssVariables(resolvedColorMode)]}>
@@ -365,6 +310,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
             filteredDisplayVessels={databasePage.filteredDisplayVessels}
             harborFilter={databasePage.harborFilter}
             harborOptions={databasePage.harborOptions}
+            hiddenThumbnailId={zoomHiddenThumbnailId}
             mainContentRef={databasePage.mainContentRef}
             onFilterClose={databasePage.closeFilter}
             onFilterHarborSelect={databasePage.setHarborFilter}
@@ -402,6 +348,8 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
                 currentScreen={manageNavigation.currentScreen}
                 navDir={manageNavigation.transition}
                 reducedMotion={reducedMotion}
+                transitionFrom={manageNavigation.transitionFrom}
+                transitionTo={manageNavigation.transitionTo}
               >
                 <Suspense fallback={null}>
                   <ManageHomePage
@@ -435,6 +383,8 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
                 currentScreen={manageNavigation.currentScreen}
                 navDir={manageNavigation.transition}
                 reducedMotion={reducedMotion}
+                transitionFrom={manageNavigation.transitionFrom}
+                transitionTo={manageNavigation.transitionTo}
               >
                 <Suspense fallback={null}>
                   <ManageShipEditPage
@@ -490,6 +440,8 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
                 currentScreen={menuNavigation.currentScreen}
                 navDir={menuNavigation.transition}
                 reducedMotion={reducedMotion}
+                transitionFrom={menuNavigation.transitionFrom}
+                transitionTo={menuNavigation.transitionTo}
               >
                 <Suspense fallback={null}>
                   <MenuPage
@@ -507,6 +459,8 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
                 currentScreen={menuNavigation.currentScreen}
                 navDir={menuNavigation.transition}
                 reducedMotion={reducedMotion}
+                transitionFrom={menuNavigation.transitionFrom}
+                transitionTo={menuNavigation.transitionTo}
               >
                 <Suspense fallback={null}>
                   <MenuModePage
@@ -523,6 +477,8 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
                 currentScreen={menuNavigation.currentScreen}
                 navDir={menuNavigation.transition}
                 reducedMotion={reducedMotion}
+                transitionFrom={menuNavigation.transitionFrom}
+                transitionTo={menuNavigation.transitionTo}
               >
                 <Suspense fallback={null}>
                   <MenuInfoPage onBack={() => menuNavigation.pop()} />
@@ -546,8 +502,10 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
       {appState.zoomSession ? (
         <Suspense fallback={null}>
           <ImageZoomModal
+            renderChromeOverlay={renderZoomChromeOverlay}
             session={appState.zoomSession}
-            onClose={() => dispatch({ type: 'close-zoom' })}
+            onClose={handleZoomClose}
+            onThumbnailReveal={handleZoomThumbnailReveal}
           />
         </Suspense>
       ) : null}
@@ -571,5 +529,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     overflow: 'hidden',
+  },
+  zoomChromeBottomTab: {
+    pointerEvents: 'none',
   },
 });

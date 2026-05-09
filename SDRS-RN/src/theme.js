@@ -136,7 +136,8 @@ function buildLightTheme() {
     'shadow-modal': null,
     'shadow-toast': null,
     'gradient-app-shell': null,
-    'gradient-top-bar': null,
+    'gradient-top-bar':
+      'linear-gradient(180deg, rgb(255 255 255 / .86) 0%, rgb(255 255 255 / .78) 64%, rgb(255 255 255 / .1) 100%)',
     'gradient-top-bar-frost': null,
     'gradient-top-bar-frost-soft': null,
     'gradient-filter-backdrop': null,
@@ -145,7 +146,6 @@ function buildLightTheme() {
     'logo-filter': null,
     'screen-width': 390,
     'screen-height': 844,
-    'db-scrollbar-gutter': 0,
     'radius-interaction': 12,
     'space-screen-edge': 18,
     'space-section-gap': 28,
@@ -250,7 +250,7 @@ function buildDarkTheme() {
     'gradient-app-shell':
       'radial-gradient(circle at top, rgb(15 23 42) 0%, rgb(15 23 42) 30%, rgb(2 6 23) 100%)',
     'gradient-top-bar':
-      'linear-gradient(180deg, rgb(15 23 42) 0%, rgb(15 23 42) 64%, rgb(15 23 42 / 0) 100%)',
+      'linear-gradient(180deg, rgb(255 255 255 / .86) 0%, rgb(255 255 255 / .78) 64%, rgb(255 255 255 / .1) 100%)',
     'gradient-top-bar-frost':
       'linear-gradient(180deg, rgb(15 23 42 / 0.84) 0%, rgb(15 23 42 / 0.74) 64%, rgb(15 23 42 / 0.08) 100%)',
     'gradient-top-bar-frost-soft':

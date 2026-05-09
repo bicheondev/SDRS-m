@@ -20,11 +20,6 @@ import { motionDurationsMs, motionTokens } from '../../motion.js';
 import { pickFile } from '../../services/filePicker.js';
 
 const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-function joinClassNames(...tokens) {
-  return tokens.filter(Boolean).join(' ');
-}
 
 function getRowPressableStyle(pressed, focused) {
   return [
@@ -133,7 +128,6 @@ function DataManagementHomeRow({ label, onPress, tone = 'default', value }) {
             {value}
           </Text>
           <AppIcon
-            className="manage-home__chevron"
             name="arrow_forward_ios"
             preset="iosArrow"
             tone="muted"
@@ -150,7 +144,6 @@ function DataManagementHomeRow({ label, onPress, tone = 'default', value }) {
   return (
     <InteractivePressable
       accessibilityRole="button"
-      className="manage-home__row manage-home__row--button pressable-control pressable-control--surface"
       onPress={onPress}
       pressGuideVariant="row"
       style={({ focused, pressed }) => [styles.manageHomeRow, ...getRowPressableStyle(pressed, focused)]}
@@ -174,28 +167,25 @@ function ManageAlertModal({
   const modalAnimatedStyles = useModalAnimatedStyles(reducedMotion);
 
   return (
-    <View className="manage-discard-modal" style={styles.modalShell}>
+    <View style={styles.modalShell}>
       <Animated.View
-        className="manage-discard-modal__scrim"
         style={[
           styles.modalScrim,
           modalAnimatedStyles.scrimStyle,
         ]}
       />
       <Animated.View
-        className="manage-discard-modal__card"
         style={[
           styles.modalCard,
           modalAnimatedStyles.cardStyle,
         ]}
       >
-        <Text className="manage-discard-modal__title" style={styles.modalTitle}>{title}</Text>
-        <Text className="manage-discard-modal__copy" style={styles.modalCopy}>{copy}</Text>
-        <View className="manage-discard-modal__actions" style={styles.modalActions}>
+        <Text style={styles.modalTitle}>{title}</Text>
+        <Text style={styles.modalCopy}>{copy}</Text>
+        <View style={styles.modalActions}>
           {!hideCancel ? (
             <InteractivePressable
               accessibilityRole="button"
-              className="manage-discard-modal__button manage-discard-modal__button--ghost pressable-control pressable-control--surface"
               onPress={onCancel}
               pressGuideVariant="surface"
               style={({ pressed }) => [
@@ -209,14 +199,6 @@ function ManageAlertModal({
           ) : null}
           <InteractivePressable
             accessibilityRole="button"
-            className={joinClassNames(
-              'manage-discard-modal__button',
-              confirmTone === 'danger'
-                ? 'manage-discard-modal__button--danger'
-                : 'manage-discard-modal__button--neutral',
-              'pressable-control',
-              'pressable-control--filled',
-            )}
             onPress={onConfirm}
             pressGuideVariant="filled"
             style={({ pressed }) => [
@@ -244,42 +226,39 @@ function ManageShipImportModal({
   const modalAnimatedStyles = useModalAnimatedStyles(reducedMotion);
 
   return (
-    <View className="manage-discard-modal" style={styles.modalShell}>
-      <AnimatedPressable
-        accessibilityLabel="선박 DB 불러오기 닫기"
-        accessibilityRole="button"
-        className="manage-discard-modal__scrim-button interaction-reset"
-        onPress={onDismiss}
+    <View style={styles.modalShell}>
+      <Animated.View
         style={[
           styles.modalScrimButton,
           modalAnimatedStyles.scrimStyle,
         ]}
-      />
+      >
+        <Pressable
+          accessibilityLabel="선박 DB 불러오기 닫기"
+          accessibilityRole="button"
+          onPress={onDismiss}
+          style={styles.modalScrimPressable}
+        />
+      </Animated.View>
       <Animated.View
-        className="manage-discard-modal__card"
         style={[
           styles.modalCard,
           modalAnimatedStyles.cardStyle,
         ]}
       >
-        <View className="manage-ship-import-modal__content" style={styles.importContent}>
-          <View className="manage-ship-import-modal__header" style={styles.importHeader}>
-            <Text className="manage-discard-modal__title" style={styles.modalTitle}>선박 DB 불러오기</Text>
-            <Text className="manage-discard-modal__copy" style={styles.modalCopy}>기존에 있던 데이터는 삭제할까요?</Text>
+        <View style={styles.importContent}>
+          <View style={styles.importHeader}>
+            <Text style={styles.modalTitle}>선박 DB 불러오기</Text>
+            <Text style={styles.modalCopy}>기존에 있던 데이터는 삭제할까요?</Text>
           </View>
 
           <Pressable
             accessibilityRole="checkbox"
             accessibilityState={{ checked: replaceSameRegistration }}
-            className="manage-ship-import-modal__checkbox-row interaction-reset"
             onPress={() => onReplaceSameRegistrationChange(!replaceSameRegistration)}
             style={styles.importCheckboxRow}
           >
             <View
-              className={joinClassNames(
-                'manage-ship-import-modal__checkbox-box',
-                replaceSameRegistration && 'manage-ship-import-modal__checkbox-box--checked',
-              )}
               style={[
                 styles.importCheckboxBox,
                 replaceSameRegistration && styles.importCheckboxBoxChecked,
@@ -287,21 +266,19 @@ function ManageShipImportModal({
             >
               {replaceSameRegistration ? (
                 <AppIcon
-                  className="manage-ship-import-modal__checkbox-icon"
                   name="check_small"
                   preset="checkbox"
                   tone="on-accent"
                 />
               ) : null}
             </View>
-            <Text className="manage-ship-import-modal__checkbox-label" style={styles.importCheckboxLabel}>어선정보가 같은 어선은 대체하기</Text>
+            <Text style={styles.importCheckboxLabel}>어선정보가 같은 어선은 대체하기</Text>
           </Pressable>
         </View>
 
-        <View className="manage-discard-modal__actions" style={styles.modalActions}>
+        <View style={styles.modalActions}>
           <InteractivePressable
             accessibilityRole="button"
-            className="manage-discard-modal__button manage-ship-import-modal__button manage-ship-import-modal__button--overwrite pressable-control pressable-control--surface"
             onPress={onReplaceAll}
             pressGuideVariant="surface"
             style={({ pressed }) => [
@@ -314,7 +291,6 @@ function ManageShipImportModal({
           </InteractivePressable>
           <InteractivePressable
             accessibilityRole="button"
-            className="manage-discard-modal__button manage-ship-import-modal__button manage-ship-import-modal__button--keep pressable-control pressable-control--filled"
             onPress={onKeepExisting}
             pressGuideVariant="filled"
             style={({ pressed }) => [
@@ -437,9 +413,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     color: 'var(--slate-700)',
     fontSize: 26,
-    lineHeight: 33.8,
     fontWeight: '600',
-    letterSpacing: -0.78,
   },
   manageHomeContent: {
     flex: 1,
@@ -476,9 +450,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     minWidth: 0,
     fontSize: 18,
-    lineHeight: 20,
     fontWeight: '500',
-    letterSpacing: -0.36,
   },
   manageHomeValueGroup: {
     display: 'flex',
@@ -493,9 +465,7 @@ const styles = StyleSheet.create({
     color: 'var(--color-text-tertiary)',
     flexShrink: 1,
     fontSize: 18,
-    lineHeight: 20,
     fontWeight: '400',
-    letterSpacing: -0.36,
   },
   manageHomeValueBlue: {
     color: 'var(--color-accent)',
@@ -531,6 +501,13 @@ const styles = StyleSheet.create({
     left: 0,
     backgroundColor: 'var(--color-overlay-scrim)',
   },
+  modalScrimPressable: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
   modalCard: {
     position: 'relative',
     width: '100%',
@@ -547,17 +524,13 @@ const styles = StyleSheet.create({
   modalTitle: {
     color: 'var(--color-text-primary)',
     fontSize: 20,
-    lineHeight: 29,
     fontWeight: '700',
-    letterSpacing: -0.4,
   },
   modalCopy: {
     marginTop: 10,
     color: 'var(--color-text-tertiary)',
     fontSize: 17,
-    lineHeight: 21.75,
     fontWeight: '500',
-    letterSpacing: -0.34,
   },
   modalActions: {
     flexDirection: 'row',
@@ -610,9 +583,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: 'var(--color-text-tertiary)',
     fontSize: 16,
-    lineHeight: 20,
     fontWeight: '600',
-    letterSpacing: -0.32,
   },
   importOverwriteButton: {
     backgroundColor: 'var(--color-bg-accent-soft)',
@@ -620,22 +591,16 @@ const styles = StyleSheet.create({
   modalButtonGhostLabel: {
     color: 'var(--color-text-danger)',
     fontSize: 17,
-    lineHeight: 18,
     fontWeight: '600',
-    letterSpacing: -0.34,
   },
   modalButtonLabel: {
     color: 'var(--color-text-on-accent)',
     fontSize: 17,
-    lineHeight: 18,
     fontWeight: '600',
-    letterSpacing: -0.34,
   },
   importOverwriteLabel: {
     color: 'var(--color-accent-hover)',
     fontSize: 17,
-    lineHeight: 18,
     fontWeight: '600',
-    letterSpacing: -0.34,
   },
 });

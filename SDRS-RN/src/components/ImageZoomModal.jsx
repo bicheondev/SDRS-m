@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -33,14 +33,15 @@ const PAN_ELASTICITY = 0.24;
 const DISMISS_DISTANCE_DP = 140;
 const DISMISS_VELOCITY = 450;
 const DISMISS_FADE_RANGE = 260;
+const THUMBNAIL_REVEAL_LEAD_MS = 24;
 const SPRING_CONFIG = {
   stiffness: motionTokens.spring.modal.stiffness,
   damping: motionTokens.spring.modal.damping,
   mass: motionTokens.spring.modal.mass,
 };
 const OPEN_DURATION_MS = Math.round(motionTokens.duration.image * 1000);
+const CONTROL_FADE_DURATION_MS = Math.round(motionTokens.duration.fast * 1000);
 const IOS_EASE = motionTokens.ease.ios;
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function clampWorklet(value, min, max) {
   'worklet';
@@ -82,15 +83,19 @@ function getContainRect(containerWidth, containerHeight, aspectRatio) {
   };
 }
 
-function ImageZoomModalContent({ session, onClose }) {
+function ImageZoomModalContent({ renderChromeOverlay, session, onClose, onThumbnailReveal }) {
   useTheme();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, 0);
+  const isClosingRef = useRef(false);
+  const thumbnailRevealTimeoutRef = useRef(null);
 
   const vessels = session?.vessels ?? [];
   const initialIndex = clamp(session?.startIndex ?? 0, 0, Math.max(vessels.length - 1, 0));
   const vessel = vessels[initialIndex] ?? null;
   const imageUri = vessel?.imageWide || (typeof vessel?.image === 'string' ? vessel.image : null);
+  const [imageSizeReady, setImageSizeReady] = useState(false);
   const [naturalImageSize, setNaturalImageSize] = useState(null);
 
   const fromRect = session?.fromRect ?? session?.sourceRect ?? null;
@@ -100,10 +105,16 @@ function ImageZoomModalContent({ session, onClose }) {
     Number.isFinite(fromRect.height) &&
     fromRect.width > 0 &&
     fromRect.height > 0;
+  const [isThumbnailTransitionLayer, setIsThumbnailTransitionLayer] = useState(hasFromRect);
+  const [showChromeOverlay, setShowChromeOverlay] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setImageSizeReady(!imageUri);
     setNaturalImageSize(null);
+    isClosingRef.current = false;
+    setIsThumbnailTransitionLayer(hasFromRect);
+    setShowChromeOverlay(false);
 
     if (!imageUri) {
       return undefined;
@@ -114,9 +125,14 @@ function ImageZoomModalContent({ session, onClose }) {
       (width, height) => {
         if (!cancelled && width > 0 && height > 0) {
           setNaturalImageSize({ width, height });
+          setImageSizeReady(true);
         }
       },
-      () => {},
+      () => {
+        if (!cancelled) {
+          setImageSizeReady(true);
+        }
+      },
     );
 
     return () => {
@@ -124,29 +140,32 @@ function ImageZoomModalContent({ session, onClose }) {
     };
   }, [imageUri]);
 
+  useEffect(
+    () => () => {
+      if (thumbnailRevealTimeoutRef.current !== null) {
+        clearTimeout(thumbnailRevealTimeoutRef.current);
+        thumbnailRevealTimeoutRef.current = null;
+      }
+    },
+    [],
+  );
+
   const fallbackAspectRatio = hasFromRect ? fromRect.width / fromRect.height : screenWidth / screenHeight;
   const imageAspectRatio = naturalImageSize
     ? naturalImageSize.width / naturalImageSize.height
     : fallbackAspectRatio;
   const displayRect = getContainRect(screenWidth, screenHeight, imageAspectRatio);
-  const initialScaleX = hasFromRect ? fromRect.width / displayRect.width : 1;
-  const initialScaleY = hasFromRect ? fromRect.height / displayRect.height : 1;
-  const initialTX = hasFromRect
-    ? fromRect.left + fromRect.width / 2 - (displayRect.left + displayRect.width / 2)
-    : 0;
-  const initialTY = hasFromRect
-    ? fromRect.top + fromRect.height / 2 - (displayRect.top + displayRect.height / 2)
-    : 0;
-
+  const shouldWaitForOpeningImageSize = hasFromRect && imageUri && !imageSizeReady;
   // FLIP container shared values: morph from thumbnail rect → fullscreen on open,
   // and back on close.
-  const flipScaleX = useSharedValue(hasFromRect ? initialScaleX : 1);
-  const flipScaleY = useSharedValue(hasFromRect ? initialScaleY : 1);
-  const flipTX = useSharedValue(initialTX);
-  const flipTY = useSharedValue(initialTY);
+  const transitionLeft = useSharedValue(hasFromRect ? fromRect.left : displayRect.left);
+  const transitionTop = useSharedValue(hasFromRect ? fromRect.top : displayRect.top);
+  const transitionWidth = useSharedValue(hasFromRect ? fromRect.width : displayRect.width);
+  const transitionHeight = useSharedValue(hasFromRect ? fromRect.height : displayRect.height);
   const flipRadius = useSharedValue(hasFromRect ? motionTokens.radius.thumbnail : 0);
   const flipOpacity = useSharedValue(hasFromRect ? 1 : 0);
   const contentOpacity = useSharedValue(hasFromRect ? 0 : 1);
+  const closeButtonOpacity = useSharedValue(hasFromRect ? 0 : 1);
 
   // Backdrop dim overlay opacity (0 = transparent, 1 = full black).
   const backdropOpacity = useSharedValue(0);
@@ -168,55 +187,106 @@ function ImageZoomModalContent({ session, onClose }) {
   useEffect(() => {
     const easing = Easing.bezier(IOS_EASE[0], IOS_EASE[1], IOS_EASE[2], IOS_EASE[3]);
     const timing = { duration: OPEN_DURATION_MS, easing };
+    const controlFadeTiming = { duration: CONTROL_FADE_DURATION_MS, easing };
 
-    backdropOpacity.value = withTiming(1, timing);
+    closeButtonOpacity.value = hasFromRect ? 0 : 1;
 
     if (hasFromRect) {
+      if (shouldWaitForOpeningImageSize) {
+        transitionLeft.value = fromRect.left;
+        transitionTop.value = fromRect.top;
+        transitionWidth.value = fromRect.width;
+        transitionHeight.value = fromRect.height;
+        flipRadius.value = motionTokens.radius.thumbnail;
+        flipOpacity.value = 1;
+        contentOpacity.value = 0;
+        closeButtonOpacity.value = 0;
+        backdropOpacity.value = 0;
+        return undefined;
+      }
+
+      backdropOpacity.value = 0;
+      transitionLeft.value = fromRect.left;
+      transitionTop.value = fromRect.top;
+      transitionWidth.value = fromRect.width;
+      transitionHeight.value = fromRect.height;
       flipOpacity.value = 1;
-      flipScaleX.value = withTiming(1, timing);
-      flipScaleY.value = withTiming(1, timing);
-      flipTX.value = withTiming(0, timing);
-      flipTY.value = withTiming(0, timing);
+      backdropOpacity.value = withTiming(1, timing);
+      transitionLeft.value = withTiming(displayRect.left, timing);
+      transitionTop.value = withTiming(displayRect.top, timing);
+      transitionWidth.value = withTiming(displayRect.width, timing);
+      transitionHeight.value = withTiming(displayRect.height, timing, (finished) => {
+        'worklet';
+        if (finished) {
+          runOnJS(setIsThumbnailTransitionLayer)(false);
+        }
+      });
       flipRadius.value = withTiming(0, timing);
       flipOpacity.value = withDelay(
-        Math.max(0, OPEN_DURATION_MS - 40),
-        withTiming(0, { duration: 40, easing }),
+        OPEN_DURATION_MS,
+        withTiming(0, { duration: 1, easing }),
       );
       contentOpacity.value = withDelay(
-        Math.max(0, OPEN_DURATION_MS - 24),
-        withTiming(1, { duration: 24, easing }),
+        OPEN_DURATION_MS,
+        withTiming(1, { duration: 1, easing }),
+      );
+      closeButtonOpacity.value = withDelay(
+        OPEN_DURATION_MS,
+        withTiming(1, controlFadeTiming),
       );
     } else {
+      backdropOpacity.value = withTiming(1, timing);
       flipOpacity.value = 0;
+      transitionLeft.value = displayRect.left;
+      transitionTop.value = displayRect.top;
+      transitionWidth.value = displayRect.width;
+      transitionHeight.value = displayRect.height;
       contentOpacity.value = withTiming(1, timing);
+      closeButtonOpacity.value = withTiming(1, controlFadeTiming);
     }
 
     return () => {
       cancelAnimation(backdropOpacity);
+      cancelAnimation(closeButtonOpacity);
       cancelAnimation(flipOpacity);
-      cancelAnimation(flipScaleX);
-      cancelAnimation(flipScaleY);
-      cancelAnimation(flipTX);
-      cancelAnimation(flipTY);
+      cancelAnimation(transitionLeft);
+      cancelAnimation(transitionTop);
+      cancelAnimation(transitionWidth);
+      cancelAnimation(transitionHeight);
       cancelAnimation(flipRadius);
       cancelAnimation(contentOpacity);
     };
   }, [
     backdropOpacity,
+    closeButtonOpacity,
     contentOpacity,
     flipOpacity,
     flipRadius,
-    flipScaleX,
-    flipScaleY,
-    flipTX,
-    flipTY,
     hasFromRect,
+    imageSizeReady,
+    session?.openedAt,
+    shouldWaitForOpeningImageSize,
+    transitionHeight,
+    transitionLeft,
+    transitionTop,
+    transitionWidth,
   ]);
 
   // -------- Close animation --------
   const handleClose = () => {
+    if (isClosingRef.current) {
+      return;
+    }
+
+    isClosingRef.current = true;
     const easing = Easing.bezier(IOS_EASE[0], IOS_EASE[1], IOS_EASE[2], IOS_EASE[3]);
     const timing = { duration: OPEN_DURATION_MS, easing };
+    const controlFadeTiming = { duration: CONTROL_FADE_DURATION_MS, easing };
+
+    if (thumbnailRevealTimeoutRef.current !== null) {
+      clearTimeout(thumbnailRevealTimeoutRef.current);
+      thumbnailRevealTimeoutRef.current = null;
+    }
 
     // Reset image gestures so the close animation is purely the FLIP.
     imageScale.value = withTiming(1, timing);
@@ -224,21 +294,35 @@ function ImageZoomModalContent({ session, onClose }) {
     imageTY.value = withTiming(0, timing);
     dismissTY.value = withTiming(0, timing);
 
+    if (hasFromRect) {
+      backdropOpacity.value = 1;
+    }
     backdropOpacity.value = withTiming(0, timing);
-    contentOpacity.value = withTiming(0, timing);
+    closeButtonOpacity.value = withTiming(0, controlFadeTiming);
 
     if (hasFromRect) {
+      setShowChromeOverlay(true);
+      setIsThumbnailTransitionLayer(true);
+
+      if (typeof onThumbnailReveal === 'function') {
+        thumbnailRevealTimeoutRef.current = setTimeout(() => {
+          thumbnailRevealTimeoutRef.current = null;
+          onThumbnailReveal();
+        }, Math.max(OPEN_DURATION_MS - THUMBNAIL_REVEAL_LEAD_MS, 0));
+      }
+
+      contentOpacity.value = 0;
       flipOpacity.value = 1;
-      flipScaleX.value = 1;
-      flipScaleY.value = 1;
-      flipTX.value = 0;
-      flipTY.value = 0;
+      transitionLeft.value = displayRect.left;
+      transitionTop.value = displayRect.top;
+      transitionWidth.value = displayRect.width;
+      transitionHeight.value = displayRect.height;
       flipRadius.value = 0;
-      flipScaleX.value = withTiming(initialScaleX, timing);
-      flipScaleY.value = withTiming(initialScaleY, timing);
-      flipTX.value = withTiming(initialTX, timing);
+      transitionLeft.value = withTiming(fromRect.left, timing);
+      transitionTop.value = withTiming(fromRect.top, timing);
+      transitionWidth.value = withTiming(fromRect.width, timing);
       flipRadius.value = withTiming(motionTokens.radius.thumbnail, timing);
-      flipTY.value = withTiming(initialTY, timing, (finished) => {
+      transitionHeight.value = withTiming(fromRect.height, timing, (finished) => {
         'worklet';
         if (finished) {
           runOnJS(onClose)();
@@ -338,10 +422,14 @@ function ImageZoomModalContent({ session, onClose }) {
         const maxY = Math.max(0, (displayRect.height * imageScale.value - screenHeight) / 2);
         imageTX.value = applyElasticityWorklet(panStartTX.value + event.translationX, maxX);
         imageTY.value = applyElasticityWorklet(panStartTY.value + event.translationY, maxY);
-      } else if (event.translationY > 0) {
-        // Drag-to-dismiss: only respond to downward drags at 1x zoom.
-        dismissTY.value = event.translationY;
-        const fadeProgress = Math.min(event.translationY / DISMISS_FADE_RANGE, 1);
+      } else if (Math.abs(event.translationY) > Math.abs(event.translationX)) {
+        // Drag-to-dismiss: RNW allows vertical dismissal in either direction at 1x zoom.
+        dismissTY.value = clampWorklet(
+          event.translationY,
+          -DISMISS_FADE_RANGE,
+          DISMISS_FADE_RANGE,
+        );
+        const fadeProgress = Math.min(Math.abs(event.translationY) / DISMISS_FADE_RANGE, 1);
         backdropOpacity.value = 1 - fadeProgress * 0.7;
       }
     })
@@ -359,9 +447,13 @@ function ImageZoomModalContent({ session, onClose }) {
         return;
       }
 
+      const hasVerticalDismissIntent = Math.abs(event.translationY) > Math.abs(event.translationX);
       if (
-        event.translationY > DISMISS_DISTANCE_DP ||
-        event.velocityY > DISMISS_VELOCITY
+        hasVerticalDismissIntent &&
+        (
+          Math.abs(event.translationY) > DISMISS_DISTANCE_DP ||
+          Math.abs(event.velocityY) > DISMISS_VELOCITY
+        )
       ) {
         runOnJS(handleClose)();
       } else {
@@ -380,13 +472,12 @@ function ImageZoomModalContent({ session, onClose }) {
 
   const transitionImageStyle = useAnimatedStyle(() => ({
     opacity: flipOpacity.value,
+    top: transitionTop.value,
+    left: transitionLeft.value,
+    width: transitionWidth.value,
+    height: transitionHeight.value,
     borderRadius: flipRadius.value,
-    transform: [
-      { translateX: flipTX.value },
-      { translateY: flipTY.value + dismissTY.value },
-      { scaleX: flipScaleX.value },
-      { scaleY: flipScaleY.value },
-    ],
+    transform: [{ translateY: dismissTY.value }],
   }));
 
   const imageStageStyle = useAnimatedStyle(() => {
@@ -409,31 +500,33 @@ function ImageZoomModalContent({ session, onClose }) {
   }));
 
   const closeButtonAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: contentOpacity.value * backdropOpacity.value,
+    opacity: closeButtonOpacity.value * backdropOpacity.value,
   }));
 
   if (!session || !vessel) {
     return null;
   }
 
-  const closeButtonTop = Math.max(insets.top, 0) + 24;
+  const closeButtonTop = topInset + 24;
   const closeButtonRight = Math.max(insets.right, 0) + 19;
   const imageSource = imageUri ? { uri: imageUri } : vessel.image;
+  const zoomBackdropColor = resolveCssVariableString('var(--color-bg-zoom)');
+  const chromeOverlay = showChromeOverlay && typeof renderChromeOverlay === 'function'
+    ? renderChromeOverlay()
+    : null;
 
   return (
-    <View style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, styles.modal]}>
       <Animated.View
         style={[
           styles.backdrop,
-          { backgroundColor: resolveCssVariableString('var(--color-bg-zoom)') },
+          { backgroundColor: zoomBackdropColor },
           backdropStyle,
         ]}
       />
 
       <GestureDetector gesture={composed}>
-        <Animated.View
-          style={styles.gestureSurface}
-        >
+        <Animated.View style={styles.gestureSurface}>
           <Animated.View
             style={[
               styles.imageStage,
@@ -459,29 +552,32 @@ function ImageZoomModalContent({ session, onClose }) {
         </Animated.View>
       </GestureDetector>
 
-      {hasFromRect ? (
-        <Animated.View
-          pointerEvents="none"
+      {isThumbnailTransitionLayer ? (
+        <View
           style={[
-            styles.transitionImage,
-            {
-              top: displayRect.top,
-              left: displayRect.left,
-              width: displayRect.width,
-              height: displayRect.height,
-            },
-            transitionImageStyle,
+            styles.transitionFrame,
+            styles.pointerEventsNone,
           ]}
         >
-          <Image resizeMode="cover" source={imageSource} style={styles.image} />
-        </Animated.View>
+          <Animated.View
+            style={[
+              styles.transitionImage,
+              styles.pointerEventsNone,
+              transitionImageStyle,
+            ]}
+          >
+            <Image resizeMode="cover" source={imageSource} style={styles.image} />
+          </Animated.View>
+        </View>
       ) : null}
 
-      <AnimatedPressable
-        accessibilityLabel="닫기"
-        accessibilityRole="button"
-        hitSlop={12}
-        onPress={handleClose}
+      {chromeOverlay ? (
+        <View style={[StyleSheet.absoluteFill, styles.chromeOverlay, styles.pointerEventsNone]}>
+          {chromeOverlay}
+        </View>
+      ) : null}
+
+      <Animated.View
         style={[
           styles.closeButton,
           closeButtonAnimatedStyle,
@@ -491,8 +587,16 @@ function ImageZoomModalContent({ session, onClose }) {
           },
         ]}
       >
-        <AppIcon name="close" preset="modalClose" tone="slate-700" />
-      </AnimatedPressable>
+        <Pressable
+          accessibilityLabel="닫기"
+          accessibilityRole="button"
+          hitSlop={12}
+          onPress={handleClose}
+          style={styles.closeButtonPressable}
+        >
+          <AppIcon name="close" preset="modalClose" tone="slate-700" />
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }
@@ -502,6 +606,10 @@ export default function ImageZoomModal(props) {
 }
 
 const styles = StyleSheet.create({
+  modal: {
+    zIndex: 30,
+    elevation: 30,
+  },
   backdrop: {
     position: 'absolute',
     top: 0,
@@ -520,11 +628,25 @@ const styles = StyleSheet.create({
   imageStage: {
     position: 'absolute',
   },
+  transitionFrame: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    overflow: 'visible',
+    zIndex: 2,
+  },
   transitionImage: {
     position: 'absolute',
     overflow: 'hidden',
     backgroundColor: 'transparent',
-    zIndex: 2,
+  },
+  chromeOverlay: {
+    zIndex: 8,
+  },
+  pointerEventsNone: {
+    pointerEvents: 'none',
   },
   imageWrap: {
     width: '100%',
@@ -545,5 +667,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: 'rgba(241, 245, 249, 0.5)',
     zIndex: 10,
+  },
+  closeButtonPressable: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

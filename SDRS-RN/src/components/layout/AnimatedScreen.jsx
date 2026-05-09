@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -54,6 +54,28 @@ function pickPrimaryTransition(transition) {
   );
 }
 
+function getExplicitTransitionZIndex(direction, isFrom, isTo) {
+  if (direction === 'push') {
+    if (isTo) {
+      return 30;
+    }
+    if (isFrom) {
+      return 10;
+    }
+  }
+
+  if (direction === 'pop') {
+    if (isFrom) {
+      return 30;
+    }
+    if (isTo) {
+      return 10;
+    }
+  }
+
+  return getScreenZIndex(direction, isTo);
+}
+
 export default function AnimatedScreen({
   children,
   currentScreen,
@@ -61,6 +83,8 @@ export default function AnimatedScreen({
   navDir,
   reducedMotion = false,
   screenKey,
+  transitionFrom,
+  transitionTo,
 }) {
   const isActive = currentScreen === screenKey;
   const previousActiveRef = useRef(null);
@@ -75,7 +99,7 @@ export default function AnimatedScreen({
   const scale = useSharedValue(1);
   const overlayOpacity = useSharedValue(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (previousActiveRef.current === null) {
       // First mount — snap to the resting state for whichever side we're on.
       previousActiveRef.current = isActive;
@@ -144,7 +168,10 @@ export default function AnimatedScreen({
         if (!isActive) {
           setInteractive(false);
           setZIndex(0);
+          return;
         }
+
+        setZIndex(1);
       };
 
       opacity.value = withTiming(toState.opacity ?? 1, {
@@ -206,13 +233,31 @@ export default function AnimatedScreen({
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: overlayOpacity.value,
   }));
+  const isExplicitLeavingScreen = transitionFrom === screenKey;
+  const isExplicitEnteringScreen = transitionTo === screenKey;
+  const hasExplicitTransitionRole =
+    (isExplicitLeavingScreen || isExplicitEnteringScreen) && navDir !== 'none';
+  const isTransitionRender =
+    previousActiveRef.current !== null && previousActiveRef.current !== isActive;
+  const renderZIndex = hasExplicitTransitionRole
+    ? getExplicitTransitionZIndex(navDir, isExplicitLeavingScreen, isExplicitEnteringScreen)
+    : isTransitionRender || isActive || interactive
+      ? getScreenZIndex(navDir, isActive)
+      : zIndex;
 
   return (
     <Animated.View
-      pointerEvents={interactive ? 'auto' : 'none'}
-      style={[styles.screen, { zIndex }, screenStyle]}
+      style={[
+        styles.screen,
+        {
+          zIndex: renderZIndex,
+          elevation: Platform.OS === 'android' ? renderZIndex : undefined,
+          pointerEvents: interactive ? 'auto' : 'none',
+        },
+        screenStyle,
+      ]}
     >
-      <Animated.View pointerEvents="none" style={[styles.overlay, overlayStyle]} />
+      <Animated.View style={[styles.overlay, styles.pointerEventsNone, overlayStyle]} />
       <View style={styles.body}>{children}</View>
     </Animated.View>
   );
@@ -235,6 +280,9 @@ const styles = StyleSheet.create({
     left: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     zIndex: 2,
+  },
+  pointerEventsNone: {
+    pointerEvents: 'none',
   },
   body: {
     flex: 1,

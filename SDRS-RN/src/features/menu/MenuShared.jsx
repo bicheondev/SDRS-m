@@ -16,7 +16,6 @@ export function MenuSubpageTopBar({ title, onBack }) {
         <InteractivePressable
           accessibilityLabel="뒤로가기"
           accessibilityRole="button"
-          className="detail-back-button pressable-control pressable-control--icon"
           onPress={onBack}
           pressGuideColor="var(--slate-50)"
           pressGuideVariant="icon"
@@ -28,7 +27,6 @@ export function MenuSubpageTopBar({ title, onBack }) {
           ]}
         >
           <AppIcon
-            className="detail-back-button__icon"
             name="arrow_back_ios_new"
             preset="iosArrow"
             tone="secondary"
@@ -68,8 +66,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     color: 'var(--slate-700)',
     fontSize: 26,
-    lineHeight: 33.8,
     fontWeight: '600',
-    letterSpacing: -0.78,
   },
 });

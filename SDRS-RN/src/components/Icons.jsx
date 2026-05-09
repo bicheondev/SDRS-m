@@ -1,7 +1,11 @@
-import { StyleSheet, Text } from 'react-native';
+import { Platform, Text } from 'react-native';
 
 import { useTheme } from '../ThemeContext.js';
 import { resolveCssVariableString } from '../theme.js';
+
+const WEB_FONT_SMOOTHING_STYLE = Platform.OS === 'web'
+  ? { WebkitFontSmoothing: 'antialiased' }
+  : null;
 
 const ICON_PRESETS = {
   default: {
@@ -118,59 +122,6 @@ const ICON_PRESETS = {
   },
 };
 
-const LEGACY_CLASS_STYLES = StyleSheet.create({
-  bottomTabIcon: {},
-  manageChevron: {},
-  menuArrow: {
-    width: 24,
-    height: 24,
-  },
-  menuSubpageCheck: {
-    width: 24,
-    height: 24,
-  },
-  manageDeleteIcon: {
-    fontSize: 24,
-    lineHeight: 24,
-  },
-  manageImportCheckboxIcon: {
-    width: 24,
-    height: 24,
-  },
-  reorderIcon: {
-    width: 18,
-    height: 18,
-    fontSize: 18,
-    lineHeight: 18,
-  },
-  savedToastIcon: {
-    width: 24,
-    height: 24,
-  },
-  statusIcon: {
-    width: 24,
-    height: 24,
-    fontSize: 24,
-    lineHeight: 24,
-  },
-  statusCompact: {
-    width: 24,
-    height: 24,
-    fontSize: 24,
-    lineHeight: 24,
-  },
-  statusEquipmentSmall: {
-    width: 18,
-    height: 18,
-    fontSize: 18,
-    lineHeight: 18,
-  },
-  vesselEmptyStateIcon: {
-    width: 48,
-    height: 48,
-  },
-});
-
 const MATERIAL_SYMBOL_CODEPOINTS = {
   add: 0xe145,
   arrow_back_ios_new: 0xe2ea,
@@ -203,52 +154,6 @@ function getMaterialSymbolGlyph(name) {
   return name;
 }
 
-function getLegacyClassStyles(className) {
-  if (!className) {
-    return [];
-  }
-
-  return className
-    .split(/\s+/)
-    .map((token) => {
-      if (token === 'menu-row__arrow') {
-        return LEGACY_CLASS_STYLES.menuArrow;
-      }
-      if (token === 'menu-subpage__check') {
-        return LEGACY_CLASS_STYLES.menuSubpageCheck;
-      }
-      if (token === 'manage-ship-card__delete-icon') {
-        return LEGACY_CLASS_STYLES.manageDeleteIcon;
-      }
-      if (token === 'manage-ship-import-modal__checkbox-icon') {
-        return LEGACY_CLASS_STYLES.manageImportCheckboxIcon;
-      }
-      if (token === 'manage-home__chevron') {
-        return LEGACY_CLASS_STYLES.manageChevron;
-      }
-      if (token === 'manage-ship-card__reorder-icon') {
-        return LEGACY_CLASS_STYLES.reorderIcon;
-      }
-      if (token === 'manage-saved-toast__icon') {
-        return LEGACY_CLASS_STYLES.savedToastIcon;
-      }
-      if (token === 'status-icon') {
-        return LEGACY_CLASS_STYLES.statusIcon;
-      }
-      if (token === 'status-icon--compact') {
-        return LEGACY_CLASS_STYLES.statusCompact;
-      }
-      if (token === 'status-icon--equipment-small') {
-        return LEGACY_CLASS_STYLES.statusEquipmentSmall;
-      }
-      if (token === 'vessel-empty-state__icon') {
-        return LEGACY_CLASS_STYLES.vesselEmptyStateIcon;
-      }
-      return null;
-    })
-    .filter(Boolean);
-}
-
 function getToneColor(tone) {
   if (tone === 'primary') return resolveCssVariableString('var(--color-text-primary)');
   if (tone === 'secondary') return resolveCssVariableString('var(--color-text-secondary)');
@@ -268,13 +173,11 @@ function getToneColor(tone) {
 }
 
 export function AppIcon({
-  className = '',
   glyphSize,
   label,
   name,
   offsetX,
   offsetY,
-  opticalSize,
   preset = 'default',
   slotSize,
   style,
@@ -287,27 +190,26 @@ export function AppIcon({
   const resolvedGlyphSize = glyphSize ?? basePreset.glyphSize;
   const resolvedOffsetX = offsetX ?? basePreset.offsetX;
   const resolvedOffsetY = offsetY ?? basePreset.offsetY;
+  const resolvedWeight = weight ?? basePreset.weight ?? 400;
 
   return (
     <Text
       accessibilityLabel={label}
       accessibilityRole={label ? 'image' : undefined}
       accessible={Boolean(label)}
-      className={`app-icon material-symbols-rounded app-icon--tone-${tone} ${className}`.trim()}
       style={[
         {
           color: getToneColor(tone),
           fontFamily: 'MaterialSymbolsRounded',
           fontSize: resolvedGlyphSize,
+          fontWeight: String(resolvedWeight),
           includeFontPadding: false,
-          height: resolvedSlotSize,
-          lineHeight: resolvedGlyphSize,
           textAlign: 'center',
           textAlignVertical: 'center',
           width: resolvedSlotSize,
           transform: [{ translateX: resolvedOffsetX }, { translateY: resolvedOffsetY }],
         },
-        ...getLegacyClassStyles(className),
+        WEB_FONT_SMOOTHING_STYLE,
         style,
       ]}
     >

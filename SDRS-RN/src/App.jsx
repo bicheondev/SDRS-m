@@ -1,4 +1,4 @@
-import { ActivityIndicator, StatusBar, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StatusBar, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -6,6 +6,10 @@ import { useFonts } from 'expo-font';
 import { RnwApp } from './RnwApp.jsx';
 import { ThemeProvider, useTheme } from './ThemeContext.js';
 import { themes } from './theme.js';
+
+const WEB_FONT_SMOOTHING_STYLE = Platform.OS === 'web'
+  ? { WebkitFontSmoothing: 'antialiased' }
+  : null;
 
 function AppShell() {
   const { resolvedColorMode, hydrated } = useTheme();
@@ -47,7 +51,7 @@ function AppShell() {
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={styles.root}>
+    <GestureHandlerRootView style={[styles.root, WEB_FONT_SMOOTHING_STYLE]}>
       <SafeAreaProvider>
         <ThemeProvider initialMode="system">
           <AppShell />

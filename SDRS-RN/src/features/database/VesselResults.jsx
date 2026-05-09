@@ -9,16 +9,61 @@ import Animated, {
 
 import { useTheme } from '../../ThemeContext.js';
 import { AppIcon } from '../../components/Icons.jsx';
+import { NoImagePlaceholder } from '../../components/NoImagePlaceholder.jsx';
 import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
 import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
 import { AppText as Text } from '../../components/primitives/AppTypography.jsx';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe.js';
 import { motionTokens } from '../../motion.js';
-import { isHostElement } from '../../platform/index';
+import { isPlaceholderImage } from '../../appDomain.js';
 import { measureNodeInWindow } from '../../utils/layout.js';
 
 const VIEW_MODE_TRANSITION_MS = 180;
 const VIEW_MODE_EASING = Easing.bezier(...motionTokens.ease.ios);
+
+function getScrollableNode(node) {
+  if (!node) {
+    return null;
+  }
+
+  return node.getScrollableNode?.() ?? node.getScrollableRef?.() ?? node;
+}
+
+function scrollNodeToY(node, y) {
+  if (!node) {
+    return;
+  }
+
+  const scrollableNode = getScrollableNode(node);
+
+  if (scrollableNode && 'scrollTop' in scrollableNode) {
+    scrollableNode.scrollTop = y;
+  }
+
+  if (typeof node.scrollTo === 'function') {
+    try {
+      node.scrollTo({ y, animated: false });
+    } catch {
+      // Some scroll targets use the browser-style overload below.
+    }
+  }
+
+  if (scrollableNode && scrollableNode !== node && typeof scrollableNode.scrollTo === 'function') {
+    try {
+      scrollableNode.scrollTo({ top: y, left: 0, behavior: 'auto' });
+    } catch {
+      // Native scroll refs may not accept DOM-style scroll options.
+    }
+  }
+}
+
+function VesselImage({ imageSource, style }) {
+  if (isPlaceholderImage(imageSource)) {
+    return <NoImagePlaceholder style={style} />;
+  }
+
+  return <Image resizeMode="cover" source={{ uri: imageSource }} style={style} />;
+}
 
 function useViewModeTransition(compact, reducedMotion) {
   const previousCompactRef = useRef(compact);
@@ -132,7 +177,6 @@ function EquipmentTable({ vessel }) {
         </View>
         <View style={[styles.equipmentCell, styles.tableValueCell, styles.equipmentValueCell]}>
           <AppIcon
-            className="status-icon status-icon--equipment-small"
             name={vessel.sonar ? 'check' : 'close'}
             preset="statusSmall"
             tone="violet"
@@ -160,7 +204,6 @@ function EquipmentTable({ vessel }) {
           ]}
         >
           <AppIcon
-            className="status-icon status-icon--equipment-small"
             name={vessel.detector ? 'check' : 'close'}
             preset="statusSmall"
             tone="violet"
@@ -173,12 +216,6 @@ function EquipmentTable({ vessel }) {
 
 async function handleImagePress(buttonRef, vessel, onImageClick) {
   const sourceThumbnail = buttonRef.current;
-
-  if (isHostElement(sourceThumbnail)) {
-    onImageClick(vessel, sourceThumbnail);
-    return;
-  }
-
   const rect = await measureNodeInWindow(sourceThumbnail);
 
   onImageClick(vessel, rect
@@ -201,7 +238,6 @@ export const VesselCard = memo(function VesselCard({ hiddenThumbnail = false, ve
         ref={imageButtonRef}
         accessibilityLabel={`${vessel.name} 이미지 확대`}
         accessibilityRole="button"
-        className="vessel-card__image-button pressable-control pressable-control--media"
         dataSet={{ vesselThumbId: String(vessel.id) }}
         onPress={() => handleImagePress(imageButtonRef, vessel, onImageClick)}
         pressGuideVariant="media"
@@ -213,7 +249,7 @@ export const VesselCard = memo(function VesselCard({ hiddenThumbnail = false, ve
           { transform: [{ scale: pressed ? getInteractiveScale('card') : 1 }] },
         ]}
       >
-        <Image resizeMode="cover" source={{ uri: vessel.imageWide }} style={styles.vesselCardImage} />
+        <VesselImage imageSource={vessel.imageWide} style={styles.vesselCardImage} />
       </InteractivePressable>
 
       <View style={styles.vesselCardBody}>
@@ -247,7 +283,6 @@ function CompactEquipment({ active, label }) {
         {label}
       </Text>
       <AppIcon
-        className="status-icon status-icon--compact"
         name={active ? 'check' : 'close'}
         preset="statusCompact"
         tone={active ? 'violet' : 'violet-muted'}
@@ -275,7 +310,6 @@ export const CompactVesselCard = memo(function CompactVesselCard({
           ref={imageButtonRef}
           accessibilityLabel={`${vessel.name} 이미지 확대`}
           accessibilityRole="button"
-          className="compact-card__image-button pressable-control pressable-control--media"
           dataSet={{ vesselThumbId: String(vessel.id) }}
           onPress={() => handleImagePress(imageButtonRef, vessel, onImageClick)}
           pressGuideVariant="media"
@@ -287,7 +321,7 @@ export const CompactVesselCard = memo(function CompactVesselCard({
             { transform: [{ scale: pressed ? getInteractiveScale('card') : 1 }] },
           ]}
         >
-          <Image resizeMode="cover" source={{ uri: vessel.imageCompact }} style={styles.compactImage} />
+          <VesselImage imageSource={vessel.imageCompact} style={styles.compactImage} />
         </InteractivePressable>
       </View>
 
@@ -312,7 +346,6 @@ export function VesselEmptyState() {
   return (
     <View style={styles.emptyState}>
       <AppIcon
-        className="vessel-empty-state__icon"
         name="sticky_note_2"
         preset="emptyState"
         tone="muted"
@@ -324,10 +357,11 @@ export function VesselEmptyState() {
 
 const VesselResultsBase = forwardRef(function VesselResults(
   {
-    chromeScrollbar = false,
     compact,
+    contentBottomPadding = 0,
     contentTopPadding = 88,
     hiddenThumbnailId = null,
+    initialScrollY = 0,
     onImageClick,
     onScroll,
     scrollResetKey,
@@ -364,9 +398,38 @@ const VesselResultsBase = forwardRef(function VesselResults(
     [onImageClick, vessels],
   );
 
+  const initialScrollAppliedRef = useRef(false);
+  const initialScrollFrameRef = useRef(null);
+
   useLayoutEffect(() => {
-    scrollRef.current?.scrollTo?.({ y: 0, animated: false });
-  }, [scrollResetKey]);
+    const targetY = initialScrollAppliedRef.current ? 0 : initialScrollY;
+    const shouldReapplyInitialScroll = !initialScrollAppliedRef.current && targetY > 0;
+    initialScrollAppliedRef.current = true;
+
+    if (initialScrollFrameRef.current !== null) {
+      cancelAnimationFrame(initialScrollFrameRef.current);
+      initialScrollFrameRef.current = null;
+    }
+
+    scrollNodeToY(scrollRef.current, targetY);
+
+    if (shouldReapplyInitialScroll) {
+      initialScrollFrameRef.current = requestAnimationFrame(() => {
+        scrollNodeToY(scrollRef.current, targetY);
+        initialScrollFrameRef.current = requestAnimationFrame(() => {
+          scrollNodeToY(scrollRef.current, targetY);
+          initialScrollFrameRef.current = null;
+        });
+      });
+    }
+
+    return () => {
+      if (initialScrollFrameRef.current !== null) {
+        cancelAnimationFrame(initialScrollFrameRef.current);
+        initialScrollFrameRef.current = null;
+      }
+    };
+  }, [initialScrollY, scrollResetKey]);
 
   useEffect(() => {
     if (reducedMotion || modeAnimationId === 0) {
@@ -391,11 +454,14 @@ const VesselResultsBase = forwardRef(function VesselResults(
 
   return (
     <ScrollView
-      className={`main-content ${chromeScrollbar ? 'main-content--chrome-scrollbar' : ''}`.trim()}
       ref={setScrollRef}
+      contentOffset={initialScrollY ? { x: 0, y: initialScrollY } : undefined}
       contentContainerStyle={[
         styles.mainContentContainer,
-        { paddingTop: contentTopPadding },
+        {
+          paddingTop: contentTopPadding,
+          paddingBottom: contentBottomPadding,
+        },
       ]}
       onScroll={onScroll}
       scrollEventThrottle={16}
@@ -407,7 +473,7 @@ const VesselResultsBase = forwardRef(function VesselResults(
     >
       <Animated.View
         key={`${compact ? 'compact' : 'card'}-${modeAnimationId}`}
-        style={modeAnimatedStyle}
+        style={[styles.resultsMode, modeAnimatedStyle]}
       >
         {vessels.length === 0 ? (
           <VesselEmptyState />
@@ -450,6 +516,11 @@ const styles = StyleSheet.create({
   mainContentContainer: {
     flexGrow: 1,
   },
+  resultsMode: {
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+  },
   emptyState: {
     flex: 1,
     display: 'flex',
@@ -465,7 +536,6 @@ const styles = StyleSheet.create({
     color: 'var(--color-text-muted)',
     fontSize: 18,
     fontWeight: '600',
-    letterSpacing: -0.36,
     textAlign: 'center',
   },
   sectionDivider: {
@@ -506,14 +576,11 @@ const styles = StyleSheet.create({
   vesselName: {
     color: 'var(--slate-700)',
     fontSize: 24,
-    lineHeight: 31.2,
     fontWeight: '600',
-    letterSpacing: -0.72,
   },
   registration: {
     color: 'var(--color-text-tertiary)',
     fontSize: 15,
-    lineHeight: 19.5,
     fontWeight: '400',
   },
   vesselTables: {
@@ -522,9 +589,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   table: {
+    alignSelf: 'stretch',
     overflow: 'hidden',
     borderRadius: 6,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'var(--color-text-tertiary)',
   },
   equipmentTable: {
@@ -533,6 +601,8 @@ const styles = StyleSheet.create({
   tableRow: {
     display: 'flex',
     flexDirection: 'row',
+    alignSelf: 'stretch',
+    minHeight: 38,
   },
   infoCell: {
     height: 38,
@@ -540,7 +610,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingVertical: 10,
+    paddingVertical: 0,
     paddingHorizontal: 12,
     color: 'var(--color-text-tertiary)',
   },
@@ -550,12 +620,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingVertical: 10,
+    paddingVertical: 0,
     paddingHorizontal: 12,
     color: 'var(--color-text-violet)',
   },
   tableLabelCell: {
-    width: 120,
+    flexBasis: 120,
+    flexGrow: 0,
+    flexShrink: 0,
   },
   infoLabelCell: {
     backgroundColor: 'var(--slate-50)',
@@ -571,26 +643,26 @@ const styles = StyleSheet.create({
   },
   tableValueCell: {
     flex: 1,
+    minWidth: 0,
   },
   infoBorderRight: {
-    borderRightWidth: 1,
+    borderRightWidth: StyleSheet.hairlineWidth,
     borderRightColor: 'var(--color-text-tertiary)',
   },
   equipmentBorderRight: {
-    borderRightWidth: 1,
+    borderRightWidth: StyleSheet.hairlineWidth,
     borderRightColor: 'var(--color-text-violet)',
   },
   infoTopBorder: {
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'var(--color-text-tertiary)',
   },
   equipmentTopBorder: {
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'var(--color-text-violet)',
   },
   tableText: {
     fontSize: 15,
-    lineHeight: 19.5,
     textAlign: 'left',
   },
   tableLabelText: {
@@ -649,13 +721,11 @@ const styles = StyleSheet.create({
     width: 126,
     color: 'var(--color-text-tertiary)',
     fontSize: 18,
-    lineHeight: 23.4,
     fontWeight: '600',
   },
   compactDetailValue: {
     color: 'var(--color-text-tertiary)',
     fontSize: 18,
-    lineHeight: 23.4,
     fontWeight: '500',
   },
   compactDivider: {
@@ -678,7 +748,6 @@ const styles = StyleSheet.create({
     width: 126,
     color: 'var(--color-text-violet-muted)',
     fontSize: 18,
-    lineHeight: 23.4,
     fontWeight: '600',
   },
   compactEquipmentLabelActive: {

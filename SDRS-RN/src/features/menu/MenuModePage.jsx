@@ -25,7 +25,6 @@ export function MenuModePage({ colorMode, onBack, onSelectMode }) {
             <InteractivePressable
               key={modeOption.value}
               accessibilityRole="button"
-              className="menu-subpage__row menu-subpage__row--button pressable-control pressable-control--surface"
               onPress={() => onSelectMode(modeOption.value)}
               pressGuideVariant="row"
               style={({ focused, pressed }) => [
@@ -38,7 +37,6 @@ export function MenuModePage({ colorMode, onBack, onSelectMode }) {
               <Text style={styles.label}>{modeOption.label}</Text>
               {colorMode === modeOption.value ? (
                 <AppIcon
-                  className="menu-subpage__check"
                   name="check"
                   preset="checkbox"
                   tone="accent"
@@ -71,8 +69,6 @@ const styles = StyleSheet.create({
   label: {
     color: 'var(--slate-500)',
     fontSize: 18,
-    lineHeight: 20,
     fontWeight: '500',
-    letterSpacing: -0.36,
   },
 });

@@ -13,12 +13,12 @@ function MenuRow({ children, detail, onPress, showArrow = false }) {
   return (
     <InteractivePressable
       accessibilityRole="button"
-      className="menu-row pressable-control pressable-control--surface"
       onPress={onPress}
       pressGuideVariant="row"
       style={({ focused, pressed }) => [
         interactiveStyles.base,
         styles.row,
+        styles.rowLayout,
         focused && interactiveStyles.focus,
         { transform: [{ scale: pressed ? getInteractiveScale('row') : 1 }] },
       ]}
@@ -28,7 +28,6 @@ function MenuRow({ children, detail, onPress, showArrow = false }) {
         <View style={styles.detailGroup}>
           {detail ? <Text numberOfLines={1} style={styles.detailText}>{detail}</Text> : null}
           <AppIcon
-            className="menu-row__arrow"
             name="arrow_forward_ios"
             preset="iosArrow"
             tone="muted"
@@ -101,13 +100,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 16,
   },
+  rowLayout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   rowLabel: {
     flexShrink: 0,
     color: 'var(--slate-500)',
     fontSize: 18,
-    lineHeight: 20,
     fontWeight: '500',
-    letterSpacing: -0.36,
   },
   detailGroup: {
     flexShrink: 1,
@@ -122,8 +124,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     color: 'var(--color-text-tertiary)',
     fontSize: 18,
-    lineHeight: 20,
     fontWeight: '400',
-    letterSpacing: -0.36,
   },
 });

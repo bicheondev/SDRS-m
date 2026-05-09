@@ -74,8 +74,6 @@ const styles = StyleSheet.create({
     margin: 0,
     color: 'var(--color-text-muted)',
     fontSize: 15,
-    lineHeight: 15,
     fontWeight: '500',
-    letterSpacing: -0.3,
   },
 });

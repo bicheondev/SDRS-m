@@ -76,40 +76,9 @@ const GUIDE_VARIANTS = {
   },
 };
 
-const PRESSABLE_VARIANT_CLASSES = new Set([
-  'danger',
-  'filled',
-  'icon',
-  'media',
-  'option',
-  'pill',
-  'surface',
-  'tab',
-]);
-
 const PRESS_GUIDE_MIN_VISIBLE_MS = 48;
 const PRESS_EASING = Easing.bezier(...motionTokens.ease.ios);
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-function getPressScaleForVariant(variant) {
-  if (variant === 'icon') {
-    return motionTokens.scale.iconTap;
-  }
-
-  if (variant === 'media') {
-    return motionTokens.scale.cardTap;
-  }
-
-  if (variant === 'option' || variant === 'row') {
-    return motionTokens.scale.rowTap;
-  }
-
-  return motionTokens.scale.buttonTap;
-}
-
-function joinClassNames(...tokens) {
-  return tokens.filter(Boolean).join(' ');
-}
+const PRESS_GUIDE_UNMOUNT_DELAY_MS = motionDurationsMs.fast + 32;
 
 function toCssLength(value) {
   if (value === undefined || value === null) {
@@ -200,6 +169,26 @@ function resolvePressGuideOverlayStyle(variant, color, radius, inset) {
   };
 }
 
+function appendStyleEntries(target, entry) {
+  if (entry === undefined || entry === null || entry === false) {
+    return;
+  }
+
+  if (Array.isArray(entry)) {
+    entry.forEach((nestedEntry) => appendStyleEntries(target, nestedEntry));
+    return;
+  }
+
+  target.push(entry);
+}
+
+function buildPressableStyleArray(baseStyle, pressGuideStyle) {
+  const nextStyle = [];
+  appendStyleEntries(nextStyle, pressGuideStyle);
+  appendStyleEntries(nextStyle, resolveInlineStyle(baseStyle));
+  return nextStyle;
+}
+
 function cancelScheduledTimeout(timeoutRef) {
   if (timeoutRef.current === null) {
     return;
@@ -212,7 +201,6 @@ function cancelScheduledTimeout(timeoutRef) {
 export const InteractivePressable = forwardRef(function InteractivePressable(
   {
     children,
-    className,
     disabled = false,
     onBlur,
     onPressIn,
@@ -228,39 +216,61 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
   ref,
 ) {
   const { resolvedColorMode } = useTheme();
+  const forcedPressed = testOnly_pressed === true;
   const [pressedFallback, setPressedFallback] = useState(false);
   const [pressGuideActive, setPressGuideActive] = useState(false);
-  const forcedPressed = testOnly_pressed === true;
+  const [pressGuideMounted, setPressGuideMounted] = useState(forcedPressed);
   const guideReleaseTimeoutRef = useRef(null);
+  const guideUnmountTimeoutRef = useRef(null);
   const guidePressStartedAtRef = useRef(0);
   const pressProgress = useSharedValue(forcedPressed ? 1 : 0);
-  const pressScale = getPressScaleForVariant(pressGuideVariant);
 
   const cancelGuideRelease = useCallback(() => {
     cancelScheduledTimeout(guideReleaseTimeoutRef);
   }, []);
 
-  useEffect(() => cancelGuideRelease, [cancelGuideRelease]);
+  const cancelGuideUnmount = useCallback(() => {
+    cancelScheduledTimeout(guideUnmountTimeoutRef);
+  }, []);
+
+  useEffect(() => {
+    if (forcedPressed) {
+      cancelGuideUnmount();
+      setPressGuideMounted(true);
+    }
+  }, [cancelGuideUnmount, forcedPressed]);
+
+  useEffect(
+    () => () => {
+      cancelGuideRelease();
+      cancelGuideUnmount();
+    },
+    [cancelGuideRelease, cancelGuideUnmount],
+  );
 
   const handleBlur = useCallback(
     (event) => {
       cancelGuideRelease();
+      cancelGuideUnmount();
       setPressedFallback(false);
       setPressGuideActive(false);
+      setPressGuideMounted(false);
       onBlur?.(event);
     },
-    [cancelGuideRelease, onBlur],
+    [cancelGuideRelease, cancelGuideUnmount, onBlur],
   );
 
   const handlePressIn = useCallback(
     (event) => {
       cancelGuideRelease();
+      cancelGuideUnmount();
       guidePressStartedAtRef.current = getHighResolutionTime();
       setPressedFallback(true);
+      setPressGuideMounted(true);
       setPressGuideActive(true);
       onPressIn?.(event);
     },
-    [cancelGuideRelease, onPressIn],
+    [cancelGuideRelease, cancelGuideUnmount, onPressIn],
   );
 
   const handlePressOut = useCallback(
@@ -275,6 +285,10 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
         guideReleaseTimeoutRef.current = null;
         setPressedFallback(false);
         setPressGuideActive(false);
+        guideUnmountTimeoutRef.current = setTimeout(() => {
+          guideUnmountTimeoutRef.current = null;
+          setPressGuideMounted(false);
+        }, PRESS_GUIDE_UNMOUNT_DELAY_MS);
       }, releaseDelay);
       onPressOut?.(event);
     },
@@ -319,47 +333,29 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
     });
   }, [disabled, forcedPressed, pressGuideActive, pressProgress]);
 
-  const animatedPressableStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 - (1 - pressScale) * pressProgress.value }],
-  }));
-
   const animatedPressGuideStyle = useAnimatedStyle(() => ({
     opacity: pressProgress.value,
   }));
 
   const resolvedStyle = useMemo(() => {
     if (typeof style !== 'function') {
-      return [pressGuideStyle, resolveInlineStyle(style), animatedPressableStyle];
+      return buildPressableStyleArray(style, pressGuideStyle);
     }
 
-    return (interactionState) => [
-      pressGuideStyle,
-      resolveInlineStyle(style(resolveInteractionState(interactionState))),
-      animatedPressableStyle,
-    ];
+    return (interactionState) =>
+      buildPressableStyleArray(
+        style(resolveInteractionState(interactionState)),
+        pressGuideStyle,
+      );
   }, [
-    animatedPressableStyle,
     pressGuideStyle,
     resolveInteractionState,
     resolvedColorMode,
     style,
   ]);
 
-  const resolvedClassName = useMemo(
-    () =>
-      joinClassNames(
-        'pressable-control',
-        'pressable-control--with-overlay',
-        PRESSABLE_VARIANT_CLASSES.has(pressGuideVariant) &&
-          `pressable-control--${pressGuideVariant}`,
-        className,
-      ),
-    [className, pressGuideVariant],
-  );
-
   return (
-    <AnimatedPressable
-      className={resolvedClassName}
+    <Pressable
       disabled={disabled}
       onBlur={handleBlur}
       onPressIn={handlePressIn}
@@ -372,25 +368,24 @@ export const InteractivePressable = forwardRef(function InteractivePressable(
       {(state) => {
         const interactionState = resolveInteractionState(state);
         const showPressGuide = !disabled && (forcedPressed || pressGuideActive);
+        const renderPressGuide = !disabled && (forcedPressed || pressGuideMounted);
 
         return (
           <>
-            <Animated.View
-              className={joinClassNames(
-                'pressable-control__overlay',
-                showPressGuide && 'pressable-control__overlay--active',
-              )}
-              style={[
-                styles.pressGuideOverlay,
-                pressGuideOverlayStyle,
-                animatedPressGuideStyle,
-              ]}
-            />
+            {renderPressGuide ? (
+              <Animated.View
+                style={[
+                  styles.pressGuideOverlay,
+                  pressGuideOverlayStyle,
+                  animatedPressGuideStyle,
+                ]}
+              />
+            ) : null}
             {typeof children === 'function' ? children(interactionState) : children}
           </>
         );
       }}
-    </AnimatedPressable>
+    </Pressable>
   );
 });
 

@@ -1,6 +1,6 @@
 import { memo, useCallback, useRef, useState } from 'react';
 import { BlurTargetView } from 'expo-blur';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
@@ -43,20 +43,27 @@ export const DatabasePage = memo(function DatabasePage({
   const insets = useSafeAreaInsets();
   const resultsBlurTargetRef = useRef(null);
   const [resultsBlurTargetReady, setResultsBlurTargetReady] = useState(false);
+  const shouldUseBlurTarget = Platform.OS !== 'web';
   const topContentPadding = 88 + Math.max(insets.top, 0);
+  const bottomContentPadding = 84 + Math.max(insets.bottom, 0);
   const filterScrollResetKey = `${harborFilter}:${vesselTypeFilter}`;
-  const chromeBlurTargetRef = resultsBlurTargetReady ? resultsBlurTargetRef : null;
+  const chromeBlurTargetRef = shouldUseBlurTarget && resultsBlurTargetReady
+    ? resultsBlurTargetRef
+    : null;
   const setResultsBlurTargetNode = useCallback((node) => {
     resultsBlurTargetRef.current = node;
+    if (!shouldUseBlurTarget) {
+      return;
+    }
     if (!node) {
       setResultsBlurTargetReady(false);
     }
-  }, []);
+  }, [shouldUseBlurTarget]);
   const handleResultsBlurTargetLayout = useCallback(() => {
-    if (resultsBlurTargetRef.current) {
+    if (shouldUseBlurTarget && resultsBlurTargetRef.current) {
       setResultsBlurTargetReady(true);
     }
-  }, []);
+  }, [shouldUseBlurTarget]);
 
   return (
     <>
@@ -66,7 +73,6 @@ export const DatabasePage = memo(function DatabasePage({
             compact={compact}
             harborFilter={harborFilter}
             query={searchQuery}
-            scrollbarGutter
             vesselTypeFilter={vesselTypeFilter}
             onBack={onSearchClose}
             blurTargetRef={chromeBlurTargetRef}
@@ -86,7 +92,6 @@ export const DatabasePage = memo(function DatabasePage({
             onSearchOpen={onSearchOpen}
             onToggleCompact={onToggleCompact}
             onVesselTypeFilterOpen={() => onFilterOpen('vesselType')}
-            scrollbarGutter
             vesselTypeFilter={vesselTypeFilter}
           />
         )}
@@ -99,11 +104,11 @@ export const DatabasePage = memo(function DatabasePage({
           <VesselResults
             ref={databaseView === 'browse' ? mainContentRef : undefined}
             compact={compact}
+            contentBottomPadding={bottomContentPadding}
             contentTopPadding={topContentPadding}
             hiddenThumbnailId={hiddenThumbnailId}
             onImageClick={onImageClick}
             onScroll={databaseView === 'browse' ? onMainScroll : undefined}
-            chromeScrollbar
             scrollResetKey={filterScrollResetKey}
             vessels={databaseView === 'search' ? searchedDisplayVessels : filteredDisplayVessels}
           />
@@ -112,16 +117,14 @@ export const DatabasePage = memo(function DatabasePage({
 
       {filterSheet ? (
         <FilterScreen
+          blurTargetRef={chromeBlurTargetRef}
           compact={compact}
           filterMode={filterSheet.mode}
           harborFilter={harborFilter}
           harborOptions={harborOptions}
           phase={filterSheet.phase}
-          query={filterSheet.sourceView === 'search' ? searchQuery : ''}
-          vessels={displayVessels}
           onClose={onFilterClose}
           onHarborSelect={onFilterHarborSelect}
-          onImageClick={onImageClick}
           onManageOpen={onManageOpen}
           onMenuOpen={onMenuOpen}
           onSearchOpen={onFilterSearchOpen}

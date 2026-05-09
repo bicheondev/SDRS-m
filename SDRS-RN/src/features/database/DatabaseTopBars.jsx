@@ -1,9 +1,10 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Keyboard, StyleSheet, View } from 'react-native';
+import { Keyboard, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -18,8 +19,68 @@ import { interactiveStyles, getInteractiveScale } from '../../components/interac
 import Logo from '../../assets/ui/logo';
 import { resolveCssVariableString } from '../../theme.js';
 import { motionDurationsMs, motionTokens } from '../../motion.js';
+import { keepAllWordBreakText } from '../../utils/text.js';
 
 const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
+const filterLabelNoWrapStyle = Platform.OS === 'web'
+  ? { whiteSpace: 'nowrap', wordBreak: 'keep-all' }
+  : null;
+const TOP_BAR_FROST_MASK =
+  'linear-gradient(180deg, rgb(0 0 0 / 1) 0%, rgb(0 0 0 / 1) 52%, rgb(0 0 0 / 0.78) 72%, rgb(0 0 0 / 0) 100%)';
+const FILTERS_FROST_MASK =
+  'linear-gradient(180deg, rgb(0 0 0 / 0) 0%, rgb(0 0 0 / 0.94) 24%, rgb(0 0 0 / 0.9) 74%, rgb(0 0 0 / 0) 100%)';
+const WEB_TOP_BAR_SHELL_STYLE = Platform.OS === 'web'
+  ? {
+      backfaceVisibility: 'hidden',
+      isolation: 'isolate',
+      WebkitBackfaceVisibility: 'hidden',
+    }
+  : null;
+const WEB_TOP_BAR_FROST_STYLE = Platform.OS === 'web'
+  ? {
+      backdropFilter: 'blur(22px) saturate(160%)',
+      maskImage: TOP_BAR_FROST_MASK,
+      WebkitBackdropFilter: 'blur(22px) saturate(160%)',
+      WebkitMaskImage: TOP_BAR_FROST_MASK,
+    }
+  : null;
+const WEB_FILTERS_FROST_STYLE = Platform.OS === 'web'
+  ? {
+      backdropFilter: 'blur(10px) saturate(145%)',
+      maskImage: FILTERS_FROST_MASK,
+      WebkitBackdropFilter: 'blur(10px) saturate(145%)',
+      WebkitMaskImage: FILTERS_FROST_MASK,
+    }
+  : null;
+const WEB_FILTER_SHEET_FROST_STYLE = Platform.OS === 'web'
+  ? {
+      backdropFilter: 'blur(14px)',
+      WebkitBackdropFilter: 'blur(14px)',
+    }
+  : null;
+const TOP_BAR_BLUR_MASK_SEGMENTS = [
+  { key: 'top-opaque', top: '0%', height: '52%', opacity: 1 },
+  { key: 'top-52', top: '52%', height: '6%', opacity: 0.96 },
+  { key: 'top-58', top: '58%', height: '6%', opacity: 0.88 },
+  { key: 'top-64', top: '64%', height: '8%', opacity: 0.78 },
+  { key: 'top-72', top: '72%', height: '7%', opacity: 0.62 },
+  { key: 'top-79', top: '79%', height: '7%', opacity: 0.42 },
+  { key: 'top-86', top: '86%', height: '6%', opacity: 0.24 },
+  { key: 'top-92', top: '92%', height: '5%', opacity: 0.1 },
+  { key: 'top-tail', top: '97%', bottom: 0, opacity: 0.03 },
+];
+const FILTERS_BLUR_MASK_SEGMENTS = [
+  { key: 'filters-0', top: '0%', height: '6%', opacity: 0.06 },
+  { key: 'filters-6', top: '6%', height: '6%', opacity: 0.28 },
+  { key: 'filters-12', top: '12%', height: '6%', opacity: 0.56 },
+  { key: 'filters-18', top: '18%', height: '6%', opacity: 0.84 },
+  { key: 'filters-core', top: '24%', height: '50%', opacity: 0.9 },
+  { key: 'filters-74', top: '74%', height: '6%', opacity: 0.76 },
+  { key: 'filters-80', top: '80%', height: '6%', opacity: 0.56 },
+  { key: 'filters-86', top: '86%', height: '6%', opacity: 0.34 },
+  { key: 'filters-92', top: '92%', height: '5%', opacity: 0.14 },
+  { key: 'filters-tail', top: '97%', bottom: 0, opacity: 0.04 },
+];
 
 function colorWithAlpha(color, alpha) {
   if (typeof color !== 'string') {
@@ -54,94 +115,145 @@ function colorWithAlpha(color, alpha) {
   return color;
 }
 
-function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter = false, topInset = 0 }) {
+function FadingBlur({ backgroundImage, blurModeKey, intensity, mode = 'top', nativeBlurProps, tint }) {
+  const segments = mode === 'filters'
+    ? FILTERS_BLUR_MASK_SEGMENTS
+    : TOP_BAR_BLUR_MASK_SEGMENTS;
+  const blurProps = nativeBlurProps ?? {};
+
+  if (Platform.OS === 'web') {
+    return (
+      <View
+        style={[
+          styles.blurFadeStack,
+          mode === 'filters' ? WEB_FILTERS_FROST_STYLE : WEB_TOP_BAR_FROST_STYLE,
+          { backgroundImage },
+          styles.pointerEventsNone,
+        ]}
+      />
+    );
+  }
+
+  return (
+    <View style={[styles.blurFadeStack, styles.pointerEventsNone]}>
+      {segments.map(({ key, ...segmentStyle }) => (
+        <BlurView
+          key={`${key}-${blurModeKey}`}
+          {...blurProps}
+          intensity={intensity}
+          style={[styles.frostBlurSegment, segmentStyle, styles.pointerEventsNone]}
+          tint={tint}
+        />
+      ))}
+    </View>
+  );
+}
+
+function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
   const { resolvedColorMode } = useTheme();
   const isDark = resolvedColorMode === 'dark';
   const blurTint = isDark ? 'dark' : 'default';
-  const blurModeKey = blurTargetRef ? 'targeted' : 'fallback';
-  const nativeBlurProps = blurTargetRef
+  const canTargetBlur = Platform.OS !== 'web' && blurTargetRef;
+  const blurModeKey = canTargetBlur ? 'targeted' : 'fallback';
+  const nativeBlurProps = canTargetBlur
     ? {
-        blurMethod: 'dimezisBlurViewSdk31Plus',
-        blurReductionFactor: 3,
+        blurMethod: 'dimezisBlurView',
+        blurReductionFactor: 2,
         blurTarget: blurTargetRef,
       }
     : null;
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
-  const topBand = colorWithAlpha(screenColor, isDark ? 0.84 : 0.86);
-  const midBand = colorWithAlpha(screenColor, isDark ? 0.74 : 0.78);
-  const fadeBand = colorWithAlpha(screenColor, 0);
-  const filterTopBand = colorWithAlpha(screenColor, isDark ? 0.4 : 0.34);
-  const filterMidBand = colorWithAlpha(screenColor, isDark ? 0.22 : 0.18);
-  const filterLowBand = colorWithAlpha(screenColor, 0);
+  const topFrostStart = colorWithAlpha(screenColor, 0.86);
+  const topFrostMid = colorWithAlpha(screenColor, 0.78);
+  const topFrostEnd = colorWithAlpha(screenColor, 0.1);
+  const filterFrostStart = colorWithAlpha(screenColor, isDark ? 0.4 : 0.34);
+  const filterFrostMid = colorWithAlpha(screenColor, isDark ? 0.22 : 0.18);
+  const filterFrostEnd = colorWithAlpha(screenColor, 0.04);
   const filterBackdropTop = colorWithAlpha(screenColor, 1);
   const filterBackdropLow = colorWithAlpha(screenColor, 0.5);
+  const topFrostGradient =
+    `linear-gradient(180deg, ${topFrostStart} 0%, ${topFrostMid} 64%, ${topFrostEnd} 100%)`;
+  const filterFrostGradient =
+    `linear-gradient(180deg, ${filterFrostStart} 0%, ${filterFrostMid} 68%, ${filterFrostEnd} 100%)`;
+  const filterBackdropGradient =
+    `linear-gradient(180deg, ${filterBackdropTop} 0%, ${filterBackdropLow} 100%)`;
 
   return (
     <>
       <View
-        className="top-bar__frost-layer"
         style={[
           styles.frostLayer,
-          scrollbarGutter && styles.scrollbarGutterRight,
           styles.pointerEventsNone,
         ]}
       >
-        <BlurView
-          key={`top-frost-${blurModeKey}`}
-          {...nativeBlurProps}
-          intensity={64}
-          pointerEvents="none"
-          style={styles.frostBlur}
+        <FadingBlur
+          backgroundImage={topFrostGradient}
+          blurModeKey={blurModeKey}
+          intensity={82}
+          nativeBlurProps={nativeBlurProps}
           tint={blurTint}
         />
-        <LinearGradient
-          colors={[topBand, topBand, midBand, colorWithAlpha(screenColor, 0.1), fadeBand]}
-          locations={[0, 0.52, 0.72, 0.92, 1]}
-          pointerEvents="none"
-          style={styles.frostGradient}
-        />
+        {Platform.OS === 'web' ? null : (
+          <LinearGradient
+            colors={[topFrostStart, topFrostMid, topFrostEnd]}
+            locations={[0, 0.64, 1]}
+            style={[styles.frostGradient, styles.pointerEventsNone]}
+          />
+        )}
       </View>
       {filterSheet ? (
-        <View className="top-bar__filter-sheet-layer" style={[styles.filterSheetLayer, styles.pointerEventsNone]}>
-          <BlurView
-            key={`filter-sheet-frost-${blurModeKey}`}
-            {...nativeBlurProps}
-            intensity={20}
-            pointerEvents="none"
-            style={styles.frostBlur}
+        <View style={[styles.filterSheetLayer, styles.pointerEventsNone]}>
+          {Platform.OS === 'web' ? (
+            <View
+              key={`filter-sheet-frost-${blurModeKey}`}
+              style={[
+                styles.frostBlur,
+                WEB_FILTER_SHEET_FROST_STYLE,
+                { backgroundImage: filterBackdropGradient },
+                styles.pointerEventsNone,
+              ]}
+            />
+          ) : (
+            <BlurView
+              key={`filter-sheet-frost-${blurModeKey}`}
+              {...(nativeBlurProps ?? {})}
+              intensity={56}
+              style={[styles.frostBlur, styles.pointerEventsNone]}
+              tint={blurTint}
+            />
+          )}
+          {Platform.OS === 'web' ? null : (
+            <LinearGradient
+              colors={[filterBackdropTop, filterBackdropLow]}
+              locations={[0, 1]}
+              style={[styles.frostGradient, styles.pointerEventsNone]}
+            />
+          )}
+        </View>
+      ) : null}
+      {Platform.OS === 'web' ? null : (
+        <View
+          style={[
+            styles.filtersFrostLayer,
+            { top: Math.max(0, topInset) + 52 },
+            styles.pointerEventsNone,
+          ]}
+        >
+          <FadingBlur
+            backgroundImage={filterFrostGradient}
+            blurModeKey={blurModeKey}
+            intensity={40}
+            mode="filters"
+            nativeBlurProps={nativeBlurProps}
             tint={blurTint}
           />
           <LinearGradient
-            colors={[filterBackdropTop, filterBackdropLow]}
-            locations={[0, 1]}
-            pointerEvents="none"
-            style={styles.frostGradient}
+            colors={[filterFrostStart, filterFrostMid, filterFrostEnd]}
+            locations={[0, 0.68, 1]}
+            style={[styles.frostGradient, styles.pointerEventsNone]}
           />
         </View>
-      ) : null}
-      <View
-        className="top-bar__filters-frost-layer"
-        style={[
-          styles.filtersFrostLayer,
-          { top: Math.max(0, topInset) + 52 },
-          styles.pointerEventsNone,
-        ]}
-      >
-        <BlurView
-          key={`filters-frost-${blurModeKey}`}
-          {...nativeBlurProps}
-          intensity={36}
-          pointerEvents="none"
-          style={styles.frostBlur}
-          tint={blurTint}
-        />
-        <LinearGradient
-          colors={[filterLowBand, filterTopBand, filterMidBand, filterLowBand]}
-          locations={[0, 0.24, 0.74, 1]}
-          pointerEvents="none"
-          style={styles.frostGradient}
-        />
-      </View>
+      )}
     </>
   );
 }
@@ -149,17 +261,53 @@ function FrostBackground({ blurTargetRef, filterSheet = false, scrollbarGutter =
 function FilterButtonLabel({ children, numberOfLines = 1, onLayout, width }) {
   const widthValue = useSharedValue(width ?? 0);
   const hasWidth = typeof width === 'number' && width > 0;
+  const hadMeasuredWidthRef = useRef(hasWidth);
+  const lastWidthRef = useRef(width ?? 0);
+  const displayedChildrenRef = useRef(children);
+  const [displayedChildren, setDisplayedChildren] = useState(children);
+  const commitDisplayedChildren = useCallback((nextChildren) => {
+    displayedChildrenRef.current = nextChildren;
+    setDisplayedChildren(nextChildren);
+  }, []);
 
   useEffect(() => {
     if (!hasWidth) {
+      hadMeasuredWidthRef.current = false;
+      lastWidthRef.current = 0;
+      commitDisplayedChildren(children);
       return;
     }
 
-    widthValue.value = withTiming(width, {
+    if (!hadMeasuredWidthRef.current) {
+      hadMeasuredWidthRef.current = true;
+      lastWidthRef.current = width;
+      widthValue.value = width;
+      commitDisplayedChildren(children);
+      return;
+    }
+
+    const previousWidth = lastWidthRef.current || width;
+    const expanding = width > previousWidth + 0.5;
+    const textChanged = displayedChildrenRef.current !== children;
+    lastWidthRef.current = width;
+
+    const timingConfig = {
       duration: motionDurationsMs.normal,
       easing: IOS_EASING,
-    });
-  }, [hasWidth, width, widthValue]);
+    };
+
+    if (expanding && textChanged) {
+      widthValue.value = withTiming(width, timingConfig, (finished) => {
+        if (finished) {
+          runOnJS(commitDisplayedChildren)(children);
+        }
+      });
+      return;
+    }
+
+    widthValue.value = withTiming(width, timingConfig);
+    commitDisplayedChildren(children);
+  }, [children, commitDisplayedChildren, hasWidth, width, widthValue]);
 
   const widthStyle = useAnimatedStyle(() => (
     hasWidth
@@ -171,12 +319,17 @@ function FilterButtonLabel({ children, numberOfLines = 1, onLayout, width }) {
 
   const label = (
     <Text
-      className="filter-button__label"
-      numberOfLines={numberOfLines}
+      ellipsizeMode={Platform.OS === 'web' ? undefined : 'clip'}
+      numberOfLines={Platform.OS === 'web' ? undefined : numberOfLines}
       onLayout={onLayout}
-      style={styles.filterLabel}
+      style={[
+        styles.filterLabel,
+        styles.pointerEventsNone,
+        filterLabelNoWrapStyle,
+        hasWidth && Platform.OS !== 'web' ? { width } : null,
+      ]}
     >
-      {children}
+      {keepAllWordBreakText(displayedChildren)}
     </Text>
   );
 
@@ -185,7 +338,7 @@ function FilterButtonLabel({ children, numberOfLines = 1, onLayout, width }) {
   }
 
   return (
-    <Animated.View pointerEvents="none" style={[styles.filterLabelClip, widthStyle]}>
+    <Animated.View style={[styles.filterLabelClip, styles.pointerEventsNone, widthStyle]}>
       {label}
     </Animated.View>
   );
@@ -204,30 +357,39 @@ function FiltersRow({
   onVesselTypeClick,
   onVesselTypeLabelLayout,
   openState = 'closed',
-  scrollbarGutter = false,
   vesselTypeLabel = '전체 선박',
   vesselTypeButtonRef,
   vesselTypeLabelWidth,
 }) {
+  const { resolvedColorMode } = useTheme();
   const dropdownIconName = openState !== 'closed' ? 'keyboard_arrow_up' : 'keyboard_arrow_down';
+  const isDark = resolvedColorMode === 'dark';
+  const screenColor = resolveCssVariableString('var(--color-bg-screen)');
+  const filterFrostStart = colorWithAlpha(screenColor, isDark ? 0.4 : 0.34);
+  const filterFrostMid = colorWithAlpha(screenColor, isDark ? 0.22 : 0.18);
+  const filterFrostEnd = colorWithAlpha(screenColor, 0.04);
+  const filterFrostWebStyle = Platform.OS === 'web'
+    ? {
+        backgroundImage:
+          `linear-gradient(180deg, ${filterFrostStart} 0%, ${filterFrostMid} 68%, ${filterFrostEnd} 100%)`,
+      }
+    : null;
 
   return (
     <View
-      className={`top-bar__filters ${inFilterSheet ? 'top-bar__filters--filter-sheet' : ''}`.trim()}
       style={[styles.filters, inFilterSheet && styles.filtersInSheet]}
     >
       <View
-        className="top-bar__filters-frost"
         style={[
           styles.filtersFrost,
-          scrollbarGutter && styles.filtersFrostScrollbarGutter,
+          WEB_FILTERS_FROST_STYLE,
+          filterFrostWebStyle,
           styles.pointerEventsNone,
         ]}
       />
-      <View className="filter-group" style={[styles.filterGroup, inFilterSheet && styles.filterGroupInSheet]}>
+      <View style={[styles.filterGroup, inFilterSheet && styles.filterGroupInSheet]}>
         <InteractivePressable
           accessibilityRole="button"
-          className="filter-button pressable-control pressable-control--pill"
           onPress={onHarborClick}
           pressGuideColor="var(--color-press-overlay-slate-100-50)"
           pressGuideVariant="pill"
@@ -235,6 +397,7 @@ function FiltersRow({
           style={({ focused, pressed }) => [
             interactiveStyles.base,
             styles.filterButton,
+            styles.filterButtonRow,
             focused && interactiveStyles.focus,
             { transform: [{ scale: pressed ? getInteractiveScale('button') : 1 }] },
           ]}
@@ -245,12 +408,16 @@ function FiltersRow({
           >
             {harborLabel}
           </FilterButtonLabel>
-          <AppIcon className="filter-button__icon" name={dropdownIconName} preset="disclosure" tone="slate-400" />
+          <AppIcon
+            name={dropdownIconName}
+            preset="disclosure"
+            style={styles.pointerEventsNone}
+            tone="slate-400"
+          />
         </InteractivePressable>
 
         <InteractivePressable
           accessibilityRole="button"
-          className="filter-button pressable-control pressable-control--pill"
           onPress={onVesselTypeClick}
           pressGuideColor="var(--color-press-overlay-slate-100-50)"
           pressGuideVariant="pill"
@@ -258,6 +425,7 @@ function FiltersRow({
           style={({ focused, pressed }) => [
             interactiveStyles.base,
             styles.filterButton,
+            styles.filterButtonRow,
             focused && interactiveStyles.focus,
             { transform: [{ scale: pressed ? getInteractiveScale('button') : 1 }] },
           ]}
@@ -268,13 +436,17 @@ function FiltersRow({
           >
             {vesselTypeLabel}
           </FilterButtonLabel>
-          <AppIcon className="filter-button__icon" name={dropdownIconName} preset="disclosure" tone="slate-400" />
+          <AppIcon
+            name={dropdownIconName}
+            preset="disclosure"
+            style={styles.pointerEventsNone}
+            tone="slate-400"
+          />
         </InteractivePressable>
       </View>
 
       <View
         accessibilityLabel="보기 옵션"
-        className={`view-options ${blurViewOptions ? 'view-options--blurred' : ''}`.trim()}
         style={[
           styles.viewOptions,
           blurViewOptions && styles.viewOptionsBlurred,
@@ -284,9 +456,6 @@ function FiltersRow({
         <InteractivePressable
           accessibilityLabel="요약 보기"
           accessibilityRole="button"
-          className={`icon-button pressable-control pressable-control--icon ${
-            compact ? 'icon-button--active' : ''
-          }`.trim()}
           onPress={() => onToggleCompact(true)}
           pressGuideColor="var(--color-press-overlay-slate-100-50)"
           pressGuideVariant="icon"
@@ -298,7 +467,6 @@ function FiltersRow({
           ]}
         >
           <AppIcon
-            className="view-option-icon"
             name="event_list"
             preset="viewMode"
             tone={compact ? 'slate-500' : 'slate-300'}
@@ -307,9 +475,6 @@ function FiltersRow({
         <InteractivePressable
           accessibilityLabel="카드 보기"
           accessibilityRole="button"
-          className={`icon-button pressable-control pressable-control--icon ${
-            compact ? '' : 'icon-button--active'
-          }`.trim()}
           onPress={() => onToggleCompact(false)}
           pressGuideColor="var(--color-press-overlay-slate-100-50)"
           pressGuideVariant="icon"
@@ -321,7 +486,6 @@ function FiltersRow({
           ]}
         >
           <AppIcon
-            className="view-option-icon"
             name="view_stream"
             preset="viewMode"
             tone={compact ? 'slate-300' : 'slate-500'}
@@ -348,7 +512,6 @@ export const TopBar = memo(function TopBar({
   onVesselTypeFilterOpen,
   onVesselTypeLabelLayout,
   openState = 'closed',
-  scrollbarGutter = false,
   vesselTypeFilter,
   vesselTypeButtonRef,
   vesselTypeLabelWidth,
@@ -372,12 +535,10 @@ export const TopBar = memo(function TopBar({
 
   return (
     <Animated.View
-      className={`top-bar top-bar--rnw-frost ${
-        inFilterSheet ? 'top-bar--filter-sheet' : ''
-      } ${scrollbarGutter ? 'top-bar--scrollbar-gutter' : ''}`.trim()}
       style={[
         styles.topBar,
         inFilterSheet && styles.topBarInSheet,
+        WEB_TOP_BAR_SHELL_STYLE,
         { height: barHeight, paddingTop: topInset },
         topBarAnimatedStyle,
       ]}
@@ -385,12 +546,10 @@ export const TopBar = memo(function TopBar({
       <FrostBackground
         blurTargetRef={blurTargetRef}
         filterSheet={inFilterSheet}
-        scrollbarGutter={scrollbarGutter}
         topInset={topInset}
       />
 
       <View
-        className="top-bar__main"
         style={[
           styles.topBarMain,
           inFilterSheet ? styles.pointerEventsNone : styles.pointerEventsAuto,
@@ -400,7 +559,6 @@ export const TopBar = memo(function TopBar({
         <InteractivePressable
           accessibilityLabel="검색"
           accessibilityRole="button"
-          className="icon-button pressable-control pressable-control--icon"
           onPress={onSearchOpen}
           pressGuideColor="var(--color-press-overlay-slate-100-50)"
           pressGuideVariant="icon"
@@ -412,7 +570,6 @@ export const TopBar = memo(function TopBar({
           ]}
         >
           <AppIcon
-            className="top-bar__action-icon"
             name="search"
             preset="search"
             tone="muted"
@@ -434,7 +591,6 @@ export const TopBar = memo(function TopBar({
         onVesselTypeClick={onVesselTypeFilterOpen}
         onVesselTypeLabelLayout={onVesselTypeLabelLayout}
         openState={openState}
-        scrollbarGutter={scrollbarGutter}
         vesselTypeLabel={vesselTypeFilter}
         vesselTypeButtonRef={vesselTypeButtonRef}
         vesselTypeLabelWidth={vesselTypeLabelWidth}
@@ -448,7 +604,6 @@ export const SearchTopBar = memo(function SearchTopBar({
   compact,
   harborFilter,
   query,
-  scrollbarGutter = false,
   vesselTypeFilter,
   onBack,
   onClear,
@@ -489,21 +644,20 @@ export const SearchTopBar = memo(function SearchTopBar({
 
   return (
     <View
-      className={`search-top-bar search-top-bar--rnw-frost ${
-        scrollbarGutter ? 'search-top-bar--scrollbar-gutter' : ''
-      }`.trim()}
-      style={[styles.searchTopBar, { height: barHeight, paddingTop: topInset }]}
+      style={[
+        styles.searchTopBar,
+        WEB_TOP_BAR_SHELL_STYLE,
+        { height: barHeight, paddingTop: topInset },
+      ]}
     >
-      <FrostBackground blurTargetRef={blurTargetRef} scrollbarGutter={scrollbarGutter} topInset={topInset} />
+      <FrostBackground blurTargetRef={blurTargetRef} topInset={topInset} />
 
       <View
-        className="search-top-bar__main"
-        style={[styles.searchMain, scrollbarGutter && styles.searchMainScrollbarGutter]}
+        style={styles.searchMain}
       >
         <InteractivePressable
           accessibilityLabel="뒤로가기"
           accessibilityRole="button"
-          className="search-top-bar__back pressable-control pressable-control--icon"
           onPress={handleBack}
           pressGuideColor="var(--slate-50)"
           pressGuideVariant="icon"
@@ -515,7 +669,6 @@ export const SearchTopBar = memo(function SearchTopBar({
           ]}
         >
           <AppIcon
-            className="search-top-bar__back-icon"
             name="arrow_back_ios_new"
             preset="iosArrow"
             tone="secondary"
@@ -541,7 +694,6 @@ export const SearchTopBar = memo(function SearchTopBar({
           <InteractivePressable
             accessibilityLabel="검색 지우기"
             accessibilityRole="button"
-            className="search-top-bar__cancel pressable-control pressable-control--icon"
             onPress={onClear}
             pressGuideColor="var(--slate-50)"
             pressGuideVariant="icon"
@@ -566,7 +718,6 @@ export const SearchTopBar = memo(function SearchTopBar({
         onToggleCompact={onToggleCompact}
         onVesselTypeClick={() => handleFilterOpen(onVesselTypeFilterOpen)}
         openState="closed"
-        scrollbarGutter={scrollbarGutter}
         vesselTypeLabel={vesselTypeFilter}
       />
     </View>
@@ -579,7 +730,6 @@ const styles = StyleSheet.create({
     right: 0,
     left: 0,
     top: 0,
-    width: '100%',
     zIndex: 2,
     height: 136,
     overflow: 'hidden',
@@ -616,33 +766,18 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
   },
-  frostBandTop: {
+  frostBlurSegment: {
+    position: 'absolute',
+    right: 0,
+    left: 0,
+  },
+  blurFadeStack: {
     position: 'absolute',
     top: 0,
     right: 0,
-    left: 0,
-    height: '46%',
-  },
-  frostBandMid: {
-    position: 'absolute',
-    top: '40%',
-    right: 0,
-    left: 0,
-    height: '24%',
-  },
-  frostBandLow: {
-    position: 'absolute',
-    top: '61%',
-    right: 0,
-    left: 0,
-    height: '18%',
-  },
-  frostBandFade: {
-    position: 'absolute',
-    top: '78%',
-    right: 0,
-    left: 0,
     bottom: 0,
+    left: 0,
+    overflow: 'hidden',
   },
   filterSheetLayer: {
     position: 'absolute',
@@ -673,7 +808,7 @@ const styles = StyleSheet.create({
     top: 52,
     right: 0,
     left: 0,
-    height: 70,
+    height: 84,
     zIndex: 0,
     overflow: 'hidden',
   },
@@ -720,7 +855,6 @@ const styles = StyleSheet.create({
     right: 0,
     left: 0,
     top: 0,
-    width: '100%',
     zIndex: 2,
     height: 136,
     overflow: 'hidden',
@@ -735,7 +869,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'transparent',
+    backgroundColor: 'var(--slate-50)',
   },
   iconButton: {
     width: 24,
@@ -757,9 +891,7 @@ const styles = StyleSheet.create({
     padding: 0,
     color: 'var(--color-text-muted)',
     fontSize: 18,
-    lineHeight: 20,
     fontWeight: '500',
-    letterSpacing: -0.36,
     backgroundColor: 'transparent',
     borderWidth: 0,
   },
@@ -799,7 +931,7 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'row',
     gap: 24,
-    flexShrink: 1,
+    flexShrink: 0,
     minWidth: 0,
   },
   filterGroupInSheet: {
@@ -808,22 +940,27 @@ const styles = StyleSheet.create({
   filterButton: {
     display: 'flex',
     flexDirection: 'row',
+    flexWrap: 'nowrap',
     alignItems: 'center',
     gap: 0,
     padding: 0,
     backgroundColor: 'transparent',
-    flexShrink: 1,
+    flexShrink: 0,
+  },
+  filterButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   filterLabel: {
     color: 'var(--color-text-secondary)',
     fontSize: 18,
-    lineHeight: 23.4,
     fontWeight: '600',
-    letterSpacing: -0.36,
     textAlign: 'left',
+    flexShrink: 0,
   },
   filterLabelClip: {
     overflow: 'hidden',
+    flexShrink: 0,
   },
   viewOptions: {
     position: 'relative',

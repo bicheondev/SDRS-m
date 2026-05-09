@@ -9,11 +9,11 @@ import {
   StyleSheet,
   TextInput as ReactNativeTextInput,
   UIManager,
+  useWindowDimensions,
   Vibration,
   View,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
   interpolateColor,
@@ -24,9 +24,9 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
-import { emptyManageShipCard } from '../../appDomain.js';
-import manageImage from '../../assets/ui/manageImage.png';
+import { emptyManageShipCard, isPlaceholderImage } from '../../appDomain.js';
 import { AppIcon } from '../../components/Icons.jsx';
+import { NoImagePlaceholder } from '../../components/NoImagePlaceholder.jsx';
 import { interactiveStyles, getInteractiveScale } from '../../components/interactiveStyles.js';
 import { AppScreenShell, screenLayoutStyles } from '../../components/layout/ScreenLayout.jsx';
 import { InteractivePressable } from '../../components/primitives/InteractivePressable.jsx';
@@ -34,7 +34,6 @@ import { AppText as Text, AppTextInput as TextInput } from '../../components/pri
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe.js';
 import { motionDurationsMs, motionTokens } from '../../motion.js';
 import {
-  getComputedStyleValue,
   getElementRectSnapshot,
 } from '../../platform/index';
 import {
@@ -58,7 +57,21 @@ const MANAGE_ITEM_REMOVE_MS = 140;
 const MANAGE_ITEM_REMOVE_REDUCED_MS = 100;
 const REORDER_AUTO_SCROLL_EDGE_PX = 88;
 const REORDER_AUTO_SCROLL_MAX_STEP_PX = 24;
+const MODAL_HORIZONTAL_MARGIN = 25;
+const MODAL_CONTENT_WIDTH = 300;
+const MODAL_PADDING = 20;
+const MODAL_TOTAL_WIDTH = MODAL_CONTENT_WIDTH + MODAL_PADDING * 2;
 const ADD_SCROLL_MAX_ATTEMPTS = 18;
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+const WEB_TOAST_BLUR_STYLE = Platform.OS === 'web'
+  ? {
+      backdropFilter: 'blur(8px)',
+      WebkitBackdropFilter: 'blur(8px)',
+    }
+  : null;
+const WEB_BACKDROP_SCROLL_STYLE = Platform.OS === 'web'
+  ? { transform: 'none' }
+  : null;
 
 function dismissNativeKeyboard() {
   ReactNativeTextInput.State?.currentlyFocusedInput?.()?.blur?.();
@@ -88,10 +101,6 @@ function configureManageListLayoutAnimation(reducedMotion = false) {
   });
 }
 
-function joinClassNames(...tokens) {
-  return tokens.filter(Boolean).join(' ');
-}
-
 function setCombinedRef(externalRef, node) {
   if (typeof externalRef === 'function') {
     externalRef(node);
@@ -103,9 +112,12 @@ function setCombinedRef(externalRef, node) {
   }
 }
 
-function resolveImageSource(imageSource) {
-  const source = imageSource ?? manageImage;
-  return typeof source === 'string' ? { uri: source } : source;
+function ManageShipImage({ imageSource }) {
+  if (isPlaceholderImage(imageSource)) {
+    return <NoImagePlaceholder style={styles.manageShipImage} />;
+  }
+
+  return <Image resizeMode="cover" source={{ uri: imageSource }} style={styles.manageShipImage} />;
 }
 
 function moveItem(items, fromIndex, toIndex) {
@@ -162,15 +174,15 @@ function useMountTransition(reducedMotion = false, enabled = true, animateReduce
   return isPresented;
 }
 
-function useModalAnimatedStyles(reducedMotion) {
+function useModalAnimatedStyles(reducedMotion, visible = true) {
   const progress = useSharedValue(reducedMotion ? 1 : 0);
 
   useEffect(() => {
-    progress.value = withTiming(1, {
+    progress.value = withTiming(visible ? 1 : 0, {
       duration: reducedMotion ? motionDurationsMs.instant : motionDurationsMs.normal,
       easing: IOS_EASING,
     });
-  }, [progress, reducedMotion]);
+  }, [progress, reducedMotion, visible]);
 
   const scrimStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
@@ -379,6 +391,35 @@ function getElementRect(node) {
   return rect;
 }
 
+function measureElementInWindow(node, onMeasure) {
+  const scrollableElement = getScrollableElement(node);
+  const candidates = scrollableElement === node
+    ? [node]
+    : [scrollableElement, node];
+
+  for (const candidate of candidates) {
+    if (typeof candidate?.measureInWindow !== 'function') {
+      continue;
+    }
+
+    candidate.measureInWindow((x, y, width, height) => {
+      if (height > 0) {
+        onMeasure({
+          bottom: y + height,
+          height,
+          left: x,
+          right: x + width,
+          top: y,
+          width,
+        });
+      }
+    });
+    return true;
+  }
+
+  return false;
+}
+
 function getScrollViewportRect(scrollNode) {
   const scrollableElement = getScrollableElement(scrollNode);
   const rect = getElementRectSnapshot(scrollableElement);
@@ -451,19 +492,6 @@ function getScrollTop(scrollNode, fallbackScrollY = 0) {
   return fallbackScrollY;
 }
 
-function getScrollPaddingTop(scrollNode) {
-  const scrollableElement = getScrollableElement(scrollNode);
-
-  if (!scrollableElement) {
-    return 0;
-  }
-
-  const rawValue = getComputedStyleValue(scrollableElement, 'scrollPaddingTop');
-  const nextValue = Number.parseFloat(rawValue);
-
-  return Number.isFinite(nextValue) ? nextValue : 0;
-}
-
 function scrollLayoutIntoNearestView({
   currentScrollY = 0,
   layout,
@@ -506,8 +534,7 @@ function scrollElementIntoNearestManageView({
   }
 
   const currentScrollTop = getScrollTop(scrollNode, currentScrollY);
-  const scrollPaddingTop = getScrollPaddingTop(scrollNode);
-  const viewportTop = viewportRect.top + scrollPaddingTop;
+  const viewportTop = viewportRect.top;
   const viewportBottom = viewportRect.bottom;
   let nextScrollY = currentScrollTop;
 
@@ -522,6 +549,38 @@ function scrollElementIntoNearestManageView({
   }
 
   return true;
+}
+
+function getEventPoint(event, gestureState) {
+  return {
+    pageX:
+      event?.nativeEvent?.pageX ??
+      event?.nativeEvent?.clientX ??
+      event?.pageX ??
+      event?.clientX ??
+      gestureState?.moveX ??
+      gestureState?.x0 ??
+      0,
+    pageY:
+      event?.nativeEvent?.pageY ??
+      event?.nativeEvent?.clientY ??
+      event?.pageY ??
+      event?.clientY ??
+      gestureState?.moveY ??
+      gestureState?.y0 ??
+      0,
+  };
+}
+
+function keepAllWordBreakText(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  return value
+    .split(/(\s+)/)
+    .map((token) => (/\s+/.test(token) ? token : Array.from(token).join('\u2060')))
+    .join('');
 }
 
 function getPressableStyle(state, kind, baseStyle) {
@@ -589,6 +648,45 @@ function useEditedBackgroundStyle(edited) {
   );
 }
 
+function useEditedTextColorStyle(edited, idleColorToken = 'var(--color-text-tertiary)') {
+  const progress = useSharedValue(edited ? 1 : 0);
+  const idleColor = resolveCssVariableString(idleColorToken);
+  const editedColor = resolveCssVariableString('var(--color-accent)');
+
+  useEffect(() => {
+    progress.value = withTiming(edited ? 1 : 0, {
+      duration: motionDurationsMs.fast,
+      easing: IOS_EASING,
+    });
+  }, [edited, progress]);
+
+  return useAnimatedStyle(
+    () => ({
+      color: interpolateColor(
+        progress.value,
+        [0, 1],
+        [idleColor, editedColor],
+      ),
+    }),
+    [editedColor, idleColor],
+  );
+}
+
+function useEditedStrokeStyle(edited) {
+  const progress = useSharedValue(edited ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(edited ? 1 : 0, {
+      duration: motionDurationsMs.fast,
+      easing: IOS_EASING,
+    });
+  }, [edited, progress]);
+
+  return useAnimatedStyle(() => ({
+    opacity: progress.value,
+  }));
+}
+
 function SectionDivider({ style }) {
   return <View style={[styles.sectionDivider, style]} />;
 }
@@ -608,14 +706,12 @@ function ManageSubpageTopBar({ saveActive = false, title, onAdd, onBack, onSave 
         <InteractivePressable
           accessibilityLabel="뒤로가기"
           accessibilityRole="button"
-          className="detail-back-button pressable-control pressable-control--icon"
           onPress={onBack}
           pressGuideColor="var(--slate-50)"
           pressGuideVariant="icon"
           style={(state) => getPressableStyle(state, 'icon', styles.iconButton)}
         >
           <AppIcon
-            className="detail-back-button__icon"
             name="arrow_back_ios_new"
             preset="iosArrow"
             style={styles.iconSlot24}
@@ -629,14 +725,12 @@ function ManageSubpageTopBar({ saveActive = false, title, onAdd, onBack, onSave 
             <InteractivePressable
               accessibilityLabel="추가"
               accessibilityRole="button"
-              className="manage-subpage__add pressable-control pressable-control--icon"
               onPress={onAdd}
               pressGuideColor="var(--slate-50)"
               pressGuideVariant="icon"
               style={(state) => getPressableStyle(state, 'icon', styles.iconButton)}
             >
               <AppIcon
-                className="manage-subpage__add-icon"
                 name="add"
                 preset="plus"
                 style={styles.iconSlot24}
@@ -676,7 +770,9 @@ function ManageSearchBar({ onChange, onClear, placeholder = '검색', value = ''
         { height: 64 + bottomInset, paddingBottom: bottomInset },
       ]}
     >
-      <AppIcon name="search" preset="search" style={styles.iconSlot24} tone="muted" />
+      <View style={styles.manageSearchIconSlot}>
+        <AppIcon name="search" preset="search" tone="muted" />
+      </View>
       <TextInput
         autoCorrect={false}
         onChangeText={onChange}
@@ -695,7 +791,7 @@ function ManageSearchBar({ onChange, onClear, placeholder = '검색', value = ''
           pressGuideVariant="icon"
           style={(state) => getPressableStyle(state, 'icon', styles.searchIconButton)}
         >
-          <AppIcon name="cancel" preset="closeChip" style={styles.iconSlot24} tone="muted" />
+          <AppIcon name="cancel" preset="closeChip" tone="muted" />
         </InteractivePressable>
       ) : null}
     </View>
@@ -704,10 +800,12 @@ function ManageSearchBar({ onChange, onClear, placeholder = '검색', value = ''
 
 function ManageFieldInput({ edited = false, onChange, readOnly = false, value }) {
   const editedBackgroundStyle = useEditedBackgroundStyle(edited);
+  const editedTextColorStyle = useEditedTextColorStyle(edited);
+  const editedStrokeStyle = useEditedStrokeStyle(edited);
 
   return (
     <Animated.View style={[styles.manageFieldPill, editedBackgroundStyle, edited && styles.manageFieldPillEdited]}>
-      <TextInput
+      <AnimatedTextInput
         autoCorrect={false}
         editable={!readOnly}
         onChangeText={onChange}
@@ -715,10 +813,11 @@ function ManageFieldInput({ edited = false, onChange, readOnly = false, value })
         spellCheck={false}
         style={[
           styles.manageFieldInput,
-          edited && styles.manageFieldInputEdited,
+          editedTextColorStyle,
         ]}
         value={value}
       />
+      <Animated.View style={[styles.editStrokeOverlay, styles.pointerEventsNone, editedStrokeStyle]} />
     </Animated.View>
   );
 }
@@ -732,6 +831,8 @@ function ManageTextBox({
   variant = 'title',
 }) {
   const editedBackgroundStyle = useEditedBackgroundStyle(edited);
+  const editedTextColorStyle = useEditedTextColorStyle(edited, 'var(--color-text-tertiary)');
+  const editedStrokeStyle = useEditedStrokeStyle(edited);
 
   return (
     <Animated.View
@@ -742,7 +843,7 @@ function ManageTextBox({
         edited && styles.manageTextBoxEdited,
       ]}
     >
-      <TextInput
+      <AnimatedTextInput
         autoCorrect={false}
         editable={!readOnly}
         onChangeText={onChange}
@@ -751,11 +852,11 @@ function ManageTextBox({
         style={[
           styles.manageTextBoxInput,
           variant === 'title' ? styles.manageTextBoxInputTitle : styles.manageTextBoxInputSubtitle,
-          active && variant === 'subtitle' ? styles.manageTextBoxInputActive : null,
-          edited && styles.manageTextBoxInputEdited,
+          editedTextColorStyle,
         ]}
         value={value}
       />
+      <Animated.View style={[styles.editStrokeOverlay, styles.pointerEventsNone, editedStrokeStyle]} />
     </Animated.View>
   );
 }
@@ -820,10 +921,10 @@ function ManageShipCard({
             pressGuideVariant="media"
             style={(state) => getPressableStyle(state, 'card', styles.manageShipImageButton)}
           >
-            <Image resizeMode="cover" source={resolveImageSource(card.image)} style={styles.manageShipImage} />
+            <ManageShipImage imageSource={card.image} />
           </InteractivePressable>
         ) : (
-          <Image resizeMode="cover" source={resolveImageSource(card.image)} style={styles.manageShipImage} />
+          <ManageShipImage imageSource={card.image} />
         )}
       </View>
 
@@ -889,7 +990,6 @@ function ManageShipCard({
             소나
           </Text>
           <AppIcon
-            className="status-icon status-icon--manage status-icon--equipment-small"
             glyphSize={18}
             name={card.sonar ? 'check' : 'close'}
             opticalSize={20}
@@ -930,7 +1030,6 @@ function ManageShipCard({
             어군 탐지기
           </Text>
           <AppIcon
-            className="status-icon status-icon--manage status-icon--equipment-small"
             glyphSize={18}
             name={card.detector ? 'check' : 'close'}
             opticalSize={20}
@@ -1052,17 +1151,20 @@ function ManageShipReorderItem({
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: () => false,
-        onPanResponderGrant: (_, gestureState) => {
+        onMoveShouldSetPanResponderCapture: () => dragStartedRef.current,
+        onPanResponderGrant: (event, gestureState) => {
           clearLongPressTimer();
           dragStartedRef.current = false;
+          const startPoint = getEventPoint(event, gestureState);
 
           longPressTimerRef.current = setTimeout(() => {
             longPressTimerRef.current = null;
-            startDrag(gestureState.y0);
+            startDrag(startPoint.pageY);
           }, 220);
         },
-        onPanResponderMove: (_, gestureState) => {
-          const clientY = gestureState.moveY || gestureState.y0 + gestureState.dy;
+        onPanResponderMove: (event, gestureState) => {
+          const point = getEventPoint(event, gestureState);
+          const clientY = point.pageY || gestureState.y0 + gestureState.dy;
 
           if (!dragStartedRef.current) {
             if (Math.hypot(gestureState.dx, gestureState.dy) > 8) {
@@ -1073,16 +1175,21 @@ function ManageShipReorderItem({
 
           onDragMove({ cardId: card.id, clientY });
         },
-        onPanResponderRelease: (_, gestureState) => {
-          finishDrag(gestureState.moveY || gestureState.y0 + gestureState.dy);
+        onPanResponderRelease: (event, gestureState) => {
+          const point = getEventPoint(event, gestureState);
+          finishDrag(point.pageY || gestureState.y0 + gestureState.dy);
         },
-        onPanResponderTerminate: (_, gestureState) => {
-          finishDrag(gestureState.moveY || gestureState.y0 + gestureState.dy);
+        onPanResponderReject: resetLongPressState,
+        onPanResponderTerminate: (event, gestureState) => {
+          const point = getEventPoint(event, gestureState);
+          finishDrag(point.pageY || gestureState.y0 + gestureState.dy);
         },
+        onPanResponderTerminationRequest: () => false,
         onShouldBlockNativeResponder: () => true,
         onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
       }),
-    [card.id, clearLongPressTimer, finishDrag, onDragMove, startDrag],
+    [card.id, clearLongPressTimer, finishDrag, onDragMove, resetLongPressState, startDrag],
   );
 
   const enteringTranslateY = !reducedMotion && isEntering && !isPresented ? 14 : 0;
@@ -1127,7 +1234,6 @@ function ManageShipReorderItem({
     immediate: reducedMotion || isDragging || isSettling,
     translateY: !isDragging && !isSettling ? shiftOffset : 0,
   });
-
   return (
     <>
       <Animated.View
@@ -1166,11 +1272,6 @@ function ManageShipReorderItem({
             <View
               accessibilityLabel="길게 눌러 선박 순서 변경"
               accessibilityRole="button"
-              className={joinClassNames(
-                'manage-ship-card__reorder-handle',
-                'interaction-reset',
-                (isArmed || isDragging) && 'manage-ship-card__reorder-handle--dragging',
-              )}
               style={[
                 styles.reorderHandle,
                 (isArmed || isDragging) && styles.reorderHandleDragging,
@@ -1178,7 +1279,6 @@ function ManageShipReorderItem({
               {...panResponder.panHandlers}
             >
               <AppIcon
-                className="manage-ship-card__reorder-icon"
                 glyphSize={18}
                 name="drag_indicator"
                 opticalSize={20}
@@ -1188,7 +1288,6 @@ function ManageShipReorderItem({
                 tone={isArmed || isDragging ? 'accent' : 'muted'}
               />
               <Text
-                className="manage-ship-card__reorder-label"
                 style={[
                   styles.reorderLabel,
                   (isArmed || isDragging) && styles.reorderLabelActive,
@@ -1313,9 +1412,15 @@ function ManageAlertModal({
   onCancel,
   onConfirm,
   title = '경고 사항',
+  visible = true,
 }) {
   const reducedMotion = useReducedMotionSafe();
-  const modalAnimatedStyles = useModalAnimatedStyles(reducedMotion);
+  const { width: windowWidth } = useWindowDimensions();
+  const modalAnimatedStyles = useModalAnimatedStyles(reducedMotion, visible);
+  const modalCardContentWidth = Math.max(
+    0,
+    Math.min(MODAL_TOTAL_WIDTH, windowWidth - MODAL_HORIZONTAL_MARGIN * 2) - MODAL_PADDING * 2,
+  );
 
   return (
     <View style={styles.modalShell}>
@@ -1329,11 +1434,12 @@ function ManageAlertModal({
       <Animated.View
         style={[
           styles.modalCard,
+          { width: modalCardContentWidth },
           modalAnimatedStyles.cardStyle,
         ]}
       >
-        <Text style={styles.modalTitle}>{title}</Text>
-        <Text style={styles.modalCopy}>{copy}</Text>
+        <Text style={styles.modalTitle}>{keepAllWordBreakText(title)}</Text>
+        <Text style={styles.modalCopy}>{keepAllWordBreakText(copy)}</Text>
 
         <View style={styles.modalActions}>
           {!hideCancel ? (
@@ -1346,7 +1452,7 @@ function ManageAlertModal({
                 getPressableStyle(state, 'button', [styles.modalButton, styles.modalButtonGhost])
               }
             >
-              <Text style={styles.modalButtonGhostLabel}>{cancelLabel}</Text>
+              <Text style={styles.modalButtonGhostLabel}>{keepAllWordBreakText(cancelLabel)}</Text>
             </InteractivePressable>
           ) : null}
 
@@ -1362,7 +1468,7 @@ function ManageAlertModal({
               ])
             }
           >
-            <Text style={styles.modalButtonLabel}>{confirmLabel}</Text>
+            <Text style={styles.modalButtonLabel}>{keepAllWordBreakText(confirmLabel)}</Text>
           </InteractivePressable>
         </View>
       </Animated.View>
@@ -1370,7 +1476,86 @@ function ManageAlertModal({
   );
 }
 
-function ManageSavedToast({ message, onDismiss }) {
+function ManageAlertModalPresence({ visible, onCancel, onConfirm, ...modalProps }) {
+  const reducedMotion = useReducedMotionSafe();
+  const closeTimerRef = useRef(null);
+  const pendingActionRef = useRef(null);
+  const [mounted, setMounted] = useState(visible);
+  const [presented, setPresented] = useState(visible);
+
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const finishClose = useCallback(() => {
+    closeTimerRef.current = null;
+    setMounted(false);
+
+    const pendingAction = pendingActionRef.current;
+    pendingActionRef.current = null;
+    pendingAction?.();
+  }, []);
+
+  const requestClose = useCallback(
+    (action) => {
+      if (!presented) {
+        return;
+      }
+
+      pendingActionRef.current = action;
+      setPresented(false);
+    },
+    [presented],
+  );
+
+  useEffect(() => {
+    if (visible) {
+      clearCloseTimer();
+      pendingActionRef.current = null;
+      setMounted(true);
+      setPresented(true);
+      return;
+    }
+
+    if (mounted) {
+      setPresented(false);
+    }
+  }, [clearCloseTimer, mounted, visible]);
+
+  useEffect(() => {
+    if (!mounted || presented) {
+      return undefined;
+    }
+
+    clearCloseTimer();
+    closeTimerRef.current = setTimeout(
+      finishClose,
+      reducedMotion ? motionDurationsMs.instant : motionDurationsMs.normal + 16,
+    );
+
+    return clearCloseTimer;
+  }, [clearCloseTimer, finishClose, mounted, presented, reducedMotion]);
+
+  useEffect(() => clearCloseTimer, [clearCloseTimer]);
+
+  if (!mounted) {
+    return null;
+  }
+
+  return (
+    <ManageAlertModal
+      {...modalProps}
+      onCancel={() => requestClose(onCancel)}
+      onConfirm={() => requestClose(onConfirm)}
+      visible={presented}
+    />
+  );
+}
+
+function ManageSavedToast({ message, onDismiss, visible = true }) {
   const { resolvedColorMode } = useTheme();
   const isDark = resolvedColorMode === 'dark';
   const insets = useSafeAreaInsets();
@@ -1380,10 +1565,20 @@ function ManageSavedToast({ message, onDismiss }) {
   const bottomInset = Math.max(insets.bottom, 0);
   const manualDismissDuration = reducedMotion ? 80 : 160;
   const toastProgress = useSharedValue(reducedMotion ? 1 : 0);
-  const [dragOffset, setDragOffset] = useState(0);
+  const dragOffsetValue = useSharedValue(0);
+  const fadeOpacityValue = useSharedValue(1);
   const [dragging, setDragging] = useState(false);
   const [dismissing, setDismissing] = useState(false);
-  const [dismissOpacity, setDismissOpacity] = useState(1);
+  const toastBorderColor = isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(255, 255, 255, 0.55)';
+  const toastBoxShadow = isDark
+    ? '0 12px 24px -12px rgba(0, 0, 0, 0.6)'
+    : '0 12px 24px -12px rgba(71, 85, 105, 0.4)';
+  const toastShadowColor = isDark ? '#000000' : '#475569';
+  const toastSurfaceColor = isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(241, 245, 249, 0.5)';
+  const ToastBlurSurface = Platform.OS === 'web' ? View : BlurView;
+  const toastBlurProps = Platform.OS === 'web'
+    ? {}
+    : { intensity: 40, tint: isDark ? 'dark' : 'default' };
   const dragDistanceRef = useRef(0);
   const draggingRef = useRef(false);
   const dismissFrameRef = useRef(null);
@@ -1405,19 +1600,22 @@ function ManageSavedToast({ message, onDismiss }) {
     clearPendingDismiss();
     draggingRef.current = false;
     dragDistanceRef.current = 0;
+    dragOffsetValue.value = withTiming(0, {
+      duration: reducedMotion ? motionDurationsMs.instant : motionDurationsMs.fast,
+      easing: IOS_EASING,
+    });
+    fadeOpacityValue.value = 1;
     setDragging(false);
-    setDragOffset(0);
-    setDismissOpacity(1);
-  }, [clearPendingDismiss]);
+  }, [clearPendingDismiss, dragOffsetValue, fadeOpacityValue, reducedMotion]);
 
   useEffect(() => clearPendingDismiss, [clearPendingDismiss]);
 
   useEffect(() => {
-    toastProgress.value = withTiming(1, {
+    toastProgress.value = withTiming(visible ? 1 : 0, {
       duration: reducedMotion ? motionDurationsMs.instant : motionDurationsMs.normal,
       easing: IOS_EASING,
     });
-  }, [reducedMotion, toastProgress]);
+  }, [reducedMotion, toastProgress, visible]);
 
   const toastAnimatedStyle = useAnimatedStyle(() => ({
     opacity: toastProgress.value,
@@ -1431,6 +1629,14 @@ function ManageSavedToast({ message, onDismiss }) {
     ],
   }));
 
+  const toastShellAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: dragOffsetValue.value }],
+  }));
+
+  const toastFadeAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: fadeOpacityValue.value,
+  }));
+
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -1440,10 +1646,10 @@ function ManageSavedToast({ message, onDismiss }) {
           clearPendingDismiss();
           draggingRef.current = true;
           dragDistanceRef.current = 0;
+          dragOffsetValue.value = 0;
+          fadeOpacityValue.value = 1;
           setDismissing(false);
           setDragging(true);
-          setDragOffset(0);
-          setDismissOpacity(1);
         },
         onPanResponderMove: (_, gestureState) => {
           if (!draggingRef.current) {
@@ -1451,8 +1657,10 @@ function ManageSavedToast({ message, onDismiss }) {
           }
 
           const nextDragDistance = Math.max(0, gestureState.dy);
+          const nextVisibleOffset = Math.min(maxVisibleDragOffset, nextDragDistance);
           dragDistanceRef.current = nextDragDistance;
-          setDragOffset(Math.min(maxVisibleDragOffset, nextDragDistance));
+          dragOffsetValue.value = nextVisibleOffset;
+          fadeOpacityValue.value = 1 - nextVisibleOffset / maxVisibleDragOffset;
         },
         onPanResponderRelease: () => {
           draggingRef.current = false;
@@ -1463,13 +1671,16 @@ function ManageSavedToast({ message, onDismiss }) {
 
             setDismissing(true);
             setDragging(false);
-            setDragOffset(currentVisibleOffset);
-            setDismissOpacity(currentOpacity);
+            dragOffsetValue.value = currentVisibleOffset;
+            fadeOpacityValue.value = currentOpacity;
             dragDistanceRef.current = 0;
 
             dismissFrameRef.current = requestAnimationFrame(() => {
               dismissFrameRef.current = null;
-              setDismissOpacity(0);
+              fadeOpacityValue.value = withTiming(0, {
+                duration: manualDismissDuration,
+                easing: IOS_EASING,
+              });
             });
             dismissTimeoutRef.current = setTimeout(() => {
               dismissTimeoutRef.current = null;
@@ -1483,74 +1694,131 @@ function ManageSavedToast({ message, onDismiss }) {
         onPanResponderTerminate: resetDragState,
         onStartShouldSetPanResponder: () => true,
       }),
-    [clearPendingDismiss, manualDismissDuration, onDismiss, resetDragState],
+    [
+      clearPendingDismiss,
+      dragOffsetValue,
+      fadeOpacityValue,
+      manualDismissDuration,
+      onDismiss,
+      resetDragState,
+    ],
   );
 
-  const dragOpacity = 1 - dragOffset / maxVisibleDragOffset;
-  const fadeOpacity = dragging ? dragOpacity : dismissing ? dismissOpacity : 1;
   const toastBottom = 52 + bottomInset;
 
   return (
-    <View
+    <Animated.View
       accessibilityLiveRegion="polite"
       style={[
         styles.toastShell,
         dragging && styles.toastShellDragging,
         dismissing && styles.toastShellDismissing,
-        {
-          bottom: toastBottom,
-          transform: [{ translateY: dragOffset }],
-        },
+        { bottom: toastBottom },
+        toastShellAnimatedStyle,
       ]}
       {...panResponder.panHandlers}
     >
-      <View
+      <Animated.View
         style={[
           styles.toastFade,
           dismissing && styles.toastFadeDismissing,
-          { opacity: fadeOpacity },
+          toastFadeAnimatedStyle,
         ]}
       >
         <Animated.View
           style={[
             styles.toastShadow,
-            { shadowColor: isDark ? '#0f172a' : '#475569' },
+            {
+              boxShadow: toastBoxShadow,
+              shadowColor: toastShadowColor,
+              shadowOpacity: isDark ? 0.6 : 0.4,
+            },
             toastAnimatedStyle,
           ]}
         >
-          <View style={styles.toast}>
-            <BlurView
-              intensity={72}
-              pointerEvents="none"
-              style={styles.toastBlurLayer}
-              tint={isDark ? 'dark' : 'default'}
+          <ToastBlurSurface
+            {...toastBlurProps}
+            style={[
+              styles.toast,
+              WEB_TOAST_BLUR_STYLE,
+            ]}
+          >
+            <View
+              style={[
+                styles.toastSurfaceFill,
+                styles.pointerEventsNone,
+                { backgroundColor: toastSurfaceColor },
+              ]}
             />
-            <LinearGradient
-              colors={
-                isDark
-                  ? ['rgba(30, 41, 59, 0.76)', 'rgba(30, 41, 59, 0.58)']
-                  : ['rgba(248, 250, 252, 0.82)', 'rgba(241, 245, 249, 0.6)']
-              }
-              locations={[0, 1]}
-              pointerEvents="none"
-              style={styles.toastFrostLayer}
+            <View
+              style={[
+                styles.toastInsetStroke,
+                styles.pointerEventsNone,
+                { borderColor: toastBorderColor },
+              ]}
             />
-            <View pointerEvents="none" style={styles.toastInsetStroke} />
-            <View style={styles.toastIconCircle}>
-              <AppIcon
-                glyphSize={17}
-                name="check"
-                opticalSize={20}
-                preset="toastCheck"
-                slotSize={18}
-                tone="on-accent"
-              />
-            </View>
+            <AppIcon
+              glyphSize={24}
+              name="check_circle"
+              preset="action"
+              style={styles.iconSlot24}
+              tone="accent"
+            />
             <Text style={styles.toastMessage}>{message}</Text>
-          </View>
+          </ToastBlurSurface>
         </Animated.View>
-      </View>
-    </View>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+function ManageSavedToastPresence({ toast, onDismiss }) {
+  const reducedMotion = useReducedMotionSafe();
+  const closeTimerRef = useRef(null);
+  const [renderedToast, setRenderedToast] = useState(toast);
+  const [visible, setVisible] = useState(Boolean(toast));
+
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (toast) {
+      clearCloseTimer();
+      setRenderedToast(toast);
+      setVisible(true);
+      return;
+    }
+
+    if (renderedToast) {
+      setVisible(false);
+      clearCloseTimer();
+      closeTimerRef.current = setTimeout(
+        () => {
+          closeTimerRef.current = null;
+          setRenderedToast(null);
+        },
+        reducedMotion ? motionDurationsMs.instant : motionDurationsMs.normal + 16,
+      );
+    }
+  }, [clearCloseTimer, reducedMotion, renderedToast, toast]);
+
+  useEffect(() => clearCloseTimer, [clearCloseTimer]);
+
+  if (!renderedToast) {
+    return null;
+  }
+
+  return (
+    <ManageSavedToast
+      key={renderedToast.id}
+      message={renderedToast.message}
+      onDismiss={onDismiss}
+      visible={visible}
+    />
   );
 }
 
@@ -1641,12 +1909,23 @@ export function ManageShipEditPage({
     setTimeout(dismissNativeKeyboard, 80);
   }, [onSave]);
 
+  const measureScrollViewport = useCallback(() => {
+    measureElementInWindow(contentRef.current, (rect) => {
+      contentTopRef.current = rect.top;
+      viewportHeightRef.current = rect.height;
+    });
+  }, []);
+
   const contentRefCallback = useCallback(
     (node) => {
       contentRef.current = node;
       setCombinedRef(externalContentRef, node);
+
+      if (node) {
+        requestAnimationFrame(measureScrollViewport);
+      }
     },
-    [externalContentRef],
+    [externalContentRef, measureScrollViewport],
   );
 
   const setItemRef = useCallback(
@@ -1795,10 +2074,6 @@ export function ManageShipEditPage({
     };
   }, [recentlyAddedCardId, reducedMotion, reorderEnabled]);
 
-  const handleScroll = useCallback((event) => {
-    scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
-  }, []);
-
   const getScrollMetrics = useCallback(() => {
     const viewportHeight = viewportHeightRef.current;
     const measuredContentHeight = getMeasuredContentHeight(cards, itemLayoutsRef.current);
@@ -1817,13 +2092,15 @@ export function ManageShipEditPage({
     if (viewportRect) {
       contentTopRef.current = viewportRect.top;
       viewportHeightRef.current = viewportRect.height;
+    } else {
+      measureScrollViewport();
     }
 
     return {
       contentTop: contentTopRef.current,
       viewportHeight: viewportHeightRef.current,
     };
-  }, []);
+  }, [measureScrollViewport]);
 
   const syncItemLayoutsToCurrentOrder = useCallback(() => {
     const viewportMetrics = refreshScrollViewportMetrics();
@@ -1940,6 +2217,24 @@ export function ManageShipEditPage({
     [cards, refreshScrollViewportMetrics],
   );
 
+  const handleScroll = useCallback(
+    (event) => {
+      const nextScrollY = event.nativeEvent.contentOffset.y;
+      scrollOffsetRef.current = nextScrollY;
+
+      const dragPoint = lastDragPointRef.current;
+
+      if (dragPoint && activeDragIdRef.current === dragPoint.cardId) {
+        updateDragTarget({
+          cardId: dragPoint.cardId,
+          clientY: dragPoint.clientY,
+          scrollY: nextScrollY,
+        });
+      }
+    },
+    [updateDragTarget],
+  );
+
   const runAutoScroll = useCallback(() => {
     autoScrollFrameRef.current = null;
 
@@ -1965,16 +2260,22 @@ export function ManageShipEditPage({
       return;
     }
 
-    const nextScrollY = Math.min(maxScroll, Math.max(0, scrollOffsetRef.current + velocity));
+    const currentScrollY = scrollOffsetRef.current;
+    const nextScrollY = Math.min(maxScroll, Math.max(0, currentScrollY + velocity));
 
-    if (nextScrollY !== scrollOffsetRef.current) {
-      scrollOffsetRef.current = nextScrollY;
+    if (nextScrollY !== currentScrollY) {
       contentRef.current.scrollTo?.({ y: nextScrollY, animated: false });
-      updateDragTarget({
-        cardId: dragPoint.cardId,
-        clientY: dragPoint.clientY,
-        scrollY: nextScrollY,
-      });
+
+      const observedScrollY = getScrollTop(contentRef.current, currentScrollY);
+
+      if (Math.abs(observedScrollY - currentScrollY) > 0.5) {
+        scrollOffsetRef.current = observedScrollY;
+        updateDragTarget({
+          cardId: dragPoint.cardId,
+          clientY: dragPoint.clientY,
+          scrollY: observedScrollY,
+        });
+      }
     }
 
     if (
@@ -2316,12 +2617,18 @@ export function ManageShipEditPage({
         onLayout={(event) => {
           viewportHeightRef.current = event.nativeEvent.layout.height;
           contentTopRef.current = event.nativeEvent.layout.y;
+          requestAnimationFrame(measureScrollViewport);
         }}
         onScroll={handleScroll}
         ref={contentRefCallback}
         scrollEventThrottle={16}
+        scrollEnabled={!dragState || Boolean(dragState.settling)}
         showsVerticalScrollIndicator
-        style={[styles.manageEditContent, { marginBottom: 64 + bottomInset }]}
+        style={[
+          styles.manageEditContent,
+          WEB_BACKDROP_SCROLL_STYLE,
+          { marginBottom: 64 + bottomInset },
+        ]}
       >
         {reorderEnabled ? (
           <View style={styles.manageEditReorderList}>
@@ -2429,10 +2736,12 @@ export function ManageShipEditPage({
 
       <ManageSearchBar value={searchQuery} onChange={onSearchChange} onClear={onSearchClear} />
 
-      {toast ? <ManageSavedToast key={toast.id} message={toast.message} onDismiss={onDismissToast} /> : null}
-      {showDiscardModal ? (
-        <ManageAlertModal onCancel={onDismissDiscard} onConfirm={onConfirmDiscard} />
-      ) : null}
+      <ManageSavedToastPresence toast={toast} onDismiss={onDismissToast} />
+      <ManageAlertModalPresence
+        visible={showDiscardModal}
+        onCancel={onDismissDiscard}
+        onConfirm={onConfirmDiscard}
+      />
     </AppScreenShell>
   );
 }
@@ -2447,14 +2756,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    lineHeight: 18,
   },
   iconSlot24: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    lineHeight: 24,
   },
   iconButton: {
     width: 24,
@@ -2470,9 +2777,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     color: 'var(--slate-700)',
     fontSize: 26,
-    lineHeight: 33.8,
     fontWeight: '600',
-    letterSpacing: -0.78,
   },
   manageSubpageTopBar: {
     position: 'absolute',
@@ -2480,7 +2785,6 @@ const styles = StyleSheet.create({
     right: 0,
     left: 0,
     zIndex: 2,
-    width: '100%',
     height: 64,
     paddingHorizontal: 18,
     display: 'flex',
@@ -2501,7 +2805,6 @@ const styles = StyleSheet.create({
   manageSaveLabel: {
     color: 'var(--color-text-muted)',
     fontSize: 18,
-    lineHeight: 20,
     fontWeight: '700',
   },
   manageSaveLabelActive: {
@@ -2593,9 +2896,7 @@ const styles = StyleSheet.create({
   reorderLabel: {
     color: 'var(--color-text-muted)',
     fontSize: 13,
-    lineHeight: 13,
     fontWeight: '600',
-    letterSpacing: -0.26,
   },
   reorderLabelActive: {
     color: 'var(--color-accent)',
@@ -2615,32 +2916,55 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
     backgroundColor: 'var(--color-bg-toolbar)',
   },
   manageSearchInput: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
     minWidth: 0,
+    height: 24,
+    minHeight: 24,
+    maxHeight: 24,
     padding: 0,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    margin: 0,
     color: 'var(--color-text-muted)',
     fontSize: 18,
-    lineHeight: 20,
     fontWeight: '500',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
     backgroundColor: 'transparent',
     borderWidth: 0,
   },
   manageSearchInputFilled: {
     color: 'var(--color-text-secondary)',
   },
+  manageSearchIconSlot: {
+    width: 24,
+    height: 24,
+    flexGrow: 0,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   searchIconButton: {
     width: 24,
     height: 24,
+    flexGrow: 0,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
   manageTextBox: {
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
     paddingHorizontal: 8,
     borderRadius: 8,
     backgroundColor: 'var(--color-bg-surface-muted)',
@@ -2654,26 +2978,27 @@ const styles = StyleSheet.create({
     height: 26,
   },
   manageTextBoxEdited: {
-    borderWidth: 1,
-    borderColor: 'var(--color-border-accent-soft)',
   },
   manageTextBoxInput: {
     width: '100%',
-    height: '100%',
     padding: 0,
+    paddingVertical: 0,
+    margin: 0,
     backgroundColor: 'transparent',
     borderWidth: 0,
-    letterSpacing: -0.36,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   manageTextBoxInputTitle: {
     color: 'var(--color-text-tertiary)',
     fontSize: 24,
+    height: 31.2,
     fontWeight: '700',
-    letterSpacing: -0.72,
   },
   manageTextBoxInputSubtitle: {
     color: 'var(--color-text-tertiary)',
     fontSize: 15,
+    height: 19.5,
     fontWeight: '400',
   },
   manageTextBoxInputActive: {
@@ -2685,43 +3010,57 @@ const styles = StyleSheet.create({
   manageFieldPill: {
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
     gap: 2,
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 0,
     minWidth: 0,
     maxWidth: '100%',
-    minHeight: 32,
+    height: 24,
+    minHeight: 24,
+    maxHeight: 24,
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 8,
     backgroundColor: 'var(--color-bg-surface-muted)',
     color: 'var(--color-text-tertiary)',
     fontSize: 18,
-    lineHeight: 23.4,
     fontWeight: '500',
-    letterSpacing: -0.36,
   },
   manageFieldPillEdited: {
-    borderWidth: 1,
-    borderColor: 'var(--color-border-accent-soft)',
   },
   manageFieldInput: {
     width: '100%',
-    height: 23.4,
+    height: 24,
+    minHeight: 0,
+    maxHeight: 24,
     minWidth: 0,
     maxWidth: '100%',
     flexShrink: 1,
     padding: 0,
     color: 'var(--color-text-tertiary)',
     fontSize: 18,
-    lineHeight: 23.4,
     fontWeight: '500',
     backgroundColor: 'transparent',
     borderWidth: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   manageFieldInputEdited: {
     color: 'var(--color-accent)',
+  },
+  editStrokeOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderWidth: 1,
+    borderColor: 'var(--color-border-accent-soft)',
+    borderRadius: 8,
   },
   manageShipCard: {
     position: 'relative',
@@ -2778,7 +3117,6 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     color: 'var(--color-text-tertiary)',
     fontSize: 18,
-    lineHeight: 23.4,
     fontWeight: '700',
   },
   manageShipRule: {
@@ -2810,7 +3148,6 @@ const styles = StyleSheet.create({
   manageShipEquipmentLabel: {
     width: 126,
     fontSize: 18,
-    lineHeight: 23.4,
     fontWeight: '700',
   },
   manageShipEquipmentLabelMuted: {
@@ -2851,7 +3188,7 @@ const styles = StyleSheet.create({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 25,
+    paddingHorizontal: MODAL_HORIZONTAL_MARGIN,
   },
   modalScrim: {
     position: 'absolute',
@@ -2863,8 +3200,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     position: 'relative',
-    width: '100%',
-    maxWidth: 340,
+    maxWidth: MODAL_CONTENT_WIDTH,
     borderRadius: 20,
     backgroundColor: 'var(--color-bg-modal)',
     shadowColor: 'var(--slate-700)',
@@ -2872,22 +3208,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 28,
     elevation: 12,
-    padding: 20,
+    padding: MODAL_PADDING,
   },
   modalTitle: {
     color: 'var(--color-text-primary)',
     fontSize: 20,
-    lineHeight: 29,
     fontWeight: '700',
-    letterSpacing: -0.4,
   },
   modalCopy: {
     marginTop: 10,
     color: 'var(--color-text-tertiary)',
     fontSize: 17,
-    lineHeight: 21.75,
     fontWeight: '500',
-    letterSpacing: -0.34,
   },
   modalActions: {
     display: 'flex',
@@ -2914,16 +3246,12 @@ const styles = StyleSheet.create({
   modalButtonGhostLabel: {
     color: 'var(--color-text-danger)',
     fontSize: 17,
-    lineHeight: 18,
     fontWeight: '600',
-    letterSpacing: -0.34,
   },
   modalButtonLabel: {
     color: 'var(--color-text-on-accent)',
     fontSize: 17,
-    lineHeight: 18,
     fontWeight: '600',
-    letterSpacing: -0.34,
   },
   toastShell: {
     position: 'absolute',
@@ -2942,16 +3270,14 @@ const styles = StyleSheet.create({
   toastFadeDismissing: {
   },
   toastShadow: {
-    display: 'flex',
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 999,
-    backgroundColor: 'transparent',
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 7,
+    shadowRadius: 24,
+    elevation: 14,
   },
   toast: {
     display: 'flex',
@@ -2959,23 +3285,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    minHeight: 52,
+    height: 24,
+    minHeight: 24,
+    maxHeight: 24,
     paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 999,
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: 'var(--color-bg-toast)',
   },
-  toastBlurLayer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    borderRadius: 999,
-  },
-  toastFrostLayer: {
+  toastSurfaceFill: {
     position: 'absolute',
     top: 0,
     right: 0,
@@ -2990,24 +3309,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     borderWidth: 1,
-    borderColor: 'var(--color-bg-toast-border)',
     borderRadius: 999,
   },
-  toastIconCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 999,
-    backgroundColor: 'var(--color-accent)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
+  pointerEventsNone: {
+    pointerEvents: 'none',
   },
   toastMessage: {
     color: 'var(--color-text-toast)',
     fontSize: 18,
-    lineHeight: 18,
     fontWeight: '500',
-    letterSpacing: -0.36,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
     zIndex: 1,
   },
 });

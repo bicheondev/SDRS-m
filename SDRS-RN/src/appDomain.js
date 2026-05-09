@@ -12,6 +12,7 @@ export {
   getVesselTypeFromBusiness,
   isPlaceholderImage,
   mergeImportedShipRecords,
+  noImagePlaceholder,
   normalizeShipCardsForStorage,
   rebuildImageEntriesFromShips,
 } from './domain/ships.js';

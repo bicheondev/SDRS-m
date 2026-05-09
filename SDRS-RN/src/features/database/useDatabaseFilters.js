@@ -15,6 +15,31 @@ import { filterVessels } from '../../domain/ships.js';
 import { motionDurationsMs } from '../../motion.js';
 import { applySearchQuery } from './useVesselSearch.js';
 
+function getScrollableNode(node) {
+  if (!node) {
+    return null;
+  }
+
+  return node.getScrollableNode?.() ?? node.getScrollableRef?.() ?? node;
+}
+
+function readScrollY(node, fallback = 0) {
+  const scrollableNode = getScrollableNode(node);
+  const candidates = [
+    fallback,
+    node?.scrollTop,
+    scrollableNode?.scrollTop,
+    node?.contentOffset?.y,
+    scrollableNode?.contentOffset?.y,
+  ].filter((candidate) => (
+    typeof candidate === 'number'
+    && Number.isFinite(candidate)
+    && candidate >= 0
+  ));
+
+  return candidates.length > 0 ? Math.max(...candidates) : fallback;
+}
+
 export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
   const [compact, setCompact] = useState(false);
   const [topBarHidden, setTopBarHidden] = useState(false);
@@ -239,11 +264,17 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
 
   const openFilter = useCallback(
     (mode) => {
+      const scrollY = databaseView === 'browse'
+        ? readScrollY(mainContentRef.current, mainScrollPositionRef.current)
+        : 0;
+      mainScrollPositionRef.current = scrollY;
+
       Keyboard.dismiss();
       resetTransientUi();
       setFilterSheet({
         mode,
         phase: 'open',
+        scrollY,
         sourceView: databaseView,
       });
     },
@@ -269,7 +300,7 @@ export function useDatabaseFilters({ activeTab, isAppVisible, shipRecords }) {
     filterCloseTimeoutRef.current = setTimeout(() => {
       filterCloseTimeoutRef.current = null;
       setFilterSheet((current) => (current?.phase === 'closing' ? null : current));
-    }, motionDurationsMs.normal);
+    }, motionDurationsMs.normal + 40);
   }, []);
 
   const handleFilterSearchOpen = useCallback(() => {
