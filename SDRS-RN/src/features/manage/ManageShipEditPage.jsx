@@ -3073,7 +3073,6 @@ const styles = StyleSheet.create({
   },
   manageTextBoxInputTitle: {
     color: 'var(--color-text-tertiary)',
-    fontFamily: 'PretendardGOV-Bold',
     fontSize: 24,
     height: 31.2,
     fontWeight: '700',

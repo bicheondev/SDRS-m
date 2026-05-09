@@ -21,6 +21,12 @@ const WEB_FONT_SMOOTHING_STYLE = Platform.OS === 'web'
     }
   : null;
 const PRETENDARD_FONT_PATTERN = /Pretendard\s*GOV|PretendardGOV-/i;
+const NATIVE_PRETENDARD_FONT_FAMILIES = new Set([
+  'PretendardGOV-Regular',
+  'PretendardGOV-Medium',
+  'PretendardGOV-SemiBold',
+  'PretendardGOV-Bold',
+]);
 
 function getNativePretendardWeightStyle(style) {
   if (Platform.OS === 'web') {
@@ -43,6 +49,13 @@ function getNativePretendardWeightStyle(style) {
 
   if (fontFamily != null && !PRETENDARD_FONT_PATTERN.test(String(fontFamily))) {
     return null;
+  }
+
+  if (NATIVE_PRETENDARD_FONT_FAMILIES.has(fontFamily)) {
+    return {
+      fontFamily,
+      fontWeight: '400',
+    };
   }
 
   return {
