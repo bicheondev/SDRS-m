@@ -71,7 +71,7 @@ const ICON_PRESETS = {
     slotSize: 20,
   },
   plus: {
-    glyphSize: 30,
+    glyphSize: Platform.OS === 'android' ? 24 : 30,
     offsetX: 0,
     offsetY: 0,
     opticalSize: 24,

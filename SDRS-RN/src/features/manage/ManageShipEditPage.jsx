@@ -772,34 +772,42 @@ function ManageSubpageTopBar({ saveActive = false, title, onAdd, onBack, onSave 
 }
 
 function ManageSearchBar({ onChange, onClear, placeholder = '검색', value = '' }) {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
+
   return (
     <View
-      style={styles.manageSearchBar}
+      style={[
+        styles.manageSearchBarShell,
+        { height: 64 + bottomInset },
+      ]}
     >
-      <View style={styles.manageSearchIconSlot}>
-        <AppIcon name="search" preset="search" tone="muted" />
+      <View style={styles.manageSearchBar}>
+        <View style={styles.manageSearchIconSlot}>
+          <AppIcon name="search" preset="search" tone="muted" />
+        </View>
+        <TextInput
+          autoCorrect={false}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor={resolveCssVariableString('var(--color-text-muted)')}
+          selectionColor={resolveCssVariableString('var(--color-accent-solid)')}
+          spellCheck={false}
+          style={[styles.manageSearchInput, value ? styles.manageSearchInputFilled : null]}
+          value={value}
+        />
+        {value ? (
+          <InteractivePressable
+            accessibilityLabel="검색 지우기"
+            accessibilityRole="button"
+            onPress={onClear}
+            pressGuideVariant="icon"
+            style={(state) => getPressableStyle(state, 'icon', styles.searchIconButton)}
+          >
+            <AppIcon name="cancel" preset="closeChip" tone="muted" />
+          </InteractivePressable>
+        ) : null}
       </View>
-      <TextInput
-        autoCorrect={false}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={resolveCssVariableString('var(--color-text-muted)')}
-        selectionColor={resolveCssVariableString('var(--color-accent-solid)')}
-        spellCheck={false}
-        style={[styles.manageSearchInput, value ? styles.manageSearchInputFilled : null]}
-        value={value}
-      />
-      {value ? (
-        <InteractivePressable
-          accessibilityLabel="검색 지우기"
-          accessibilityRole="button"
-          onPress={onClear}
-          pressGuideVariant="icon"
-          style={(state) => getPressableStyle(state, 'icon', styles.searchIconButton)}
-        >
-          <AppIcon name="cancel" preset="closeChip" tone="muted" />
-        </InteractivePressable>
-      ) : null}
     </View>
   );
 }
@@ -1851,6 +1859,8 @@ export function ManageShipEditPage({
 }) {
   useTheme();
   const reducedMotion = useReducedMotionSafe();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
   const normalizedQuery = searchQuery.trim();
   const deferredSearchQuery = useDeferredValue(normalizedQuery);
   const reorderEnabled = normalizedQuery === '';
@@ -2696,6 +2706,7 @@ export function ManageShipEditPage({
         style={[
           styles.manageEditContent,
           WEB_BACKDROP_SCROLL_STYLE,
+          { marginBottom: 64 + bottomInset },
         ]}
       >
         {reorderEnabled ? (
@@ -2967,13 +2978,18 @@ const styles = StyleSheet.create({
   reorderLabelActive: {
     color: 'var(--color-accent)',
   },
-  manageSearchBar: {
+  manageSearchBarShell: {
     position: 'absolute',
     right: 0,
     bottom: 0,
     left: 0,
     zIndex: 2,
     flex: 0,
+    height: 64,
+    minHeight: 64,
+    backgroundColor: 'var(--color-bg-toolbar)',
+  },
+  manageSearchBar: {
     height: 64,
     minHeight: 64,
     paddingRight: 18,
@@ -3057,6 +3073,7 @@ const styles = StyleSheet.create({
   },
   manageTextBoxInputTitle: {
     color: 'var(--color-text-tertiary)',
+    fontFamily: 'PretendardGOV-Bold',
     fontSize: 24,
     height: 31.2,
     fontWeight: '700',
