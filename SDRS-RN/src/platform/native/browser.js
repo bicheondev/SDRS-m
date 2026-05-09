@@ -1,4 +1,4 @@
-import { Appearance, Dimensions } from 'react-native';
+import { Appearance, Dimensions, InteractionManager } from 'react-native';
 
 const unsupported = () => null;
 const noopCleanup = () => {};
@@ -31,9 +31,33 @@ export function getWindowInnerWidth() {
   return Dimensions.get('window').width;
 }
 
-export function scheduleIdleTask(callback) {
-  const timeoutId = setTimeout(callback, 0);
-  return () => clearTimeout(timeoutId);
+export function scheduleIdleTask(callback, options = {}) {
+  const { fallbackDelay = 0 } = options;
+  let cancelled = false;
+  let timeoutId = null;
+
+  const task = InteractionManager.runAfterInteractions(() => {
+    if (cancelled) {
+      return;
+    }
+
+    timeoutId = setTimeout(() => {
+      timeoutId = null;
+      if (!cancelled) {
+        callback();
+      }
+    }, fallbackDelay);
+  });
+
+  return () => {
+    cancelled = true;
+    task?.cancel?.();
+
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  };
 }
 
 export function setDocumentTheme() {}

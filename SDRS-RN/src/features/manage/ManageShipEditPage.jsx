@@ -1773,7 +1773,7 @@ function ManageSavedToast({ message, onDismiss, visible = true }) {
               glyphSize={24}
               name="check_circle"
               preset="action"
-              style={styles.iconSlot24}
+              style={[styles.iconSlot24, styles.toastForeground]}
               tone="accent"
             />
             <Text style={styles.toastMessage}>{message}</Text>
@@ -3094,24 +3094,34 @@ const styles = StyleSheet.create({
     flexBasis: 0,
     minWidth: 0,
     maxWidth: '100%',
-    height: 24,
-    minHeight: 24,
-    maxHeight: 24,
-    paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 8,
     backgroundColor: 'var(--color-bg-surface-muted)',
     color: 'var(--color-text-tertiary)',
     fontSize: 18,
     fontWeight: '500',
+    ...Platform.select({
+      web: {
+        height: 24,
+        minHeight: 24,
+        maxHeight: 24,
+        paddingVertical: 4,
+      },
+      default: {
+        height: 32,
+        minHeight: 32,
+        maxHeight: 32,
+        paddingVertical: 2,
+      },
+    }),
   },
   manageFieldPillEdited: {
   },
   manageFieldInput: {
     width: '100%',
-    height: 24,
+    height: Platform.OS === 'web' ? 24 : 28,
     minHeight: 0,
-    maxHeight: 24,
+    maxHeight: Platform.OS === 'web' ? 24 : 28,
     minWidth: 0,
     maxWidth: '100%',
     flexShrink: 1,
@@ -3360,9 +3370,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 24,
-    minHeight: 24,
-    maxHeight: 24,
+    minHeight: 52,
     paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 999,
@@ -3389,11 +3397,16 @@ const styles = StyleSheet.create({
   pointerEventsNone: {
     pointerEvents: 'none',
   },
+  toastForeground: {
+    position: 'relative',
+    zIndex: 1,
+  },
   toastMessage: {
     color: 'var(--color-text-toast)',
     fontSize: 18,
     fontWeight: '500',
     includeFontPadding: false,
+    position: 'relative',
     textAlignVertical: 'center',
     zIndex: 1,
   },

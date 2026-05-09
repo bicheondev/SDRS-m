@@ -33,6 +33,10 @@ export function getExtensionFromFileName(fileName) {
 }
 
 function bytesToBase64(bytes) {
+  if (Buffer?.from) {
+    return Buffer.from(bytes).toString('base64');
+  }
+
   if (typeof globalThis.btoa === 'function') {
     let binary = '';
     for (const byte of bytes) {
@@ -45,6 +49,10 @@ function bytesToBase64(bytes) {
 }
 
 function base64ToBytes(base64) {
+  if (Buffer?.from) {
+    return Uint8Array.from(Buffer.from(base64, 'base64'));
+  }
+
   if (typeof globalThis.atob === 'function') {
     const binary = globalThis.atob(base64);
     const bytes = new Uint8Array(binary.length);
@@ -83,32 +91,30 @@ export async function importImagesZipFile(file) {
 
   const imageEntries = [];
 
-  await Promise.all(
-    Object.values(zip.files).map(async (entry) => {
-      if (entry.dir) {
-        return;
-      }
+  for (const entry of Object.values(zip.files)) {
+    if (entry.dir) {
+      continue;
+    }
 
-      const mimeType = getMimeTypeFromFileName(entry.name);
-      const extension = getExtensionFromFileName(entry.name);
+    const mimeType = getMimeTypeFromFileName(entry.name);
+    const extension = getExtensionFromFileName(entry.name);
 
-      if (!SUPPORTED_IMAGE_EXTENSIONS.has(extension) || !mimeType.startsWith('image/')) {
-        throw createImportError(
-          '이미지 압축 파일 형식이 올바르지 않아요.\nZIP 안에는 이미지 파일만 넣어 주세요.',
-        );
-      }
+    if (!SUPPORTED_IMAGE_EXTENSIONS.has(extension) || !mimeType.startsWith('image/')) {
+      throw createImportError(
+        '이미지 압축 파일 형식이 올바르지 않아요.\nZIP 안에는 이미지 파일만 넣어 주세요.',
+      );
+    }
 
-      const dataUrl = arrayBufferToDataUrl(await entry.async('arraybuffer'), mimeType);
+    const dataUrl = arrayBufferToDataUrl(await entry.async('arraybuffer'), mimeType);
 
-      imageEntries.push({
-        id: createId('image'),
-        fileName: entry.name.split('/').pop() ?? entry.name,
-        registration: '',
-        dataUrl,
-        mimeType,
-      });
-    }),
-  );
+    imageEntries.push({
+      id: createId('image'),
+      fileName: entry.name.split('/').pop() ?? entry.name,
+      registration: '',
+      dataUrl,
+      mimeType,
+    });
+  }
 
   imageEntries.sort((left, right) => left.fileName.localeCompare(right.fileName, 'ko'));
 

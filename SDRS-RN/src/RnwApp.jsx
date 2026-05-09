@@ -8,18 +8,9 @@ import { RnwAuthRouteStage } from './auth/RnwAuthRouteStage.jsx';
 import { scheduleIdleTask } from './platform/index';
 
 const RnwMainAppShell = lazy(() => import('./app/RnwMainAppShell.jsx'));
-let rnwAppBootstrapModulePromise = null;
 
 function preloadRnwMainAppShell() {
   return import('./app/RnwMainAppShell.jsx');
-}
-
-function preloadRnwAppBootstrap() {
-  if (!rnwAppBootstrapModulePromise) {
-    rnwAppBootstrapModulePromise = import('./app/useRnwAppBootstrap.js');
-  }
-
-  void rnwAppBootstrapModulePromise.then((module) => module.preloadRnwAppBootstrap());
 }
 
 export function RnwApp() {
@@ -49,7 +40,6 @@ export function RnwApp() {
     }
 
     preloadRnwMainAppShell();
-    preloadRnwAppBootstrap();
   }, [isFilled]);
 
   useEffect(() => {
@@ -60,7 +50,6 @@ export function RnwApp() {
 
   const handleEnterMainScreen = useCallback(() => {
     preloadRnwMainAppShell();
-    preloadRnwAppBootstrap();
     setRouteTransition('loginToMain');
     setRoute('app');
   }, []);

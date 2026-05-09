@@ -7,6 +7,9 @@ import { RnwApp } from './RnwApp.jsx';
 import { ThemeProvider, useTheme } from './ThemeContext.js';
 import { themes } from './theme.js';
 
+const MATERIAL_SYMBOLS_ROUNDED_FONT = require('../assets/fonts/MaterialSymbolsRounded.ttf');
+const MATERIAL_ICONS_ROUND_FONT = require('../assets/fonts/MaterialIconsRound-Regular.otf');
+
 const WEB_FONT_SMOOTHING_STYLE = Platform.OS === 'web'
   ? { WebkitFontSmoothing: 'antialiased' }
   : null;
@@ -22,8 +25,11 @@ function AppShell() {
     'PretendardGOV-Medium': require('../assets/fonts/PretendardGOV-Medium.otf'),
     'PretendardGOV-SemiBold': require('../assets/fonts/PretendardGOV-SemiBold.otf'),
     'PretendardGOV-Bold': require('../assets/fonts/PretendardGOV-Bold.otf'),
-    MaterialSymbolsRounded: require('../assets/fonts/MaterialSymbolsRounded.ttf'),
-    'MaterialIconsRound-Regular': require('../assets/fonts/MaterialIconsRound-Regular.otf'),
+    MaterialSymbolsRounded: MATERIAL_SYMBOLS_ROUNDED_FONT,
+    'Material Symbols Rounded Filled 48pt': MATERIAL_SYMBOLS_ROUNDED_FONT,
+    'MaterialSymbolsRoundedFilled48pt-Regular': MATERIAL_SYMBOLS_ROUNDED_FONT,
+    'MaterialIconsRound-Regular': MATERIAL_ICONS_ROUND_FONT,
+    'Material Icons Round': MATERIAL_ICONS_ROUND_FONT,
   });
 
   // Wait for both fonts and the persisted preference hydration before rendering

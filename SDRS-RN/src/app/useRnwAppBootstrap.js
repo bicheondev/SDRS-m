@@ -6,6 +6,7 @@ import {
 } from '../domain/databaseState.js';
 import { applyImagesToShipRecords } from '../domain/ships.js';
 import { loadStoredDatabaseState, saveStoredDatabaseState } from '../adapters/storage.web.js';
+import { scheduleIdleTask } from '../platform/index';
 
 async function loadDefaultBundledDatabaseState() {
   const { loadBundledDatabaseState } = await import('../adapters/bundledSeed.web.js');
@@ -49,14 +50,7 @@ export async function resolveRnwInitialDatabaseState({
 }
 
 async function loadInitialDatabaseSnapshot() {
-  let loadedStoredState = false;
-  const nextDatabase = await resolveRnwInitialDatabaseState({
-    loadStoredState: async () => {
-      const storedState = await loadStoredDatabaseState();
-      loadedStoredState = hasUsableStoredDatabaseState(storedState);
-      return storedState;
-    },
-  });
+  const nextDatabase = await resolveRnwInitialDatabaseState();
 
   return {
     databaseState: {
@@ -65,7 +59,7 @@ async function loadInitialDatabaseSnapshot() {
         preserveExisting: true,
       }),
     },
-    shouldPersistInitialState: !loadedStoredState,
+    shouldPersistInitialState: false,
   };
 }
 
@@ -108,16 +102,24 @@ export function useRnwAppBootstrap() {
       setDatabaseReady(true);
     };
 
-    initializeDatabase().catch((error) => {
-      console.error('[bootstrap] initial database failed:', error);
-      if (!cancelled) {
-        setDatabaseState(createEmptyDatabaseState());
-        setDatabaseReady(true);
-      }
+    const runInitializeDatabase = () => {
+      initializeDatabase().catch((error) => {
+        console.error('[bootstrap] initial database failed:', error);
+        if (!cancelled) {
+          setDatabaseState(createEmptyDatabaseState());
+          setDatabaseReady(true);
+        }
+      });
+    };
+
+    const cancelIdleLoad = scheduleIdleTask(runInitializeDatabase, {
+      fallbackDelay: 280,
+      timeout: 900,
     });
 
     return () => {
       cancelled = true;
+      cancelIdleLoad();
     };
   }, []);
 

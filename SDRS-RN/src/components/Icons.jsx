@@ -7,6 +7,12 @@ const WEB_FONT_SMOOTHING_STYLE = Platform.OS === 'web'
   ? { WebkitFontSmoothing: 'antialiased' }
   : null;
 
+const MATERIAL_SYMBOLS_FONT_FAMILY = Platform.select({
+  android: 'Material Symbols Rounded Filled 48pt',
+  ios: 'MaterialSymbolsRoundedFilled48pt-Regular',
+  default: 'MaterialSymbolsRounded',
+});
+
 const ICON_PRESETS = {
   default: {
     glyphSize: 24,
@@ -191,6 +197,7 @@ export function AppIcon({
   const resolvedOffsetX = offsetX ?? basePreset.offsetX;
   const resolvedOffsetY = offsetY ?? basePreset.offsetY;
   const resolvedWeight = weight ?? basePreset.weight ?? 400;
+  const nativeFontWeight = Platform.OS === 'web' ? String(resolvedWeight) : '400';
 
   return (
     <Text
@@ -200,9 +207,9 @@ export function AppIcon({
       style={[
         {
           color: getToneColor(tone),
-          fontFamily: 'MaterialSymbolsRounded',
+          fontFamily: MATERIAL_SYMBOLS_FONT_FAMILY,
           fontSize: resolvedGlyphSize,
-          fontWeight: String(resolvedWeight),
+          fontWeight: nativeFontWeight,
           includeFontPadding: false,
           textAlign: 'center',
           textAlignVertical: 'center',

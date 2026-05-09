@@ -25,6 +25,7 @@ const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
 const filterLabelNoWrapStyle = Platform.OS === 'web'
   ? { whiteSpace: 'nowrap', wordBreak: 'keep-all' }
   : null;
+const IS_ANDROID = Platform.OS === 'android';
 const TOP_BAR_FROST_MASK =
   'linear-gradient(180deg, rgb(0 0 0 / 1) 0%, rgb(0 0 0 / 1) 52%, rgb(0 0 0 / 0.78) 72%, rgb(0 0 0 / 0) 100%)';
 const FILTERS_FROST_MASK =
@@ -134,6 +135,17 @@ function FadingBlur({ backgroundImage, blurModeKey, intensity, mode = 'top', nat
     );
   }
 
+  if (IS_ANDROID) {
+    return (
+      <BlurView
+        key={`android-${mode}-${blurModeKey}`}
+        intensity={intensity}
+        style={[styles.blurFadeStack, styles.pointerEventsNone]}
+        tint={tint}
+      />
+    );
+  }
+
   return (
     <View style={[styles.blurFadeStack, styles.pointerEventsNone]}>
       {segments.map(({ key, ...segmentStyle }) => (
@@ -153,7 +165,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
   const { resolvedColorMode } = useTheme();
   const isDark = resolvedColorMode === 'dark';
   const blurTint = isDark ? 'dark' : 'default';
-  const canTargetBlur = Platform.OS !== 'web' && blurTargetRef;
+  const canTargetBlur = Platform.OS === 'ios' && blurTargetRef;
   const blurModeKey = canTargetBlur ? 'targeted' : 'fallback';
   const nativeBlurProps = canTargetBlur
     ? {
@@ -166,9 +178,21 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
   const topFrostStart = colorWithAlpha(screenColor, 0.86);
   const topFrostMid = colorWithAlpha(screenColor, 0.78);
   const topFrostEnd = colorWithAlpha(screenColor, 0.1);
+  const nativeTopFrostColors = [
+    colorWithAlpha(screenColor, 0.86),
+    colorWithAlpha(screenColor, 0.86),
+    colorWithAlpha(screenColor, 0.74),
+    colorWithAlpha(screenColor, 0),
+  ];
   const filterFrostStart = colorWithAlpha(screenColor, isDark ? 0.4 : 0.34);
   const filterFrostMid = colorWithAlpha(screenColor, isDark ? 0.22 : 0.18);
   const filterFrostEnd = colorWithAlpha(screenColor, 0.04);
+  const nativeFilterFrostColors = [
+    colorWithAlpha(screenColor, 0),
+    colorWithAlpha(screenColor, isDark ? 0.4 : 0.34),
+    colorWithAlpha(screenColor, isDark ? 0.22 : 0.18),
+    colorWithAlpha(screenColor, 0),
+  ];
   const filterBackdropTop = colorWithAlpha(screenColor, 1);
   const filterBackdropLow = colorWithAlpha(screenColor, 0.5);
   const topFrostGradient =
@@ -177,26 +201,30 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
     `linear-gradient(180deg, ${filterFrostStart} 0%, ${filterFrostMid} 68%, ${filterFrostEnd} 100%)`;
   const filterBackdropGradient =
     `linear-gradient(180deg, ${filterBackdropTop} 0%, ${filterBackdropLow} 100%)`;
+  const androidTopFrostStyle = IS_ANDROID
+    ? { bottom: undefined, height: Math.max(0, topInset) + 116 }
+    : null;
 
   return (
     <>
       <View
         style={[
           styles.frostLayer,
+          androidTopFrostStyle,
           styles.pointerEventsNone,
         ]}
       >
         <FadingBlur
           backgroundImage={topFrostGradient}
           blurModeKey={blurModeKey}
-          intensity={82}
+          intensity={IS_ANDROID ? 46 : 82}
           nativeBlurProps={nativeBlurProps}
           tint={blurTint}
         />
         {Platform.OS === 'web' ? null : (
           <LinearGradient
-            colors={[topFrostStart, topFrostMid, topFrostEnd]}
-            locations={[0, 0.64, 1]}
+            colors={nativeTopFrostColors}
+            locations={[0, 0.52, 0.72, 1]}
             style={[styles.frostGradient, styles.pointerEventsNone]}
           />
         )}
@@ -242,14 +270,14 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
           <FadingBlur
             backgroundImage={filterFrostGradient}
             blurModeKey={blurModeKey}
-            intensity={40}
+            intensity={IS_ANDROID ? 18 : 40}
             mode="filters"
             nativeBlurProps={nativeBlurProps}
             tint={blurTint}
           />
           <LinearGradient
-            colors={[filterFrostStart, filterFrostMid, filterFrostEnd]}
-            locations={[0, 0.68, 1]}
+            colors={nativeFilterFrostColors}
+            locations={[0, 0.24, 0.74, 1]}
             style={[styles.frostGradient, styles.pointerEventsNone]}
           />
         </View>

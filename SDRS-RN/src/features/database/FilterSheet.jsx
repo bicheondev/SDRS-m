@@ -116,7 +116,7 @@ export function FilterScreen({
   });
   const [columnLayoutReady, setColumnLayoutReady] = useState(false);
   const reducedMotion = useReducedMotionSafe();
-  const shouldUseBlurTarget = Platform.OS !== 'web';
+  const shouldUseBlurTarget = Platform.OS === 'ios';
   const widthAnimationFrameRef = useRef(null);
   const widthPhaseRef = useRef('closed');
   const columnLayoutReadyRef = useRef(false);
@@ -480,7 +480,7 @@ export function FilterScreen({
         <BlurView
           key={`filter-backdrop-${blurModeKey}`}
           {...nativeBlurProps}
-          intensity={72}
+          intensity={Platform.OS === 'android' ? 32 : 72}
           style={[styles.backdropBlur, styles.pointerEventsNone]}
           tint={isDark ? 'dark' : 'default'}
         />
@@ -630,7 +630,7 @@ export function FilterScreen({
       </View>
 
       <BottomTab
-        activeTab="db"
+        activeTab={null}
         contained
         onDbClick={handleClose}
         onManageClick={onManageOpen}
