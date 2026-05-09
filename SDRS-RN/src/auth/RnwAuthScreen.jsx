@@ -29,7 +29,7 @@ const LOGIN_TITLE_FONT_FAMILY = 'PretendardGOV-SemiBold';
 const LOGIN_REGULAR_FONT_FAMILY = 'PretendardGOV-Regular';
 const LOGIN_MEDIUM_FONT_FAMILY = 'PretendardGOV-Medium';
 const LOGIN_PLACEHOLDER_COLOR = '#94a3b8';
-const LOGIN_FORM_KEYBOARD_LIFT = 88;
+const LOGIN_FORM_KEYBOARD_LIFT = 64;
 const WEB_LOGIN_FONT_RENDERING_STYLE = Platform.OS === 'web'
   ? { fontSynthesis: 'none' }
   : null;
