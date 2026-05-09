@@ -204,6 +204,8 @@ export function AppIcon({
       accessibilityLabel={label}
       accessibilityRole={label ? 'image' : undefined}
       accessible={Boolean(label)}
+      allowFontScaling={false}
+      maxFontSizeMultiplier={1}
       style={[
         {
           color: getToneColor(tone),

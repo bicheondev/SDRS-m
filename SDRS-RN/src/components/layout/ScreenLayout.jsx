@@ -1,5 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
 
@@ -30,6 +31,8 @@ export function AppShellGradient({ style }) {
 export function AppScreenShell({ children, shellStyle, screenStyle }) {
   useTheme();
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
   const screenWidth = getScreenWidthForViewport(viewportWidth);
   const screenHeight = viewportHeight;
 
@@ -59,6 +62,14 @@ export function AppScreenShell({ children, shellStyle, screenStyle }) {
           screenStyle,
         ]}
       >
+        {bottomInset > 0 ? (
+          <View
+            style={[
+              screenLayoutStyles.bottomSafeAreaFill,
+              { height: bottomInset },
+            ]}
+          />
+        ) : null}
         {children}
       </View>
     </View>
@@ -88,6 +99,15 @@ export const screenLayoutStyles = StyleSheet.create({
     position: 'relative',
     backgroundColor: 'var(--color-bg-screen)',
     overflow: 'hidden',
+  },
+  bottomSafeAreaFill: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'var(--color-bg-screen)',
+    pointerEvents: 'none',
+    zIndex: 0,
   },
   phoneScreenCompact: {
     width: '100%',

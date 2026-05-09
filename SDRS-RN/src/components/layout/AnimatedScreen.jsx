@@ -270,6 +270,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
+    backgroundColor: 'var(--color-bg-screen)',
     overflow: 'hidden',
   },
   overlay: {
@@ -286,5 +287,6 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+    backgroundColor: 'var(--color-bg-screen)',
   },
 });

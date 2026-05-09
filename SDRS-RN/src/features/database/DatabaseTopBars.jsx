@@ -178,21 +178,43 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
   const topFrostStart = colorWithAlpha(screenColor, 0.86);
   const topFrostMid = colorWithAlpha(screenColor, 0.78);
   const topFrostEnd = colorWithAlpha(screenColor, 0.1);
-  const nativeTopFrostColors = [
-    colorWithAlpha(screenColor, 0.86),
-    colorWithAlpha(screenColor, 0.86),
-    colorWithAlpha(screenColor, 0.74),
-    colorWithAlpha(screenColor, 0),
-  ];
+  const nativeTopFrostColors = IS_ANDROID
+    ? [
+        colorWithAlpha(screenColor, 1),
+        colorWithAlpha(screenColor, 1),
+        colorWithAlpha(screenColor, 0.92),
+        colorWithAlpha(screenColor, 0.36),
+        colorWithAlpha(screenColor, 0),
+      ]
+    : [
+        colorWithAlpha(screenColor, 0.86),
+        colorWithAlpha(screenColor, 0.86),
+        colorWithAlpha(screenColor, 0.74),
+        colorWithAlpha(screenColor, 0),
+      ];
+  const nativeTopFrostLocations = IS_ANDROID
+    ? [0, 0.48, 0.66, 0.86, 1]
+    : [0, 0.52, 0.72, 1];
   const filterFrostStart = colorWithAlpha(screenColor, isDark ? 0.4 : 0.34);
   const filterFrostMid = colorWithAlpha(screenColor, isDark ? 0.22 : 0.18);
   const filterFrostEnd = colorWithAlpha(screenColor, 0.04);
-  const nativeFilterFrostColors = [
-    colorWithAlpha(screenColor, 0),
-    colorWithAlpha(screenColor, isDark ? 0.4 : 0.34),
-    colorWithAlpha(screenColor, isDark ? 0.22 : 0.18),
-    colorWithAlpha(screenColor, 0),
-  ];
+  const nativeFilterFrostColors = IS_ANDROID
+    ? [
+        colorWithAlpha(screenColor, isDark ? 0.42 : 0.52),
+        colorWithAlpha(screenColor, isDark ? 0.64 : 0.78),
+        colorWithAlpha(screenColor, isDark ? 0.48 : 0.68),
+        colorWithAlpha(screenColor, isDark ? 0.16 : 0.22),
+        colorWithAlpha(screenColor, 0),
+      ]
+    : [
+        colorWithAlpha(screenColor, 0),
+        colorWithAlpha(screenColor, isDark ? 0.4 : 0.34),
+        colorWithAlpha(screenColor, isDark ? 0.22 : 0.18),
+        colorWithAlpha(screenColor, 0),
+      ];
+  const nativeFilterFrostLocations = IS_ANDROID
+    ? [0, 0.22, 0.6, 0.88, 1]
+    : [0, 0.24, 0.74, 1];
   const filterBackdropTop = colorWithAlpha(screenColor, 1);
   const filterBackdropLow = colorWithAlpha(screenColor, 0.5);
   const topFrostGradient =
@@ -224,7 +246,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
         {Platform.OS === 'web' ? null : (
           <LinearGradient
             colors={nativeTopFrostColors}
-            locations={[0, 0.52, 0.72, 1]}
+            locations={nativeTopFrostLocations}
             style={[styles.frostGradient, styles.pointerEventsNone]}
           />
         )}
@@ -277,7 +299,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
           />
           <LinearGradient
             colors={nativeFilterFrostColors}
-            locations={[0, 0.24, 0.74, 1]}
+            locations={nativeFilterFrostLocations}
             style={[styles.frostGradient, styles.pointerEventsNone]}
           />
         </View>

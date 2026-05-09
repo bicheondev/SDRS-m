@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   useWindowDimensions,
@@ -98,13 +99,21 @@ function ImageZoomModalContent({ renderChromeOverlay, session, onClose, onThumbn
   const [imageSizeReady, setImageSizeReady] = useState(false);
   const [naturalImageSize, setNaturalImageSize] = useState(null);
 
-  const fromRect = session?.fromRect ?? session?.sourceRect ?? null;
-  const hasFromRect =
-    fromRect &&
-    Number.isFinite(fromRect.width) &&
-    Number.isFinite(fromRect.height) &&
-    fromRect.width > 0 &&
-    fromRect.height > 0;
+  const rawFromRect = session?.fromRect ?? session?.sourceRect ?? null;
+  const hasRawFromRect =
+    rawFromRect &&
+    Number.isFinite(rawFromRect.width) &&
+    Number.isFinite(rawFromRect.height) &&
+    rawFromRect.width > 0 &&
+    rawFromRect.height > 0;
+  const fromRect = hasRawFromRect ? rawFromRect : null;
+  const closeToRect = hasRawFromRect
+    ? {
+        ...rawFromRect,
+        top: rawFromRect.top + (Platform.OS === 'android' ? topInset : 0),
+      }
+    : null;
+  const hasFromRect = Boolean(fromRect);
   const [isThumbnailTransitionLayer, setIsThumbnailTransitionLayer] = useState(hasFromRect);
   const [showChromeOverlay, setShowChromeOverlay] = useState(false);
 
@@ -318,11 +327,11 @@ function ImageZoomModalContent({ renderChromeOverlay, session, onClose, onThumbn
       transitionWidth.value = displayRect.width;
       transitionHeight.value = displayRect.height;
       flipRadius.value = 0;
-      transitionLeft.value = withTiming(fromRect.left, timing);
-      transitionTop.value = withTiming(fromRect.top, timing);
-      transitionWidth.value = withTiming(fromRect.width, timing);
+      transitionLeft.value = withTiming(closeToRect.left, timing);
+      transitionTop.value = withTiming(closeToRect.top, timing);
+      transitionWidth.value = withTiming(closeToRect.width, timing);
       flipRadius.value = withTiming(motionTokens.radius.thumbnail, timing);
-      transitionHeight.value = withTiming(fromRect.height, timing, (finished) => {
+      transitionHeight.value = withTiming(closeToRect.height, timing, (finished) => {
         'worklet';
         if (finished) {
           runOnJS(onClose)();
