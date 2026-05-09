@@ -21,8 +21,8 @@ export function AppShellGradient({ style }) {
 
   return (
     <LinearGradient
-      colors={isDark ? ['#0f172a', '#0f172a', '#020617'] : ['#f3f7fd', '#edf3fa', '#dde6f2']}
-      locations={isDark ? [0, 0.3, 1] : [0, 0.24, 1]}
+      colors={isDark ? ['#0f172a', '#0f172a', '#020617'] : ['#ffffff', '#ffffff']}
+      locations={isDark ? [0, 0.3, 1] : [0, 1]}
       style={[screenLayoutStyles.appShellGradient, style]}
     />
   );

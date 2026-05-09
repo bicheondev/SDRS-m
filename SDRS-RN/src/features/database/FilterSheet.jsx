@@ -116,7 +116,7 @@ export function FilterScreen({
   });
   const [columnLayoutReady, setColumnLayoutReady] = useState(false);
   const reducedMotion = useReducedMotionSafe();
-  const shouldUseBlurTarget = Platform.OS === 'ios';
+  const shouldUseBlurTarget = Platform.OS !== 'web';
   const widthAnimationFrameRef = useRef(null);
   const widthPhaseRef = useRef('closed');
   const columnLayoutReadyRef = useRef(false);

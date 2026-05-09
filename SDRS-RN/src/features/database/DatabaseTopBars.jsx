@@ -139,6 +139,7 @@ function FadingBlur({ backgroundImage, blurModeKey, intensity, mode = 'top', nat
     return (
       <BlurView
         key={`android-${mode}-${blurModeKey}`}
+        {...blurProps}
         intensity={intensity}
         style={[styles.blurFadeStack, styles.pointerEventsNone]}
         tint={tint}
@@ -165,7 +166,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
   const { resolvedColorMode } = useTheme();
   const isDark = resolvedColorMode === 'dark';
   const blurTint = isDark ? 'dark' : 'default';
-  const canTargetBlur = Platform.OS === 'ios' && blurTargetRef;
+  const canTargetBlur = Platform.OS !== 'web' && blurTargetRef;
   const blurModeKey = canTargetBlur ? 'targeted' : 'fallback';
   const nativeBlurProps = canTargetBlur
     ? {

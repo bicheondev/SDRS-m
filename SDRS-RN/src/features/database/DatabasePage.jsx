@@ -43,7 +43,7 @@ export const DatabasePage = memo(function DatabasePage({
   const insets = useSafeAreaInsets();
   const resultsBlurTargetRef = useRef(null);
   const [resultsBlurTargetReady, setResultsBlurTargetReady] = useState(false);
-  const shouldUseBlurTarget = Platform.OS === 'ios';
+  const shouldUseBlurTarget = Platform.OS !== 'web';
   const ResultsTargetView = shouldUseBlurTarget ? BlurTargetView : View;
   const topContentPadding = 88 + Math.max(insets.top, 0);
   const bottomContentPadding = 84 + Math.max(insets.bottom, 0);
