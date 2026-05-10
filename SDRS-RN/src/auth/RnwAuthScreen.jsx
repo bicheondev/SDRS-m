@@ -13,6 +13,7 @@ import {
 import Animated, {
   Easing,
   interpolateColor,
+  useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -31,6 +32,12 @@ const LOGIN_PLACEHOLDER_COLOR = '#94a3b8';
 const LOGIN_FORM_KEYBOARD_LIFT = 64;
 const ANDROID_BOTTOM_CHROME_FALLBACK = 24;
 const ANDROID_KEYBOARD_DOCK_CLEARANCE = 8;
+const IS_ANDROID = Platform.OS === 'android';
+const IS_WEB = Platform.OS === 'web';
+const ANIMATED_KEYBOARD_OPTIONS = {
+  isStatusBarTranslucentAndroid: true,
+  isNavigationBarTranslucentAndroid: true,
+};
 const WEB_LOGIN_FONT_RENDERING_STYLE = Platform.OS === 'web'
   ? { fontSynthesis: 'none' }
   : null;
@@ -42,6 +49,14 @@ const LOGIN_FONT_FEATURE_STYLE = Platform.select({
     fontVariant: ['stylistic-five'],
   },
 });
+
+function useLoginAnimatedKeyboard() {
+  if (IS_WEB) {
+    return { height: useSharedValue(0) };
+  }
+
+  return useAnimatedKeyboard(ANIMATED_KEYBOARD_OPTIONS);
+}
 
 export function RnwAuthScreen({
   focusedField,
@@ -58,7 +73,7 @@ export function RnwAuthScreen({
   useTheme();
   const passwordInputRef = useRef(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const animatedKeyboard = useLoginAnimatedKeyboard();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const phoneScreenLayoutStyle = { width, flex: 1, minHeight: 0 };
@@ -70,9 +85,6 @@ export function RnwAuthScreen({
   const dockBottomInset = keyboardVisible
     ? 0
     : (Platform.OS === 'android' ? androidBottomChromeInset : bottomInset);
-  const dockBottomOffset = keyboardVisible
-    ? keyboardHeight + (Platform.OS === 'android' ? ANDROID_KEYBOARD_DOCK_CLEARANCE : 0)
-    : 0;
   const usernameFocused = focusedField === 'username';
   const passwordFocused = focusedField === 'password';
   const inputBgColor = resolveCssVariableString('var(--color-bg-input)');
@@ -124,6 +136,16 @@ export function RnwAuthScreen({
   const loginFormKeyboardStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: -LOGIN_FORM_KEYBOARD_LIFT * keyboardLiftProgress.value }],
   }));
+  const loginButtonDockAnimatedStyle = useAnimatedStyle(() => {
+    const keyboardOffset = Math.max(0, animatedKeyboard.height.value);
+    const keyboardClearance = IS_ANDROID && keyboardOffset > 0
+      ? ANDROID_KEYBOARD_DOCK_CLEARANCE
+      : 0;
+
+    return {
+      transform: [{ translateY: -(keyboardOffset + keyboardClearance) }],
+    };
+  });
 
   useEffect(() => {
     usernameFocusProgress.value = withTiming(usernameFocused ? 1 : 0, {
@@ -165,12 +187,10 @@ export function RnwAuthScreen({
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSubscription = Keyboard.addListener(showEvent, (event) => {
-      setKeyboardHeight(Math.max(0, event?.endCoordinates?.height ?? 0));
+    const showSubscription = Keyboard.addListener(showEvent, () => {
       setKeyboardVisible(true);
     });
     const hideSubscription = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
       setKeyboardVisible(false);
     });
     return () => {
@@ -315,11 +335,11 @@ export function RnwAuthScreen({
             선박DB정보체계 버전 0.9 Beta
           </Animated.Text>
 
-          <View
+          <Animated.View
             style={[
               styles.loginButtonDock,
+              loginButtonDockAnimatedStyle,
               {
-                bottom: dockBottomOffset,
                 height: 64 + dockBottomInset,
                 paddingBottom: dockBottomInset,
               },
@@ -352,7 +372,7 @@ export function RnwAuthScreen({
                 </>
               )}
             </Pressable>
-          </View>
+          </Animated.View>
         </View>
       </View>
     </View>
