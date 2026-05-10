@@ -24,7 +24,12 @@ import AnimatedScreen from '../components/layout/AnimatedScreen.jsx';
 import BottomTab from '../components/layout/BottomTab.jsx';
 import { useRnwAppBootstrap } from './useRnwAppBootstrap.js';
 
-export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
+export default function RnwMainAppShell({
+  isActive,
+  onLogout,
+  reducedMotion,
+  suppressShadows = false,
+}) {
   const [appState, dispatch] = useReducer(appReducer, initialAppState);
   const [hasVisitedManage, setHasVisitedManage] = useState(false);
   const [hasVisitedMenu, setHasVisitedMenu] = useState(false);
@@ -301,6 +306,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
           currentScreen={appState.activeTab}
           navDir={appState.tabTransition}
           reducedMotion={reducedMotion}
+          suppressElevation={suppressShadows}
         >
           <DatabasePage
             compact={databasePage.compact}
@@ -339,6 +345,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
           currentScreen={appState.activeTab}
           navDir={appState.tabTransition}
           reducedMotion={reducedMotion}
+          suppressElevation={suppressShadows}
         >
           {hasVisitedManage ? (
             <View style={styles.tabStack}>
@@ -348,6 +355,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
                 currentScreen={manageNavigation.currentScreen}
                 navDir={manageNavigation.transition}
                 reducedMotion={reducedMotion}
+                suppressElevation={suppressShadows}
                 transitionFrom={manageNavigation.transitionFrom}
                 transitionTo={manageNavigation.transitionTo}
               >
@@ -383,6 +391,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
                 currentScreen={manageNavigation.currentScreen}
                 navDir={manageNavigation.transition}
                 reducedMotion={reducedMotion}
+                suppressElevation={suppressShadows}
                 transitionFrom={manageNavigation.transitionFrom}
                 transitionTo={manageNavigation.transitionTo}
               >
@@ -431,6 +440,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
           currentScreen={appState.activeTab}
           navDir={appState.tabTransition}
           reducedMotion={reducedMotion}
+          suppressElevation={suppressShadows}
         >
           {hasVisitedMenu ? (
             <View style={styles.tabStack}>
@@ -440,6 +450,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
                 currentScreen={menuNavigation.currentScreen}
                 navDir={menuNavigation.transition}
                 reducedMotion={reducedMotion}
+                suppressElevation={suppressShadows}
                 transitionFrom={menuNavigation.transitionFrom}
                 transitionTo={menuNavigation.transitionTo}
               >
@@ -459,6 +470,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
                 currentScreen={menuNavigation.currentScreen}
                 navDir={menuNavigation.transition}
                 reducedMotion={reducedMotion}
+                suppressElevation={suppressShadows}
                 transitionFrom={menuNavigation.transitionFrom}
                 transitionTo={menuNavigation.transitionTo}
               >
@@ -477,6 +489,7 @@ export default function RnwMainAppShell({ isActive, onLogout, reducedMotion }) {
                 currentScreen={menuNavigation.currentScreen}
                 navDir={menuNavigation.transition}
                 reducedMotion={reducedMotion}
+                suppressElevation={suppressShadows}
                 transitionFrom={menuNavigation.transitionFrom}
                 transitionTo={menuNavigation.transitionTo}
               >

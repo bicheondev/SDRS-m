@@ -23,6 +23,7 @@ export function RnwApp() {
   const [loginSubmitted, setLoginSubmitted] = useState(false);
   const loginViewport = useLoginViewport({ enabled: route === 'login' });
   const isFilled = username.trim() !== '' && password.trim() !== '';
+  const isLogoutExit = routeTransition === 'logout' && route === 'login';
 
   useEffect(() => {
     const warmLoginSuccessPath = () => {
@@ -98,6 +99,7 @@ export function RnwApp() {
               isActive={route === 'app'}
               onLogout={handleLogout}
               reducedMotion={reducedMotion}
+              suppressShadows={isLogoutExit}
             />
           </Suspense>
         ) : null}

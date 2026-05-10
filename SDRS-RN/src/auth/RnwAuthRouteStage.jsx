@@ -79,6 +79,7 @@ export function RnwAuthRouteStage({
   const animatedState = animatedStateRef.current;
   const [isVisible, setIsVisible] = useState(isActive);
   const [zIndex, setZIndex] = useState(isActive ? 1 : 0);
+  const isLogoutAppExit = navDir === 'logout' && screenKey === 'app' && !isActive && isVisible;
 
   useEffect(
     () => () => {
@@ -200,9 +201,11 @@ export function RnwAuthRouteStage({
         {
           pointerEvents: isActive ? 'auto' : 'none',
           zIndex,
+          elevation: isLogoutAppExit ? 0 : undefined,
           opacity: animatedState.opacity,
           transform: [{ translateY: animatedState.translateY }, { scale: animatedState.scale }],
         },
+        isLogoutAppExit && styles.shadowlessScreen,
       ]}
     >
       {children}
@@ -221,5 +224,11 @@ const styles = StyleSheet.create({
   },
   screenHidden: {
     visibility: 'hidden',
+  },
+  shadowlessScreen: {
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
   },
 });

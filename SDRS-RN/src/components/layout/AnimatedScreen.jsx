@@ -83,6 +83,7 @@ export default function AnimatedScreen({
   navDir,
   reducedMotion = false,
   screenKey,
+  suppressElevation = false,
   transitionFrom,
   transitionTo,
 }) {
@@ -252,7 +253,7 @@ export default function AnimatedScreen({
         styles.screen,
         {
           zIndex: renderZIndex,
-          elevation: Platform.OS === 'android' ? renderZIndex : undefined,
+          elevation: Platform.OS === 'android' ? (suppressElevation ? 0 : renderZIndex) : undefined,
           pointerEvents: interactive ? 'auto' : 'none',
         },
         screenStyle,
