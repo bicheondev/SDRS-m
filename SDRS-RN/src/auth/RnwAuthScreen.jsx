@@ -30,6 +30,7 @@ const LOGIN_REGULAR_FONT_FAMILY = 'PretendardGOV-Regular';
 const LOGIN_MEDIUM_FONT_FAMILY = 'PretendardGOV-Medium';
 const LOGIN_PLACEHOLDER_COLOR = '#94a3b8';
 const LOGIN_FORM_KEYBOARD_LIFT = 64;
+const ANDROID_BOTTOM_CHROME_FALLBACK = 24;
 const WEB_LOGIN_FONT_RENDERING_STYLE = Platform.OS === 'web'
   ? { fontSynthesis: 'none' }
   : null;
@@ -63,7 +64,15 @@ export function RnwAuthScreen({
   const keyboardBehavior = 'padding';
   const topInset = Math.max(insets.top, 0);
   const bottomInset = Math.max(insets.bottom, 0);
-  const dockBottomInset = keyboardVisible || Platform.OS === 'android' ? 0 : bottomInset;
+  const androidBottomChromeInset = Platform.OS === 'android'
+    ? Math.max(bottomInset, ANDROID_BOTTOM_CHROME_FALLBACK)
+    : 0;
+  const dockBottomInset = keyboardVisible
+    ? 0
+    : (Platform.OS === 'android' ? androidBottomChromeInset : bottomInset);
+  const dockBottomOffset = !keyboardVisible && Platform.OS === 'android'
+    ? -androidBottomChromeInset
+    : 0;
   const usernameFocused = focusedField === 'username';
   const passwordFocused = focusedField === 'password';
   const inputBgColor = resolveCssVariableString('var(--color-bg-input)');
@@ -309,6 +318,7 @@ export function RnwAuthScreen({
               styles.loginButtonDock,
               !keyboardVisible && styles.loginButtonDockPinned,
               {
+                bottom: dockBottomOffset,
                 height: 64 + dockBottomInset,
                 paddingBottom: dockBottomInset,
               },

@@ -62,6 +62,7 @@ const MODAL_CONTENT_WIDTH = 300;
 const MODAL_PADDING = 20;
 const MODAL_TOTAL_WIDTH = MODAL_CONTENT_WIDTH + MODAL_PADDING * 2;
 const ADD_SCROLL_MAX_ATTEMPTS = 18;
+const ANDROID_BOTTOM_CHROME_FALLBACK = 24;
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 const WEB_TOAST_BLUR_STYLE = Platform.OS === 'web'
   ? {
@@ -775,6 +776,9 @@ function ManageSubpageTopBar({ saveActive = false, title, onAdd, onBack, onSave 
 function ManageSearchBar({ onChange, onClear, placeholder = '검색', value = '' }) {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 0);
+  const searchBottomInset = Platform.OS === 'android'
+    ? Math.max(bottomInset, ANDROID_BOTTOM_CHROME_FALLBACK)
+    : bottomInset;
 
   return (
     <View
@@ -782,8 +786,8 @@ function ManageSearchBar({ onChange, onClear, placeholder = '검색', value = ''
         styles.manageSearchBarShell,
         {
           bottom: 0,
-          height: 64 + bottomInset,
-          minHeight: 64 + bottomInset,
+          height: 64 + searchBottomInset,
+          minHeight: 64 + searchBottomInset,
         },
       ]}
     >
@@ -1878,7 +1882,9 @@ export function ManageShipEditPage({
   const reducedMotion = useReducedMotionSafe();
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 0);
-  const visibleSearchInset = bottomInset;
+  const visibleSearchInset = Platform.OS === 'android'
+    ? Math.max(bottomInset, ANDROID_BOTTOM_CHROME_FALLBACK)
+    : bottomInset;
   const normalizedQuery = searchQuery.trim();
   const deferredSearchQuery = useDeferredValue(normalizedQuery);
   const reorderEnabled = normalizedQuery === '';
