@@ -69,7 +69,7 @@ export function RnwAuthScreen({
   const dockBottomInset = keyboardVisible
     ? 0
     : (Platform.OS === 'android' ? androidBottomChromeInset : bottomInset);
-  const dockBottomOffset = keyboardVisible && Platform.OS === 'ios' ? keyboardHeight : 0;
+  const dockBottomOffset = keyboardVisible ? keyboardHeight : 0;
   const usernameFocused = focusedField === 'username';
   const passwordFocused = focusedField === 'password';
   const inputBgColor = resolveCssVariableString('var(--color-bg-input)');
