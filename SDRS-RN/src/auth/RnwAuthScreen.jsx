@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -58,10 +57,10 @@ export function RnwAuthScreen({
   useTheme();
   const passwordInputRef = useRef(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const phoneScreenLayoutStyle = { width, flex: 1, minHeight: 0 };
-  const keyboardBehavior = 'padding';
   const topInset = Math.max(insets.top, 0);
   const bottomInset = Math.max(insets.bottom, 0);
   const androidBottomChromeInset = Platform.OS === 'android'
@@ -70,9 +69,7 @@ export function RnwAuthScreen({
   const dockBottomInset = keyboardVisible
     ? 0
     : (Platform.OS === 'android' ? androidBottomChromeInset : bottomInset);
-  const dockBottomOffset = !keyboardVisible && Platform.OS === 'android'
-    ? -androidBottomChromeInset
-    : 0;
+  const dockBottomOffset = keyboardVisible && Platform.OS === 'ios' ? keyboardHeight : 0;
   const usernameFocused = focusedField === 'username';
   const passwordFocused = focusedField === 'password';
   const inputBgColor = resolveCssVariableString('var(--color-bg-input)');
@@ -163,10 +160,14 @@ export function RnwAuthScreen({
   }, [keyboardLiftProgress, keyboardVisible]);
 
   useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSubscription = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(Math.max(0, event?.endCoordinates?.height ?? 0));
       setKeyboardVisible(true);
     });
-    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
       setKeyboardVisible(false);
     });
     return () => {
@@ -205,11 +206,6 @@ export function RnwAuthScreen({
 
   return (
     <View style={[styles.root, WEB_LOGIN_FONT_RENDERING_STYLE]}>
-      <KeyboardAvoidingView
-        behavior={keyboardBehavior}
-        keyboardVerticalOffset={0}
-        style={styles.keyboardRoot}
-      >
       <View
         style={[
           styles.appShell,
@@ -232,7 +228,10 @@ export function RnwAuthScreen({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             style={styles.loginScroll}
-            contentContainerStyle={styles.loginScrollContent}
+            contentContainerStyle={[
+              styles.loginScrollContent,
+              { paddingBottom: 96 + dockBottomInset },
+            ]}
           >
             <View style={[styles.loginHeader, { paddingTop: 77 + topInset }]}>
               <View style={styles.loginTitle}>
@@ -316,7 +315,6 @@ export function RnwAuthScreen({
           <View
             style={[
               styles.loginButtonDock,
-              !keyboardVisible && styles.loginButtonDockPinned,
               {
                 bottom: dockBottomOffset,
                 height: 64 + dockBottomInset,
@@ -354,17 +352,12 @@ export function RnwAuthScreen({
           </View>
         </View>
       </View>
-      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
-    width: '100%',
-  },
-  keyboardRoot: {
     flex: 1,
     width: '100%',
   },
@@ -388,7 +381,6 @@ const styles = StyleSheet.create({
   },
   loginScrollContent: {
     flexGrow: 1,
-    paddingBottom: 24,
   },
   loginHeader: {
     paddingHorizontal: 18,
@@ -488,17 +480,14 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   loginButtonDock: {
-    zIndex: 10,
-    elevation: 10,
-    flexShrink: 0,
-    width: '100%',
-    height: 64,
-  },
-  loginButtonDockPinned: {
     position: 'absolute',
     right: 0,
     bottom: 0,
     left: 0,
+    zIndex: 10,
+    elevation: 10,
+    width: '100%',
+    height: 64,
   },
   loginButtonInactive: {
     backgroundColor: 'var(--color-bg-surface-pressed)',
