@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { BlurTargetView, BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import Animated, {
   Easing,
   interpolateColor,
@@ -55,6 +56,7 @@ const MANAGE_ITEM_ADD_MS = 220;
 const MANAGE_ITEM_ADD_REDUCED_MS = 160;
 const MANAGE_ITEM_REMOVE_MS = 140;
 const MANAGE_ITEM_REMOVE_REDUCED_MS = 100;
+const REORDER_ACTIVATION_VIBRATION_MS = 12;
 const REORDER_AUTO_SCROLL_EDGE_PX = 88;
 const REORDER_AUTO_SCROLL_MAX_STEP_PX = 24;
 const MODAL_HORIZONTAL_MARGIN = 25;
@@ -81,6 +83,16 @@ function dismissNativeKeyboard() {
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
+
+function triggerReorderActivationHaptic() {
+  if (Platform.OS === 'web') {
+    return;
+  }
+
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {
+    Vibration.vibrate?.(REORDER_ACTIVATION_VIBRATION_MS);
+  });
 }
 
 function configureManageListLayoutAnimation(reducedMotion = false) {
@@ -1152,7 +1164,7 @@ function ManageShipReorderItem({
     (clientY) => {
       dragStartedRef.current = true;
       setIsArmed(true);
-      Vibration.vibrate?.(12);
+      triggerReorderActivationHaptic();
       onDragStart({ cardId: card.id, clientY });
     },
     [card.id, onDragStart],
