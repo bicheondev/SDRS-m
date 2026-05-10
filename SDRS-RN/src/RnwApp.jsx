@@ -20,6 +20,7 @@ export function RnwApp() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [hasEnteredApp, setHasEnteredApp] = useState(false);
+  const [loginSubmitted, setLoginSubmitted] = useState(false);
   const loginViewport = useLoginViewport({ enabled: route === 'login' });
   const isFilled = username.trim() !== '' && password.trim() !== '';
 
@@ -50,11 +51,13 @@ export function RnwApp() {
 
   const handleEnterMainScreen = useCallback(() => {
     preloadRnwMainAppShell();
+    setLoginSubmitted(true);
     setRouteTransition('loginToMain');
     setRoute('app');
   }, []);
 
   const handleLogout = useCallback(() => {
+    setLoginSubmitted(false);
     setPassword('');
     setUsername('');
     setRouteTransition('logout');
@@ -72,6 +75,7 @@ export function RnwApp() {
         <RnwAuthScreen
           focusedField={loginViewport.focusedField}
           isFilled={isFilled}
+          loginSubmitted={loginSubmitted}
           onFieldBlur={loginViewport.handleFieldBlur}
           onFieldFocus={loginViewport.handleFieldFocus}
           onPasswordChange={setPassword}

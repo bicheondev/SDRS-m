@@ -18,7 +18,7 @@ import { motionTokens } from '../../motion.js';
 import { isPlaceholderImage } from '../../appDomain.js';
 import { measureNodeInWindow } from '../../utils/layout.js';
 
-const VIEW_MODE_TRANSITION_MS = 180;
+const VIEW_MODE_TRANSITION_MS = 140;
 const VIEW_MODE_EASING = Easing.bezier(...motionTokens.ease.ios);
 
 function isObjectLike(value) {
@@ -510,11 +510,8 @@ const VesselResultsBase = forwardRef(function VesselResults(
   }, [modeAnimationId, modeProgress, reducedMotion]);
 
   const modeAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: 0.76 + modeProgress.value * 0.24,
-    transform: [
-      { translateY: (1 - modeProgress.value) * motionTokens.offset.tabLift },
-      { scale: 0.996 + modeProgress.value * 0.004 },
-    ],
+    opacity: 0.9 + modeProgress.value * 0.1,
+    transform: [{ scale: 0.998 + modeProgress.value * 0.002 }],
   }));
 
   return (

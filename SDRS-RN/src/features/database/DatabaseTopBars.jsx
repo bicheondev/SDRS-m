@@ -171,11 +171,45 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
   const nativeBlurProps = canTargetBlur
     ? {
         blurMethod: 'dimezisBlurView',
-        blurReductionFactor: 2,
+        blurReductionFactor: IS_ANDROID ? 1.5 : 2,
         blurTarget: blurTargetRef,
       }
     : null;
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
+
+  if (IS_ANDROID) {
+    const androidFrostHeight = Math.max(0, topInset) + (filterSheet ? 108 : 112);
+
+    return (
+      <View
+        style={[
+          styles.frostLayer,
+          { bottom: undefined, height: androidFrostHeight },
+          styles.pointerEventsNone,
+        ]}
+      >
+        <FadingBlur
+          backgroundImage=""
+          blurModeKey={blurModeKey}
+          intensity={52}
+          nativeBlurProps={nativeBlurProps}
+          tint={blurTint}
+        />
+        <LinearGradient
+          colors={[
+            colorWithAlpha(screenColor, 1),
+            colorWithAlpha(screenColor, 1),
+            colorWithAlpha(screenColor, 0.94),
+            colorWithAlpha(screenColor, 0.62),
+            colorWithAlpha(screenColor, 0),
+          ]}
+          locations={[0, 0.24, 0.48, 0.68, 1]}
+          style={[styles.frostGradient, styles.pointerEventsNone]}
+        />
+      </View>
+    );
+  }
+
   const topFrostStart = colorWithAlpha(screenColor, 0.86);
   const topFrostMid = colorWithAlpha(screenColor, 0.78);
   const topFrostEnd = colorWithAlpha(screenColor, 0.1);

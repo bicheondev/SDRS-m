@@ -146,8 +146,8 @@ export function FilterScreen({
   const filterOpenState = phase === 'closing' ? 'closed' : filterMode;
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
   const backdropBaseColor = colorWithAlpha(screenColor, 0);
-  const backdropTopColor = colorWithAlpha(screenColor, 1);
-  const backdropMidColor = colorWithAlpha(screenColor, 0.5);
+  const backdropTopColor = colorWithAlpha(screenColor, Platform.OS === 'android' ? 0.78 : 1);
+  const backdropMidColor = colorWithAlpha(screenColor, Platform.OS === 'android' ? 0.42 : 0.5);
   const activeBlurTargetRef = shouldUseBlurTarget && blurTargetRef
     ? blurTargetRef
     : null;
@@ -480,7 +480,7 @@ export function FilterScreen({
         <BlurView
           key={`filter-backdrop-${blurModeKey}`}
           {...nativeBlurProps}
-          intensity={Platform.OS === 'android' ? 32 : 72}
+          intensity={Platform.OS === 'android' ? 44 : 72}
           style={[styles.backdropBlur, styles.pointerEventsNone]}
           tint={isDark ? 'dark' : 'default'}
         />

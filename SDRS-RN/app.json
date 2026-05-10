@@ -2,7 +2,7 @@
   "expo": {
     "name": "SDRS-RN",
     "slug": "SDRS-RN",
-    "version": "1.0.0",
+    "version": "0.9.0",
     "orientation": "portrait",
     "icon": "./icon.png",
     "userInterfaceStyle": "automatic",
@@ -22,7 +22,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "kr.bicheondev.sdrs"
+      "bundleIdentifier": "kr.mil.army.sdrs"
     },
     "android": {
       "adaptiveIcon": {
@@ -31,7 +31,7 @@
       },
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
-      "package": "kr.bicheondev.sdrs"
+      "package": "kr.mil.army.sdrs"
     },
     "web": {
       "favicon": "./assets/favicon.png"

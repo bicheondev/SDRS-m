@@ -779,7 +779,7 @@ function ManageSearchBar({ onChange, onClear, placeholder = '검색', value = ''
     <View
       style={[
         styles.manageSearchBarShell,
-        { height: 64 + bottomInset },
+        { bottom: bottomInset },
       ]}
     >
       <View style={styles.manageSearchBar}>
@@ -2841,8 +2841,8 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   iconButton: {
-    width: 24,
-    height: 24,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -20,7 +20,7 @@ export function MenuInfoPage({ onBack }) {
           <View style={styles.logoWrap}>
             <MenuInfoLogo accessibilityLabel="SDRS 선박DB조회체계" style={styles.logo} />
           </View>
-          <Text style={styles.version}>버전 1.0</Text>
+          <Text style={styles.version}>버전 0.9 Beta</Text>
         </View>
       </View>
     </AppScreenShell>

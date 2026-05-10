@@ -71,11 +71,11 @@ const ICON_PRESETS = {
     slotSize: 20,
   },
   plus: {
-    glyphSize: Platform.OS === 'android' ? 24 : 30,
+    glyphSize: 28,
     offsetX: 0,
     offsetY: 0,
     opticalSize: 24,
-    slotSize: 24,
+    slotSize: 28,
   },
   reorder: {
     glyphSize: 18,

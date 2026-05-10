@@ -37,6 +37,7 @@ const WEB_LOGIN_FONT_RENDERING_STYLE = Platform.OS === 'web'
 export function RnwAuthScreen({
   focusedField,
   isFilled,
+  loginSubmitted = false,
   onFieldBlur,
   onFieldFocus,
   onPasswordChange,
@@ -51,7 +52,7 @@ export function RnwAuthScreen({
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const phoneScreenLayoutStyle = { width, flex: 1, minHeight: 0 };
-  const keyboardBehavior = 'padding';
+  const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : undefined;
   const topInset = Math.max(insets.top, 0);
   const bottomInset = Math.max(insets.bottom, 0);
   const dockBottomInset = keyboardVisible ? 0 : bottomInset;
@@ -64,7 +65,8 @@ export function RnwAuthScreen({
   const usernameFocusProgress = useSharedValue(usernameFocused ? 1 : 0);
   const passwordFocusProgress = useSharedValue(passwordFocused ? 1 : 0);
   const loginButtonPressProgress = useSharedValue(0);
-  const appVersionProgress = useSharedValue(focusedField ? 0 : 1);
+  const shouldHideVersion = Boolean(focusedField || loginSubmitted);
+  const appVersionProgress = useSharedValue(shouldHideVersion ? 0 : 1);
   const keyboardLiftProgress = useSharedValue(0);
   const usernameInputShellStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
@@ -130,11 +132,11 @@ export function RnwAuthScreen({
   }, [isFilled, loginButtonPressProgress]);
 
   useEffect(() => {
-    appVersionProgress.value = withTiming(focusedField ? 0 : 1, {
+    appVersionProgress.value = withTiming(shouldHideVersion ? 0 : 1, {
       duration: motionDurationsMs.fast,
       easing: Easing.bezier(...motionTokens.ease.ios),
     });
-  }, [appVersionProgress, focusedField]);
+  }, [appVersionProgress, shouldHideVersion]);
 
   useEffect(() => {
     keyboardLiftProgress.value = withTiming(keyboardVisible ? 1 : 0, {
@@ -291,7 +293,7 @@ export function RnwAuthScreen({
             <Animated.Text
               style={[styles.appVersion, { bottom: 82 + bottomInset }, appVersionAnimatedStyle]}
             >
-              선박DB정보체계 버전 1.0
+              선박DB정보체계 버전 0.9 Beta
             </Animated.Text>
 
             <View
