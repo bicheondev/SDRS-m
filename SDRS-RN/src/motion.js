@@ -115,7 +115,7 @@ const SCREEN_STATES = {
   },
   logout: {
     enter: { x: 0, y: 0, opacity: 0, scale: 1.01 },
-    exit: { x: 0, y: motionTokens.offset.loginLift, opacity: 0, scale: 0.985 },
+    exit: { x: 0, y: motionTokens.offset.loginLift, opacity: 0, scale: 1 },
   },
 };
 

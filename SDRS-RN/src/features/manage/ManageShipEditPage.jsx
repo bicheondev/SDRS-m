@@ -745,7 +745,7 @@ function ManageSubpageTopBar({ saveActive = false, title, onAdd, onBack, onSave 
               <AppIcon
                 name="add"
                 glyphSize={30}
-                slotSize={30}
+                slotSize={32}
                 style={styles.addIconSlot}
                 tone="accent"
                 weight={700}
@@ -775,13 +775,14 @@ function ManageSubpageTopBar({ saveActive = false, title, onAdd, onBack, onSave 
 function ManageSearchBar({ onChange, onClear, placeholder = '검색', value = '' }) {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 0);
+  const hiddenBottomInset = Platform.OS === 'android' ? bottomInset : 0;
 
   return (
     <View
       style={[
         styles.manageSearchBarShell,
         {
-          bottom: 0,
+          bottom: -hiddenBottomInset,
           height: 64 + bottomInset,
           minHeight: 64 + bottomInset,
         },
@@ -1878,6 +1879,7 @@ export function ManageShipEditPage({
   const reducedMotion = useReducedMotionSafe();
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 0);
+  const visibleSearchInset = Platform.OS === 'android' ? 0 : bottomInset;
   const normalizedQuery = searchQuery.trim();
   const deferredSearchQuery = useDeferredValue(normalizedQuery);
   const reorderEnabled = normalizedQuery === '';
@@ -2753,7 +2755,7 @@ export function ManageShipEditPage({
           style={[
             styles.manageEditContent,
             WEB_BACKDROP_SCROLL_STYLE,
-            { marginBottom: 64 + bottomInset },
+            { marginBottom: 64 + visibleSearchInset },
           ]}
         >
           {reorderEnabled ? (
@@ -2899,14 +2901,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addIconButton: {
-    width: 30,
-    height: 30,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addIconSlot: {
     alignItems: 'center',
     justifyContent: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   manageScreenTitle: {
     position: 'relative',
@@ -2937,9 +2941,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 32,
+    minHeight: 32,
   },
   manageSaveButton: {
-    minHeight: 20,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   manageSaveLabel: {
     color: 'var(--color-text-muted)',

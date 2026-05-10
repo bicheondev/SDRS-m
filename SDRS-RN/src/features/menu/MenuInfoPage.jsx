@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../ThemeContext.js';
 import MenuInfoLogo from '../../assets/ui/menuInfoLogo';
@@ -9,11 +10,14 @@ import { MenuSubpageTopBar } from './MenuShared.jsx';
 
 export function MenuInfoPage({ onBack }) {
   useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
+
   return (
     <AppScreenShell screenStyle={screenLayoutStyles.screenColumn}>
         <MenuSubpageTopBar title="앱 정보" onBack={onBack} />
 
-      <View style={styles.info}>
+      <View style={[styles.info, { marginBottom: -bottomInset, paddingBottom: bottomInset }]}>
         <View style={[styles.background, styles.pointerEventsNone]} />
         <View style={styles.content}>
           <MenuInfoMark accessibilityLabel="" style={styles.mark} />
@@ -32,6 +36,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     flex: 1,
     marginTop: 28,
+    backgroundColor: 'var(--color-bg-surface-muted)',
     overflow: 'hidden',
   },
   background: {

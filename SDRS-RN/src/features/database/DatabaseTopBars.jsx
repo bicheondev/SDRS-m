@@ -166,7 +166,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
   const screenColor = resolveCssVariableString('var(--color-bg-screen)');
 
   if (IS_ANDROID) {
-    const androidFrostHeight = Math.max(0, topInset) + (filterSheet ? 108 : 112);
+    const androidFrostHeight = Math.max(0, topInset) + (filterSheet ? 108 : 136);
 
     return (
       <View
@@ -193,7 +193,7 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
             colorWithAlpha(screenColor, 0.08),
             colorWithAlpha(screenColor, 0),
           ]}
-          locations={[0, 0.18, 0.36, 0.54, 0.72, 0.88, 1]}
+          locations={[0, 0.28, 0.5, 0.68, 0.82, 0.93, 1]}
           style={[styles.frostGradient, styles.pointerEventsNone]}
         />
       </View>
