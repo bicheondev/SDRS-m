@@ -89,6 +89,7 @@ export default function AnimatedScreen({
 }) {
   const isActive = currentScreen === screenKey;
   const previousActiveRef = useRef(null);
+  const lastActiveChildrenRef = useRef(isActive ? children : null);
   const { width, height } = useWindowDimensions();
 
   const [interactive, setInteractive] = useState(isActive);
@@ -100,6 +101,10 @@ export default function AnimatedScreen({
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
   const overlayOpacity = useSharedValue(0);
+
+  if (isActive) {
+    lastActiveChildrenRef.current = children;
+  }
 
   useLayoutEffect(() => {
     if (previousActiveRef.current === null) {
@@ -251,6 +256,7 @@ export default function AnimatedScreen({
     : isTransitionRender || isActive || interactive || rendered
       ? getScreenZIndex(navDir, isActive)
       : zIndex;
+  const renderedChildren = isActive ? children : lastActiveChildrenRef.current;
 
   return (
     <Animated.View
@@ -265,7 +271,7 @@ export default function AnimatedScreen({
       ]}
     >
       <Animated.View style={[styles.overlay, styles.pointerEventsNone, overlayStyle]} />
-      {rendered ? <View style={styles.body}>{children}</View> : null}
+      {rendered && renderedChildren ? <View style={styles.body}>{renderedChildren}</View> : null}
     </Animated.View>
   );
 }
