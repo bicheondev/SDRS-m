@@ -20,6 +20,8 @@ import { measureNodeInWindow } from '../../utils/layout.js';
 
 const VIEW_MODE_TRANSITION_MS = 180;
 const VIEW_MODE_EASING = Easing.bezier(...motionTokens.ease.ios);
+const VIEW_MODE_INITIAL_BLUR = 3;
+const isWeb = Platform.OS === 'web';
 
 function isObjectLike(value) {
   return (typeof value === 'object' || typeof value === 'function') && value !== null;
@@ -509,13 +511,19 @@ const VesselResultsBase = forwardRef(function VesselResults(
     });
   }, [modeAnimationId, modeProgress, reducedMotion]);
 
-  const modeAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: 0.76 + modeProgress.value * 0.24,
-    transform: [
-      { translateY: (1 - modeProgress.value) * motionTokens.offset.tabLift },
-      { scale: 0.996 + modeProgress.value * 0.004 },
-    ],
-  }));
+  const modeAnimatedStyle = useAnimatedStyle(() => {
+    const inverseProgress = 1 - modeProgress.value;
+    const blurAmount = inverseProgress * VIEW_MODE_INITIAL_BLUR;
+
+    return {
+      opacity: 0.76 + modeProgress.value * 0.24,
+      filter: isWeb ? `blur(${blurAmount}px)` : [{ blur: blurAmount }],
+      transform: [
+        { translateY: inverseProgress * motionTokens.offset.tabLift },
+        { scale: 0.996 + modeProgress.value * 0.004 },
+      ],
+    };
+  });
 
   return (
     <Animated.View

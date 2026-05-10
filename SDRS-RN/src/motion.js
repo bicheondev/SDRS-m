@@ -94,12 +94,12 @@ const SCREEN_STATES = {
     exit: { x: 0, y: 0, opacity: 1, scale: 1 },
   },
   tabForward: {
-    enter: { x: '100%', y: 0, opacity: 1, scale: 1 },
-    exit: { x: '-100%', y: 0, opacity: 1, scale: 1 },
+    enter: { x: '100%', y: 0, opacity: 0.42, scale: 1 },
+    exit: { x: '-100%', y: 0, opacity: 0, scale: 1 },
   },
   tabBackward: {
-    enter: { x: '-100%', y: 0, opacity: 1, scale: 1 },
-    exit: { x: '100%', y: 0, opacity: 1, scale: 1 },
+    enter: { x: '-100%', y: 0, opacity: 0.42, scale: 1 },
+    exit: { x: '100%', y: 0, opacity: 0, scale: 1 },
   },
   push: {
     enter: { x: '100%', y: 0, opacity: 1, scale: 1 },
@@ -187,6 +187,10 @@ export function getScreenTransition(direction, reducedMotion = false, phase = 'e
   if (direction === 'tabForward' || direction === 'tabBackward') {
     return {
       x: { duration: 0.42, ease: stackEase },
+      opacity: {
+        duration: 0.38,
+        ease: phase === 'enter' ? motionTokens.ease.fadeIn : motionTokens.ease.fadeOut,
+      },
     };
   }
 
