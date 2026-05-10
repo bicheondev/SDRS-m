@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -57,13 +56,14 @@ export function RnwAuthScreen({
   useTheme();
   const passwordInputRef = useRef(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const phoneScreenLayoutStyle = { width, flex: 1, minHeight: 0 };
-  const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : undefined;
   const topInset = Math.max(insets.top, 0);
   const bottomInset = Math.max(insets.bottom, 0);
   const dockBottomInset = keyboardVisible ? 0 : bottomInset;
+  const dockBottom = keyboardVisible ? keyboardHeight : 0;
   const usernameFocused = focusedField === 'username';
   const passwordFocused = focusedField === 'password';
   const inputBgColor = resolveCssVariableString('var(--color-bg-input)');
@@ -154,10 +154,14 @@ export function RnwAuthScreen({
   }, [keyboardLiftProgress, keyboardVisible]);
 
   useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSubscription = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(Math.max(0, event?.endCoordinates?.height ?? 0));
       setKeyboardVisible(true);
     });
-    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
       setKeyboardVisible(false);
     });
     return () => {
@@ -196,164 +200,158 @@ export function RnwAuthScreen({
 
   return (
     <View style={[styles.root, WEB_LOGIN_FONT_RENDERING_STYLE]}>
-      <KeyboardAvoidingView
-        behavior={keyboardBehavior}
-        keyboardVerticalOffset={0}
-        style={styles.keyboardRoot}
+      <View
+        style={[
+          styles.appShell,
+          {
+            width,
+            padding: 0,
+            justifyContent: 'flex-start',
+          },
+        ]}
       >
+        <AppShellGradient />
         <View
           style={[
-            styles.appShell,
-            {
-              width,
-              padding: 0,
-              justifyContent: 'flex-start',
-            },
+            styles.phoneScreen,
+            phoneScreenLayoutStyle,
           ]}
         >
-          <AppShellGradient />
-          <View
-            style={[
-              styles.phoneScreen,
-              phoneScreenLayoutStyle,
+          <ScrollView
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            style={styles.loginScroll}
+            contentContainerStyle={[
+              styles.loginScrollContent,
+              { paddingBottom: 96 + bottomInset },
             ]}
           >
-            <ScrollView
-              bounces={false}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              style={styles.loginScroll}
-              contentContainerStyle={styles.loginScrollContent}
-            >
-              <View style={[styles.loginHeader, { paddingTop: 77 + topInset }]}>
-                <View style={styles.loginTitle}>
-                  <Text style={styles.loginTitleLine}>
-                    <Text style={styles.loginTitleAccent}>로그인 정보</Text>를
-                  </Text>
-                  <Text style={styles.loginTitleLine}>입력하세요.</Text>
-                </View>
+            <View style={[styles.loginHeader, { paddingTop: 77 + topInset }]}>
+              <View style={styles.loginTitle}>
+                <Text style={styles.loginTitleLine}>
+                  <Text style={styles.loginTitleAccent}>로그인 정보</Text>를
+                </Text>
+                <Text style={styles.loginTitleLine}>입력하세요.</Text>
               </View>
+            </View>
 
-              <Animated.View style={[styles.loginForm, loginFormKeyboardStyle]}>
-                <Animated.View
-                  style={[
-                    styles.inputShell,
-                    usernameFocused && styles.inputShellFocused,
-                    usernameInputShellStyle,
-                  ]}
-                >
-                  <TextInput
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    blurOnSubmit={false}
-                    enterKeyHint="next"
-                    onBlur={onFieldBlur}
-                    onChangeText={onUsernameChange}
-                    onFocus={() => onFieldFocus('username')}
-                    onSubmitEditing={handleUsernameSubmit}
-                    returnKeyType="next"
-                    selectionColor={selectionColor}
-                    spellCheck={false}
-                    style={[styles.loginInput, usernameFocused && styles.loginInputFocused]}
-                    value={username}
-                  />
-                  {username ? null : (
-                    <View style={styles.loginPlaceholderOverlay}>
-                      <Animated.Text style={[styles.loginPlaceholderText, usernamePlaceholderStyle]}>
-                        아이디
-                      </Animated.Text>
-                    </View>
-                  )}
-                </Animated.View>
-
-                <Animated.View
-                  style={[
-                    styles.inputShell,
-                    styles.passwordShell,
-                    passwordFocused && styles.inputShellFocused,
-                    passwordInputShellStyle,
-                  ]}
-                >
-                  <TextInput
-                    ref={passwordInputRef}
-                    enterKeyHint="go"
-                    onBlur={onFieldBlur}
-                    onChangeText={onPasswordChange}
-                    onFocus={() => onFieldFocus('password')}
-                    onSubmitEditing={handleSubmit}
-                    returnKeyType="go"
-                    secureTextEntry
-                    selectionColor={selectionColor}
-                    style={[styles.loginInput, passwordFocused && styles.loginInputFocused]}
-                    value={password}
-                  />
-                  {password ? null : (
-                    <View style={styles.loginPlaceholderOverlay}>
-                      <Animated.Text style={[styles.loginPlaceholderText, passwordPlaceholderStyle]}>
-                        비밀번호
-                      </Animated.Text>
-                    </View>
-                  )}
-                </Animated.View>
-              </Animated.View>
-            </ScrollView>
-
-            <Animated.Text
-              style={[styles.appVersion, { bottom: 82 + bottomInset }, appVersionAnimatedStyle]}
-            >
-              선박DB정보체계 버전 0.9 Beta
-            </Animated.Text>
-
-            <View
-              style={[
-                styles.loginButtonDock,
-                {
-                  height: 64 + dockBottomInset,
-                  paddingBottom: dockBottomInset,
-                },
-              ]}
-            >
-              <Pressable
-                accessibilityRole="button"
-                disabled={!isFilled}
-                onPress={handleSubmit}
-                onPressIn={handleLoginPressIn}
-                onPressOut={handleLoginPressOut}
-                style={({ focused }) => [
-                  styles.loginButton,
-                  isFilled ? styles.loginButtonActive : styles.loginButtonInactive,
-                  focused ? styles.loginButtonFocused : null,
+            <Animated.View style={[styles.loginForm, loginFormKeyboardStyle]}>
+              <Animated.View
+                style={[
+                  styles.inputShell,
+                  usernameFocused && styles.inputShellFocused,
+                  usernameInputShellStyle,
                 ]}
               >
-                {() => (
-                  <>
-                    <Animated.View
-                      style={[
-                        styles.loginButtonOverlay,
-                        styles.pointerEventsNone,
-                        loginButtonOverlayStyle,
-                      ]}
-                    />
-                    <Text style={[styles.loginButtonText, isFilled && styles.loginButtonTextActive]}>
-                      로그인
-                    </Text>
-                  </>
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  blurOnSubmit={false}
+                  enterKeyHint="next"
+                  onBlur={onFieldBlur}
+                  onChangeText={onUsernameChange}
+                  onFocus={() => onFieldFocus('username')}
+                  onSubmitEditing={handleUsernameSubmit}
+                  returnKeyType="next"
+                  selectionColor={selectionColor}
+                  spellCheck={false}
+                  style={[styles.loginInput, usernameFocused && styles.loginInputFocused]}
+                  value={username}
+                />
+                {username ? null : (
+                  <View style={styles.loginPlaceholderOverlay}>
+                    <Animated.Text style={[styles.loginPlaceholderText, usernamePlaceholderStyle]}>
+                      아이디
+                    </Animated.Text>
+                  </View>
                 )}
-              </Pressable>
-            </View>
+              </Animated.View>
+
+              <Animated.View
+                style={[
+                  styles.inputShell,
+                  styles.passwordShell,
+                  passwordFocused && styles.inputShellFocused,
+                  passwordInputShellStyle,
+                ]}
+              >
+                <TextInput
+                  ref={passwordInputRef}
+                  enterKeyHint="go"
+                  onBlur={onFieldBlur}
+                  onChangeText={onPasswordChange}
+                  onFocus={() => onFieldFocus('password')}
+                  onSubmitEditing={handleSubmit}
+                  returnKeyType="go"
+                  secureTextEntry
+                  selectionColor={selectionColor}
+                  style={[styles.loginInput, passwordFocused && styles.loginInputFocused]}
+                  value={password}
+                />
+                {password ? null : (
+                  <View style={styles.loginPlaceholderOverlay}>
+                    <Animated.Text style={[styles.loginPlaceholderText, passwordPlaceholderStyle]}>
+                      비밀번호
+                    </Animated.Text>
+                  </View>
+                )}
+              </Animated.View>
+            </Animated.View>
+          </ScrollView>
+
+          <Animated.Text
+            style={[styles.appVersion, { bottom: 82 + bottomInset }, appVersionAnimatedStyle]}
+          >
+            선박DB정보체계 버전 0.9 Beta
+          </Animated.Text>
+
+          <View
+            style={[
+              styles.loginButtonDock,
+              {
+                bottom: dockBottom,
+                height: 64 + dockBottomInset,
+                paddingBottom: dockBottomInset,
+              },
+            ]}
+          >
+            <Pressable
+              accessibilityRole="button"
+              disabled={!isFilled}
+              onPress={handleSubmit}
+              onPressIn={handleLoginPressIn}
+              onPressOut={handleLoginPressOut}
+              style={({ focused }) => [
+                styles.loginButton,
+                isFilled ? styles.loginButtonActive : styles.loginButtonInactive,
+                focused ? styles.loginButtonFocused : null,
+              ]}
+            >
+              {() => (
+                <>
+                  <Animated.View
+                    style={[
+                      styles.loginButtonOverlay,
+                      styles.pointerEventsNone,
+                      loginButtonOverlayStyle,
+                    ]}
+                  />
+                  <Text style={[styles.loginButtonText, isFilled && styles.loginButtonTextActive]}>
+                    로그인
+                  </Text>
+                </>
+              )}
+            </Pressable>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
-    width: '100%',
-  },
-  keyboardRoot: {
     flex: 1,
     width: '100%',
   },
@@ -377,7 +375,6 @@ const styles = StyleSheet.create({
   },
   loginScrollContent: {
     flexGrow: 1,
-    paddingBottom: 24,
   },
   loginHeader: {
     paddingHorizontal: 18,
@@ -477,9 +474,12 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   loginButtonDock: {
+    position: 'absolute',
+    right: 0,
+    left: 0,
+    bottom: 0,
     zIndex: 10,
     elevation: 10,
-    flexShrink: 0,
     width: '100%',
     height: 64,
   },

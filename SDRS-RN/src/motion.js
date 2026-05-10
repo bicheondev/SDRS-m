@@ -110,12 +110,12 @@ const SCREEN_STATES = {
     exit: { x: '100%', y: 0, opacity: 1, scale: 1 },
   },
   loginToMain: {
-    enter: { x: 0, y: motionTokens.offset.loginLift, opacity: 0, scale: 1 },
-    exit: { x: 0, y: -6, opacity: 0, scale: 1 },
+    enter: { x: 0, y: motionTokens.offset.loginLift, opacity: 0, scale: 0.982 },
+    exit: { x: 0, y: 0, opacity: 0, scale: 1.01 },
   },
   logout: {
-    enter: { x: 0, y: -6, opacity: 0, scale: 1 },
-    exit: { x: 0, y: motionTokens.offset.loginLift, opacity: 0, scale: 1 },
+    enter: { x: 0, y: 0, opacity: 0, scale: 1.01 },
+    exit: { x: 0, y: motionTokens.offset.loginLift, opacity: 0, scale: 0.985 },
   },
 };
 
@@ -255,7 +255,8 @@ export function getScreenZIndex(direction, entering) {
   if (
     direction === 'tabForward' ||
     direction === 'tabBackward' ||
-    direction === 'pop'
+    direction === 'pop' ||
+    direction === 'logout'
   ) {
     return 3;
   }

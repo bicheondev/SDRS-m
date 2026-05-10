@@ -41,19 +41,19 @@ function buildAnimation(animatedState, targetState, transition) {
         duration: durationMs,
         easing,
         toValue: targetState.opacity,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(animatedState.translateY, {
         duration: durationMs,
         easing,
         toValue: targetState.y ?? 0,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(animatedState.scale, {
         duration: durationMs,
         easing,
         toValue: targetState.scale ?? 1,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ],
     { stopTogether: true },
@@ -220,6 +220,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   screenHidden: {
-    display: 'none',
+    visibility: 'hidden',
   },
 });

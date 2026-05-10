@@ -19,7 +19,7 @@ function AppShell() {
   const theme = themes[resolvedColorMode] ?? themes.light;
   const barStyle = resolvedColorMode === 'dark' ? 'light-content' : 'dark-content';
 
-  const [fontsLoaded, fontError] = useFonts({
+  const [fontsLoaded] = useFonts({
     'Pretendard GOV Variable': require('../assets/fonts/PretendardGOV-Regular.otf'),
     'PretendardGOV-Regular': require('../assets/fonts/PretendardGOV-Regular.otf'),
     'PretendardGOV-Medium': require('../assets/fonts/PretendardGOV-Medium.otf'),
@@ -35,7 +35,7 @@ function AppShell() {
   // Wait for both fonts and the persisted preference hydration before rendering
   // the tree. AsyncStorage usually resolves before fonts finish unpacking, so this
   // adds no extra splash latency; it just guarantees zero flash of unstyled theme.
-  const ready = (fontsLoaded || fontError) && hydrated;
+  const ready = fontsLoaded && hydrated;
 
   if (!ready) {
     return (

@@ -13,7 +13,7 @@ import {
   Vibration,
   View,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { BlurTargetView, BlurView } from 'expo-blur';
 import Animated, {
   Easing,
   interpolateColor,
@@ -740,12 +740,13 @@ function ManageSubpageTopBar({ saveActive = false, title, onAdd, onBack, onSave 
               onPress={onAdd}
               pressGuideColor="var(--slate-50)"
               pressGuideVariant="icon"
-              style={(state) => getPressableStyle(state, 'icon', styles.iconButton)}
+              style={(state) => getPressableStyle(state, 'icon', styles.addIconButton)}
             >
               <AppIcon
                 name="add"
-                preset="plus"
-                style={styles.iconSlot24}
+                glyphSize={30}
+                slotSize={30}
+                style={styles.addIconSlot}
                 tone="accent"
                 weight={700}
               />
@@ -779,7 +780,11 @@ function ManageSearchBar({ onChange, onClear, placeholder = '검색', value = ''
     <View
       style={[
         styles.manageSearchBarShell,
-        { bottom: bottomInset },
+        {
+          bottom: 0,
+          height: 64 + bottomInset,
+          minHeight: 64 + bottomInset,
+        },
       ]}
     >
       <View style={styles.manageSearchBar}>
@@ -1569,7 +1574,7 @@ function ManageAlertModalPresence({ visible, onCancel, onConfirm, ...modalProps 
   );
 }
 
-function ManageSavedToast({ message, onDismiss, visible = true }) {
+function ManageSavedToast({ blurTargetRef, message, onDismiss, visible = true }) {
   const { resolvedColorMode } = useTheme();
   const isDark = resolvedColorMode === 'dark';
   const insets = useSafeAreaInsets();
@@ -1590,9 +1595,20 @@ function ManageSavedToast({ message, onDismiss, visible = true }) {
   const toastShadowColor = isDark ? '#000000' : '#475569';
   const toastSurfaceColor = isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(241, 245, 249, 0.5)';
   const ToastBlurSurface = Platform.OS === 'web' ? View : BlurView;
+  const canTargetBlur = Platform.OS !== 'web' && blurTargetRef;
   const toastBlurProps = Platform.OS === 'web'
     ? {}
-    : { intensity: 40, tint: isDark ? 'dark' : 'default' };
+    : {
+        ...(canTargetBlur
+          ? {
+              blurMethod: 'dimezisBlurView',
+              blurReductionFactor: 1.5,
+              blurTarget: blurTargetRef,
+            }
+          : {}),
+        intensity: 40,
+        tint: isDark ? 'dark' : 'default',
+      };
   const dragDistanceRef = useRef(0);
   const draggingRef = useRef(false);
   const dismissFrameRef = useRef(null);
@@ -1786,7 +1802,7 @@ function ManageSavedToast({ message, onDismiss, visible = true }) {
   );
 }
 
-function ManageSavedToastPresence({ toast, onDismiss }) {
+function ManageSavedToastPresence({ blurTargetRef, toast, onDismiss }) {
   const reducedMotion = useReducedMotionSafe();
   const closeTimerRef = useRef(null);
   const [renderedToast, setRenderedToast] = useState(toast);
@@ -1828,6 +1844,7 @@ function ManageSavedToastPresence({ toast, onDismiss }) {
 
   return (
     <ManageSavedToast
+      blurTargetRef={blurTargetRef}
       key={renderedToast.id}
       message={renderedToast.message}
       onDismiss={onDismiss}
@@ -1883,10 +1900,35 @@ export function ManageShipEditPage({
   const removalTimerRef = useRef(new Map());
   const settleFrameRef = useRef(null);
   const scrollOffsetRef = useRef(0);
+  const toastBlurTargetRef = useRef(null);
   const viewportHeightRef = useRef(0);
   const [recentlyAddedCardId, setRecentlyAddedCardId] = useState(null);
   const [dragState, setDragState] = useState(null);
   const [removingCards, setRemovingCards] = useState(() => new Map());
+  const [toastBlurTargetReady, setToastBlurTargetReady] = useState(false);
+  const shouldUseToastBlurTarget = Platform.OS !== 'web';
+  const ToastBlurTargetView = shouldUseToastBlurTarget ? BlurTargetView : View;
+  const activeToastBlurTargetRef = shouldUseToastBlurTarget && toastBlurTargetReady
+    ? toastBlurTargetRef
+    : null;
+
+  const setToastBlurTargetNode = useCallback((node) => {
+    toastBlurTargetRef.current = node;
+
+    if (!shouldUseToastBlurTarget) {
+      return;
+    }
+
+    if (!node) {
+      setToastBlurTargetReady(false);
+    }
+  }, [shouldUseToastBlurTarget]);
+
+  const handleToastBlurTargetLayout = useCallback(() => {
+    if (shouldUseToastBlurTarget && toastBlurTargetRef.current) {
+      setToastBlurTargetReady(true);
+    }
+  }, [shouldUseToastBlurTarget]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -2688,71 +2730,113 @@ export function ManageShipEditPage({
         onSave={dirty ? handleSave : undefined}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.manageEditContentBody}
-        onContentSizeChange={(_, height) => {
-          contentSizeHeightRef.current = height;
-        }}
-        onLayout={(event) => {
-          viewportHeightRef.current = event.nativeEvent.layout.height;
-          contentTopRef.current = event.nativeEvent.layout.y;
-          requestAnimationFrame(measureScrollViewport);
-        }}
-        onScroll={handleScroll}
-        ref={contentRefCallback}
-        scrollEventThrottle={16}
-        scrollEnabled={!dragState || Boolean(dragState.settling)}
-        showsVerticalScrollIndicator
-        style={[
-          styles.manageEditContent,
-          WEB_BACKDROP_SCROLL_STYLE,
-          { marginBottom: 64 + bottomInset },
-        ]}
+      <ToastBlurTargetView
+        onLayout={handleToastBlurTargetLayout}
+        ref={setToastBlurTargetNode}
+        style={styles.manageEditBlurTarget}
       >
-        {reorderEnabled ? (
-          <View style={styles.manageEditReorderList}>
-            {cards.map((card, index) => {
-              const isActiveDragCard = dragState?.cardId === card.id;
-              const isReorderSettling = Boolean(dragState?.settling);
-              const isSettlingDraggedCard = Boolean(isActiveDragCard && isReorderSettling);
-              const isDragging = Boolean(isActiveDragCard && !isReorderSettling);
+        <ScrollView
+          contentContainerStyle={styles.manageEditContentBody}
+          onContentSizeChange={(_, height) => {
+            contentSizeHeightRef.current = height;
+          }}
+          onLayout={(event) => {
+            viewportHeightRef.current = event.nativeEvent.layout.height;
+            contentTopRef.current = event.nativeEvent.layout.y;
+            requestAnimationFrame(measureScrollViewport);
+          }}
+          onScroll={handleScroll}
+          ref={contentRefCallback}
+          scrollEventThrottle={16}
+          scrollEnabled={!dragState || Boolean(dragState.settling)}
+          showsVerticalScrollIndicator
+          style={[
+            styles.manageEditContent,
+            WEB_BACKDROP_SCROLL_STYLE,
+            { marginBottom: 64 + bottomInset },
+          ]}
+        >
+          {reorderEnabled ? (
+            <View style={styles.manageEditReorderList}>
+              {cards.map((card, index) => {
+                const isActiveDragCard = dragState?.cardId === card.id;
+                const isReorderSettling = Boolean(dragState?.settling);
+                const isSettlingDraggedCard = Boolean(isActiveDragCard && isReorderSettling);
+                const isDragging = Boolean(isActiveDragCard && !isReorderSettling);
+                const removalState = removingCards.get(card.id);
+                const remainingIndex = cardsAfterRemovalsIndexById.get(card.id) ?? -1;
+                const showDivider = removalState
+                  ? Boolean(removalState.showDivider)
+                  : remainingIndex >= 0 && remainingIndex < cardsAfterRemovals.length - 1;
+                const settleOffset = dragState?.settleOffsets?.[card.id] ?? 0;
+                const dragOffset = isActiveDragCard
+                  ? (isReorderSettling ? settleOffset : (dragState.offsetY ?? 0))
+                  : 0;
+                const shiftOffset = isReorderSettling
+                  ? (isActiveDragCard ? 0 : settleOffset)
+                  : getReorderShiftOffset(
+                      card.id,
+                      cards,
+                      itemLayoutsRef.current,
+                      dragState,
+                    );
+
+                return (
+                  <ManageShipReorderItem
+                    key={card.id}
+                    card={card}
+                    dragOffset={dragOffset}
+                    itemRef={setItemRef(card.id)}
+                    isDragging={isDragging}
+                    isEntering={card.id === recentlyAddedCardId}
+                    isReorderActive={Boolean(dragState)}
+                    isSettling={isReorderSettling}
+                    isSettlingDraggedCard={isSettlingDraggedCard}
+                    originalCard={originalCardsById.get(card.id)}
+                    removalState={removalState}
+                    shiftOffset={shiftOffset}
+                    showDivider={showDivider}
+                    onDelete={handleDeleteRequest}
+                    onDragEnd={handleDragEnd}
+                    onDragMove={handleDragMove}
+                    onDragStart={handleDragStart}
+                    onFieldChange={onFieldChange}
+                    onImageChange={onImageChange}
+                    onItemLayout={(event) => {
+                      if (removalState) {
+                        return;
+                      }
+
+                      const nextLayout = {
+                        ...(itemLayoutsRef.current.get(card.id) ?? {}),
+                        height: event.nativeEvent.layout.height,
+                        y: event.nativeEvent.layout.y,
+                      };
+
+                      itemLayoutsRef.current.set(card.id, nextLayout);
+                    }}
+                  />
+                );
+              })}
+            </View>
+          ) : (
+            visibleCards.map((card, index) => {
               const removalState = removingCards.get(card.id);
-              const remainingIndex = cardsAfterRemovalsIndexById.get(card.id) ?? -1;
+              const remainingIndex = visibleCardsAfterRemovalsIndexById.get(card.id) ?? -1;
               const showDivider = removalState
                 ? Boolean(removalState.showDivider)
-                : remainingIndex >= 0 && remainingIndex < cardsAfterRemovals.length - 1;
-              const settleOffset = dragState?.settleOffsets?.[card.id] ?? 0;
-              const dragOffset = isActiveDragCard
-                ? (isReorderSettling ? settleOffset : (dragState.offsetY ?? 0))
-                : 0;
-              const shiftOffset = isReorderSettling
-                ? (isActiveDragCard ? 0 : settleOffset)
-                : getReorderShiftOffset(
-                    card.id,
-                    cards,
-                    itemLayoutsRef.current,
-                    dragState,
-                  );
+                : remainingIndex >= 0 && remainingIndex < visibleCardsAfterRemovals.length - 1;
 
               return (
-                <ManageShipReorderItem
+                <ManageShipStaticItem
                   key={card.id}
                   card={card}
-                  dragOffset={dragOffset}
                   itemRef={setItemRef(card.id)}
-                  isDragging={isDragging}
                   isEntering={card.id === recentlyAddedCardId}
-                  isReorderActive={Boolean(dragState)}
-                  isSettling={isReorderSettling}
-                  isSettlingDraggedCard={isSettlingDraggedCard}
                   originalCard={originalCardsById.get(card.id)}
                   removalState={removalState}
-                  shiftOffset={shiftOffset}
                   showDivider={showDivider}
                   onDelete={handleDeleteRequest}
-                  onDragEnd={handleDragEnd}
-                  onDragMove={handleDragMove}
-                  onDragStart={handleDragStart}
                   onFieldChange={onFieldChange}
                   onImageChange={onImageChange}
                   onItemLayout={(event) => {
@@ -2770,50 +2854,18 @@ export function ManageShipEditPage({
                   }}
                 />
               );
-            })}
-          </View>
-        ) : (
-          visibleCards.map((card, index) => {
-            const removalState = removingCards.get(card.id);
-            const remainingIndex = visibleCardsAfterRemovalsIndexById.get(card.id) ?? -1;
-            const showDivider = removalState
-              ? Boolean(removalState.showDivider)
-              : remainingIndex >= 0 && remainingIndex < visibleCardsAfterRemovals.length - 1;
+            })
+          )}
+        </ScrollView>
 
-            return (
-              <ManageShipStaticItem
-                key={card.id}
-                card={card}
-                itemRef={setItemRef(card.id)}
-                isEntering={card.id === recentlyAddedCardId}
-                originalCard={originalCardsById.get(card.id)}
-                removalState={removalState}
-                showDivider={showDivider}
-                onDelete={handleDeleteRequest}
-                onFieldChange={onFieldChange}
-                onImageChange={onImageChange}
-                onItemLayout={(event) => {
-                  if (removalState) {
-                    return;
-                  }
+        <ManageSearchBar value={searchQuery} onChange={onSearchChange} onClear={onSearchClear} />
+      </ToastBlurTargetView>
 
-                  const nextLayout = {
-                    ...(itemLayoutsRef.current.get(card.id) ?? {}),
-                    height: event.nativeEvent.layout.height,
-                    y: event.nativeEvent.layout.y,
-                  };
-
-                  itemLayoutsRef.current.set(card.id, nextLayout);
-                }}
-              />
-            );
-          })
-        )}
-      </ScrollView>
-
-      <ManageSearchBar value={searchQuery} onChange={onSearchChange} onClear={onSearchClear} />
-
-      <ManageSavedToastPresence toast={toast} onDismiss={onDismissToast} />
+      <ManageSavedToastPresence
+        blurTargetRef={activeToastBlurTargetRef}
+        toast={toast}
+        onDismiss={onDismissToast}
+      />
       <ManageAlertModalPresence
         visible={showDiscardModal}
         onCancel={onDismissDiscard}
@@ -2841,8 +2893,18 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   iconButton: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addIconButton: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addIconSlot: {
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2893,6 +2955,11 @@ const styles = StyleSheet.create({
     minHeight: 0,
     marginTop: 28,
     marginBottom: 64,
+  },
+  manageEditBlurTarget: {
+    position: 'relative',
+    flex: 1,
+    minHeight: 0,
   },
   manageEditContentBody: {
     display: 'flex',

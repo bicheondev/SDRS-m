@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { BlurView } from 'expo-blur';
+import { BlurTargetView, BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,7 +21,7 @@ import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe.js';
 import { measureNodeInWindow } from '../../utils/layout.js';
 import { keepAllWordBreakText } from '../../utils/text.js';
 import { resolveCssVariableString } from '../../theme.js';
-import { TopBar } from './DatabaseTopBars.jsx';
+import { FiltersRow, TopBar } from './DatabaseTopBars.jsx';
 
 const FILTER_COLUMN_TOP = 122;
 const FILTER_COLUMN_EDGE = 18;
@@ -117,6 +117,7 @@ export function FilterScreen({
   const [columnLayoutReady, setColumnLayoutReady] = useState(false);
   const reducedMotion = useReducedMotionSafe();
   const shouldUseBlurTarget = Platform.OS !== 'web';
+  const topBarBlurTargetRef = useRef(null);
   const widthAnimationFrameRef = useRef(null);
   const widthPhaseRef = useRef('closed');
   const columnLayoutReadyRef = useRef(false);
@@ -151,6 +152,11 @@ export function FilterScreen({
   const activeBlurTargetRef = shouldUseBlurTarget && blurTargetRef
     ? blurTargetRef
     : null;
+  const [topBarBlurTargetReady, setTopBarBlurTargetReady] = useState(false);
+  const TopBarBlurTargetView = shouldUseBlurTarget ? BlurTargetView : View;
+  const activeTopBarBlurTargetRef = shouldUseBlurTarget && topBarBlurTargetReady
+    ? topBarBlurTargetRef
+    : null;
   const blurModeKey = activeBlurTargetRef ? 'targeted' : 'fallback';
   const nativeBlurProps = activeBlurTargetRef
     ? {
@@ -159,6 +165,15 @@ export function FilterScreen({
         blurTarget: activeBlurTargetRef,
       }
     : null;
+  const topBarBlurModeKey = activeTopBarBlurTargetRef ? 'targeted' : 'fallback';
+  const topBarNativeBlurProps = activeTopBarBlurTargetRef
+    ? {
+        blurMethod: 'dimezisBlurView',
+        blurReductionFactor: 1.25,
+        blurTarget: activeTopBarBlurTargetRef,
+      }
+    : null;
+  const topBarBlurHeight = topInset + 108;
   const panelPointerEventsStyle = Platform.OS === 'web'
     ? styles.pointerEventsNone
     : styles.pointerEventsBoxNone;
@@ -172,6 +187,9 @@ export function FilterScreen({
   const panelProgress = useSharedValue(phase === 'closing' ? 1 : 0);
   const panelTranslateY = useSharedValue(phase === 'closing' ? 0 : motionTokens.offset.sheetLift);
   const layerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: layerProgress.value,
+  }));
+  const filterControlsAnimatedStyle = useAnimatedStyle(() => ({
     opacity: layerProgress.value,
   }));
   const panelAnimatedStyle = useAnimatedStyle(() => ({
@@ -189,6 +207,24 @@ export function FilterScreen({
     top: columnTopValue.value,
     left: vesselTypeColumnLeftValue.value,
   }));
+
+  const setTopBarBlurTargetNode = useCallback((node) => {
+    topBarBlurTargetRef.current = node;
+
+    if (!shouldUseBlurTarget) {
+      return;
+    }
+
+    if (!node) {
+      setTopBarBlurTargetReady(false);
+    }
+  }, [shouldUseBlurTarget]);
+
+  const handleTopBarBlurTargetLayout = useCallback(() => {
+    if (shouldUseBlurTarget && topBarBlurTargetRef.current) {
+      setTopBarBlurTargetReady(true);
+    }
+  }, [shouldUseBlurTarget]);
 
   useEffect(
     () => () => {
@@ -458,23 +494,29 @@ export function FilterScreen({
 
   return (
     <View style={[styles.layer, styles.filterScreen]}>
-      <TopBar
-        blurTargetRef={activeBlurTargetRef}
-        blurViewOptions
-        compact={compact}
-        harborFilter={harborFilter}
-        harborButtonRef={harborButtonRef}
-        harborLabelWidth={displayedHarborLabelWidth || undefined}
-        inFilterSheet
-        onHarborFilterOpen={handleClose}
-        onSearchOpen={onSearchOpen}
-        onToggleCompact={onToggleCompact}
-        onVesselTypeFilterOpen={handleClose}
-        openState={filterOpenState}
-        vesselTypeFilter={vesselTypeFilter}
-        vesselTypeButtonRef={vesselTypeButtonRef}
-        vesselTypeLabelWidth={displayedVesselTypeLabelWidth || undefined}
-      />
+      <TopBarBlurTargetView
+        onLayout={handleTopBarBlurTargetLayout}
+        ref={setTopBarBlurTargetNode}
+        style={[styles.topBarBlurTarget, { height: topBarBlurHeight }]}
+      >
+        <TopBar
+          blurTargetRef={activeBlurTargetRef}
+          blurViewOptions
+          compact={compact}
+          harborFilter={harborFilter}
+          harborButtonRef={harborButtonRef}
+          harborLabelWidth={displayedHarborLabelWidth || undefined}
+          inFilterSheet
+          onHarborFilterOpen={handleClose}
+          onSearchOpen={onSearchOpen}
+          onToggleCompact={onToggleCompact}
+          onVesselTypeFilterOpen={handleClose}
+          openState={filterOpenState}
+          vesselTypeFilter={vesselTypeFilter}
+          vesselTypeButtonRef={vesselTypeButtonRef}
+          vesselTypeLabelWidth={displayedVesselTypeLabelWidth || undefined}
+        />
+      </TopBarBlurTargetView>
 
       <Animated.View style={[styles.overlay, layerAnimatedStyle]}>
         <BlurView
@@ -484,6 +526,19 @@ export function FilterScreen({
           style={[styles.backdropBlur, styles.pointerEventsNone]}
           tint={isDark ? 'dark' : 'default'}
         />
+        {topBarNativeBlurProps ? (
+          <BlurView
+            key={`filter-topbar-backdrop-${topBarBlurModeKey}`}
+            {...topBarNativeBlurProps}
+            intensity={Platform.OS === 'android' ? 44 : 72}
+            style={[
+              styles.topBarBackdropBlur,
+              styles.pointerEventsNone,
+              { height: topBarBlurHeight },
+            ]}
+            tint={isDark ? 'dark' : 'default'}
+          />
+        ) : null}
         <LinearGradient
           colors={[backdropTopColor, backdropMidColor]}
           locations={[0, 1]}
@@ -494,6 +549,32 @@ export function FilterScreen({
           accessibilityRole="button"
           onPress={handleClose}
           style={[styles.backdrop, { backgroundColor: backdropBaseColor }]}
+        />
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.filterControlsOverlay,
+          { top: topInset + 64 },
+          filterControlsAnimatedStyle,
+        ]}
+      >
+        <FiltersRow
+          compact={compact}
+          containerStyle={styles.filterControlsOverlayRow}
+          harborLabel={harborFilter}
+          harborButtonRef={harborButtonRef}
+          harborLabelWidth={displayedHarborLabelWidth || undefined}
+          inFilterSheet
+          onHarborClick={handleClose}
+          onToggleCompact={onToggleCompact}
+          onVesselTypeClick={handleClose}
+          openState={filterOpenState}
+          showFrost={false}
+          showViewOptions={false}
+          vesselTypeLabel={vesselTypeFilter}
+          vesselTypeButtonRef={vesselTypeButtonRef}
+          vesselTypeLabelWidth={displayedVesselTypeLabelWidth || undefined}
         />
       </Animated.View>
 
@@ -681,6 +762,30 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
+  },
+  topBarBlurTarget: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    left: 0,
+    zIndex: 1,
+    overflow: 'hidden',
+  },
+  topBarBackdropBlur: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    left: 0,
+  },
+  filterControlsOverlay: {
+    position: 'absolute',
+    right: 0,
+    left: 0,
+    zIndex: 210,
+    elevation: 0,
+  },
+  filterControlsOverlayRow: {
+    backgroundColor: 'transparent',
   },
   bottomTabUnderOverlay: {
     zIndex: 2,

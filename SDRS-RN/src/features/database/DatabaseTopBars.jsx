@@ -135,18 +135,6 @@ function FadingBlur({ backgroundImage, blurModeKey, intensity, mode = 'top', nat
     );
   }
 
-  if (IS_ANDROID) {
-    return (
-      <BlurView
-        key={`android-${mode}-${blurModeKey}`}
-        {...blurProps}
-        intensity={intensity}
-        style={[styles.blurFadeStack, styles.pointerEventsNone]}
-        tint={tint}
-      />
-    );
-  }
-
   return (
     <View style={[styles.blurFadeStack, styles.pointerEventsNone]}>
       {segments.map(({ key, ...segmentStyle }) => (
@@ -191,19 +179,21 @@ function FrostBackground({ blurTargetRef, filterSheet = false, topInset = 0 }) {
         <FadingBlur
           backgroundImage=""
           blurModeKey={blurModeKey}
-          intensity={52}
+          intensity={54}
           nativeBlurProps={nativeBlurProps}
           tint={blurTint}
         />
         <LinearGradient
           colors={[
             colorWithAlpha(screenColor, 1),
-            colorWithAlpha(screenColor, 1),
-            colorWithAlpha(screenColor, 0.94),
-            colorWithAlpha(screenColor, 0.62),
+            colorWithAlpha(screenColor, 0.98),
+            colorWithAlpha(screenColor, 0.9),
+            colorWithAlpha(screenColor, 0.68),
+            colorWithAlpha(screenColor, 0.32),
+            colorWithAlpha(screenColor, 0.08),
             colorWithAlpha(screenColor, 0),
           ]}
-          locations={[0, 0.24, 0.48, 0.68, 1]}
+          locations={[0, 0.18, 0.36, 0.54, 0.72, 0.88, 1]}
           style={[styles.frostGradient, styles.pointerEventsNone]}
         />
       </View>
@@ -432,9 +422,10 @@ function FilterButtonLabel({ children, numberOfLines = 1, onLayout, width }) {
   );
 }
 
-function FiltersRow({
+export function FiltersRow({
   blurViewOptions = false,
   compact,
+  containerStyle,
   harborLabel = '전체 항포구',
   harborButtonRef,
   harborLabelWidth,
@@ -445,6 +436,9 @@ function FiltersRow({
   onVesselTypeClick,
   onVesselTypeLabelLayout,
   openState = 'closed',
+  showFilterGroup = true,
+  showFrost = true,
+  showViewOptions = true,
   vesselTypeLabel = '전체 선박',
   vesselTypeButtonRef,
   vesselTypeLabelWidth,
@@ -465,16 +459,24 @@ function FiltersRow({
 
   return (
     <View
-      style={[styles.filters, inFilterSheet && styles.filtersInSheet]}
+      style={[
+        styles.filters,
+        inFilterSheet && styles.filtersInSheet,
+        !showFilterGroup && showViewOptions && styles.filtersViewOnly,
+        containerStyle,
+      ]}
     >
-      <View
-        style={[
-          styles.filtersFrost,
-          WEB_FILTERS_FROST_STYLE,
-          filterFrostWebStyle,
-          styles.pointerEventsNone,
-        ]}
-      />
+      {showFrost ? (
+        <View
+          style={[
+            styles.filtersFrost,
+            WEB_FILTERS_FROST_STYLE,
+            filterFrostWebStyle,
+            styles.pointerEventsNone,
+          ]}
+        />
+      ) : null}
+      {showFilterGroup ? (
       <View style={[styles.filterGroup, inFilterSheet && styles.filterGroupInSheet]}>
         <InteractivePressable
           accessibilityRole="button"
@@ -532,7 +534,9 @@ function FiltersRow({
           />
         </InteractivePressable>
       </View>
+      ) : null}
 
+      {showViewOptions ? (
       <View
         accessibilityLabel="보기 옵션"
         style={[
@@ -580,6 +584,7 @@ function FiltersRow({
           />
         </InteractivePressable>
       </View>
+      ) : null}
     </View>
   );
 }
@@ -633,7 +638,6 @@ export const TopBar = memo(function TopBar({
     >
       <FrostBackground
         blurTargetRef={blurTargetRef}
-        filterSheet={inFilterSheet}
         topInset={topInset}
       />
 
@@ -679,6 +683,7 @@ export const TopBar = memo(function TopBar({
         onVesselTypeClick={onVesselTypeFilterOpen}
         onVesselTypeLabelLayout={onVesselTypeLabelLayout}
         openState={openState}
+        showFilterGroup={!inFilterSheet}
         vesselTypeLabel={vesselTypeFilter}
         vesselTypeButtonRef={vesselTypeButtonRef}
         vesselTypeLabelWidth={vesselTypeLabelWidth}
@@ -828,7 +833,7 @@ const styles = StyleSheet.create({
   },
   topBarInSheet: {
     height: 108,
-    zIndex: 4,
+    zIndex: 1,
   },
   frostLayer: {
     position: 'absolute',
@@ -1012,6 +1017,9 @@ const styles = StyleSheet.create({
   filtersInSheet: {
     zIndex: 3,
     paddingBottom: 0,
+  },
+  filtersViewOnly: {
+    justifyContent: 'flex-end',
   },
   filterGroup: {
     position: 'relative',
