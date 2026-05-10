@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -20,6 +20,21 @@ import { motionDurationsMs, motionTokens } from '../../motion.js';
 import { pickFile } from '../../services/filePicker.js';
 
 const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
+const MODAL_HORIZONTAL_MARGIN = 25;
+const MODAL_CONTENT_WIDTH = 300;
+const MODAL_PADDING = 20;
+const MODAL_TOTAL_WIDTH = MODAL_CONTENT_WIDTH + MODAL_PADDING * 2;
+
+function keepAllWordBreakText(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  return value
+    .split(/(\s+)/)
+    .map((token) => (/\s+/.test(token) ? token : Array.from(token).join('\u2060')))
+    .join('');
+}
 
 function getRowPressableStyle(pressed, focused) {
   return [
@@ -164,7 +179,12 @@ function ManageAlertModal({
   title = '경고 사항',
 }) {
   const reducedMotion = useReducedMotionSafe();
+  const { width: windowWidth } = useWindowDimensions();
   const modalAnimatedStyles = useModalAnimatedStyles(reducedMotion);
+  const modalCardContentWidth = Math.max(
+    0,
+    Math.min(MODAL_TOTAL_WIDTH, windowWidth - MODAL_HORIZONTAL_MARGIN * 2) - MODAL_PADDING * 2,
+  );
 
   return (
     <View style={styles.modalShell}>
@@ -177,11 +197,12 @@ function ManageAlertModal({
       <Animated.View
         style={[
           styles.modalCard,
+          { width: modalCardContentWidth },
           modalAnimatedStyles.cardStyle,
         ]}
       >
-        <Text style={styles.modalTitle}>{title}</Text>
-        <Text style={styles.modalCopy}>{copy}</Text>
+        <Text style={styles.modalTitle}>{keepAllWordBreakText(title)}</Text>
+        <Text style={styles.modalCopy}>{keepAllWordBreakText(copy)}</Text>
         <View style={styles.modalActions}>
           {!hideCancel ? (
             <InteractivePressable
@@ -194,7 +215,9 @@ function ManageAlertModal({
                 getPressScaleStyle(pressed, 'button'),
               ]}
             >
-              <Text style={styles.modalButtonGhostLabel}>{cancelLabel}</Text>
+              <Text style={styles.modalButtonGhostLabel}>
+                {keepAllWordBreakText(cancelLabel)}
+              </Text>
             </InteractivePressable>
           ) : null}
           <InteractivePressable
@@ -207,7 +230,7 @@ function ManageAlertModal({
               getPressScaleStyle(pressed, 'button'),
             ]}
           >
-            <Text style={styles.modalButtonLabel}>{confirmLabel}</Text>
+            <Text style={styles.modalButtonLabel}>{keepAllWordBreakText(confirmLabel)}</Text>
           </InteractivePressable>
         </View>
       </Animated.View>
@@ -223,7 +246,12 @@ function ManageShipImportModal({
   replaceSameRegistration = true,
 }) {
   const reducedMotion = useReducedMotionSafe();
+  const { width: windowWidth } = useWindowDimensions();
   const modalAnimatedStyles = useModalAnimatedStyles(reducedMotion);
+  const modalCardContentWidth = Math.max(
+    0,
+    Math.min(MODAL_TOTAL_WIDTH, windowWidth - MODAL_HORIZONTAL_MARGIN * 2) - MODAL_PADDING * 2,
+  );
 
   return (
     <View style={styles.modalShell}>
@@ -243,13 +271,16 @@ function ManageShipImportModal({
       <Animated.View
         style={[
           styles.modalCard,
+          { width: modalCardContentWidth },
           modalAnimatedStyles.cardStyle,
         ]}
       >
         <View style={styles.importContent}>
           <View style={styles.importHeader}>
-            <Text style={styles.modalTitle}>선박 DB 불러오기</Text>
-            <Text style={styles.modalCopy}>기존에 있던 데이터는 삭제할까요?</Text>
+            <Text style={styles.modalTitle}>{keepAllWordBreakText('선박 DB 불러오기')}</Text>
+            <Text style={styles.modalCopy}>
+              {keepAllWordBreakText('기존에 있던 데이터는 삭제할까요?')}
+            </Text>
           </View>
 
           <Pressable
@@ -272,7 +303,9 @@ function ManageShipImportModal({
                 />
               ) : null}
             </View>
-            <Text style={styles.importCheckboxLabel}>어선정보가 같은 어선은 대체하기</Text>
+            <Text style={styles.importCheckboxLabel}>
+              {keepAllWordBreakText('어선정보가 같은 어선은 대체하기')}
+            </Text>
           </Pressable>
         </View>
 
@@ -287,7 +320,9 @@ function ManageShipImportModal({
               getPressScaleStyle(pressed, 'button'),
             ]}
           >
-            <Text style={styles.importOverwriteLabel}>기존 데이터 삭제</Text>
+            <Text style={styles.importOverwriteLabel}>
+              {keepAllWordBreakText('기존 데이터 삭제')}
+            </Text>
           </InteractivePressable>
           <InteractivePressable
             accessibilityRole="button"
@@ -299,7 +334,9 @@ function ManageShipImportModal({
               getPressScaleStyle(pressed, 'button'),
             ]}
           >
-            <Text style={styles.modalButtonLabel}>기존 데이터 유지</Text>
+            <Text style={styles.modalButtonLabel}>
+              {keepAllWordBreakText('기존 데이터 유지')}
+            </Text>
           </InteractivePressable>
         </View>
       </Animated.View>
@@ -483,7 +520,7 @@ const styles = StyleSheet.create({
     zIndex: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 25,
+    paddingHorizontal: MODAL_HORIZONTAL_MARGIN,
   },
   modalScrim: {
     position: 'absolute',
@@ -510,8 +547,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     position: 'relative',
-    width: '100%',
-    maxWidth: 340,
+    maxWidth: MODAL_CONTENT_WIDTH,
     borderRadius: 20,
     backgroundColor: 'var(--color-bg-modal)',
     shadowColor: 'var(--slate-700)',
@@ -519,7 +555,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 28,
     elevation: 12,
-    padding: 20,
+    padding: MODAL_PADDING,
   },
   modalTitle: {
     color: 'var(--color-text-primary)',
