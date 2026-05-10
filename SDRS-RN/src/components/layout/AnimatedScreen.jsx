@@ -92,6 +92,7 @@ export default function AnimatedScreen({
   const { width, height } = useWindowDimensions();
 
   const [interactive, setInteractive] = useState(isActive);
+  const [rendered, setRendered] = useState(isActive);
   const [zIndex, setZIndex] = useState(isActive ? 1 : 0);
 
   const opacity = useSharedValue(isActive ? visibleScreenState.opacity : hiddenScreenState.opacity);
@@ -115,6 +116,7 @@ export default function AnimatedScreen({
       scale.value = 1;
       overlayOpacity.value = 0;
       setInteractive(isActive);
+      setRendered(isActive);
       setZIndex(isActive ? 1 : 0);
       return undefined;
     }
@@ -144,6 +146,7 @@ export default function AnimatedScreen({
     const screenEasing = toEasing(screenTransition.ease);
     const overlayEasing = toEasing(overlayTransition.ease);
 
+    setRendered(true);
     setZIndex(getScreenZIndex(navDir, isActive));
     if (isActive) {
       setInteractive(true);
@@ -162,16 +165,19 @@ export default function AnimatedScreen({
       scale.value = toState.scale ?? 1;
       if (!isActive) {
         setInteractive(false);
+        setRendered(false);
         setZIndex(0);
       }
     } else {
       const onFinishedJS = () => {
         if (!isActive) {
           setInteractive(false);
+          setRendered(false);
           setZIndex(0);
           return;
         }
 
+        setRendered(true);
         setZIndex(1);
       };
 
@@ -242,10 +248,9 @@ export default function AnimatedScreen({
     previousActiveRef.current !== null && previousActiveRef.current !== isActive;
   const renderZIndex = hasExplicitTransitionRole
     ? getExplicitTransitionZIndex(navDir, isExplicitLeavingScreen, isExplicitEnteringScreen)
-    : isTransitionRender || isActive || interactive
+    : isTransitionRender || isActive || interactive || rendered
       ? getScreenZIndex(navDir, isActive)
       : zIndex;
-  const shouldRenderChildren = isActive || interactive || isTransitionRender;
 
   return (
     <Animated.View
@@ -260,7 +265,7 @@ export default function AnimatedScreen({
       ]}
     >
       <Animated.View style={[styles.overlay, styles.pointerEventsNone, overlayStyle]} />
-      {shouldRenderChildren ? <View style={styles.body}>{children}</View> : null}
+      {rendered ? <View style={styles.body}>{children}</View> : null}
     </Animated.View>
   );
 }
