@@ -30,6 +30,7 @@ const LOGIN_MEDIUM_FONT_FAMILY = 'PretendardGOV-Medium';
 const LOGIN_PLACEHOLDER_COLOR = '#94a3b8';
 const LOGIN_FORM_KEYBOARD_LIFT = 64;
 const ANDROID_BOTTOM_CHROME_FALLBACK = 24;
+const ANDROID_KEYBOARD_DOCK_CLEARANCE = 8;
 const WEB_LOGIN_FONT_RENDERING_STYLE = Platform.OS === 'web'
   ? { fontSynthesis: 'none' }
   : null;
@@ -69,7 +70,9 @@ export function RnwAuthScreen({
   const dockBottomInset = keyboardVisible
     ? 0
     : (Platform.OS === 'android' ? androidBottomChromeInset : bottomInset);
-  const dockBottomOffset = keyboardVisible ? keyboardHeight : 0;
+  const dockBottomOffset = keyboardVisible
+    ? keyboardHeight + (Platform.OS === 'android' ? ANDROID_KEYBOARD_DOCK_CLEARANCE : 0)
+    : 0;
   const usernameFocused = focusedField === 'username';
   const passwordFocused = focusedField === 'password';
   const inputBgColor = resolveCssVariableString('var(--color-bg-input)');
