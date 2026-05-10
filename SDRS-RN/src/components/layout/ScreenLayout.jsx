@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useTheme } from '../../ThemeContext.js';
 
@@ -32,6 +32,12 @@ export function AppScreenShell({ children, shellStyle, screenStyle }) {
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
   const screenWidth = getScreenWidthForViewport(viewportWidth);
   const screenHeight = viewportHeight;
+  const shellExtentStyle = Platform.OS === 'web'
+    ? { height: screenHeight, minHeight: screenHeight }
+    : { flex: 1, minHeight: 0 };
+  const screenExtentStyle = Platform.OS === 'web'
+    ? { height: screenHeight, minHeight: screenHeight }
+    : { flex: 1, minHeight: 0 };
 
   return (
     <View
@@ -39,11 +45,10 @@ export function AppScreenShell({ children, shellStyle, screenStyle }) {
         screenLayoutStyles.appShell,
         {
           width: viewportWidth,
-          height: viewportHeight,
-          minHeight: viewportHeight,
           padding: 0,
           justifyContent: 'flex-start',
         },
+        shellExtentStyle,
         shellStyle,
       ]}
     >
@@ -53,9 +58,8 @@ export function AppScreenShell({ children, shellStyle, screenStyle }) {
           screenLayoutStyles.phoneScreen,
           {
             width: screenWidth,
-            height: screenHeight,
-            minHeight: screenHeight,
           },
+          screenExtentStyle,
           screenStyle,
         ]}
       >

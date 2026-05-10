@@ -60,7 +60,7 @@ export function RnwAuthScreen({
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const phoneScreenLayoutStyle = { width, flex: 1, minHeight: 0 };
-  const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : undefined;
+  const keyboardBehavior = 'padding';
   const topInset = Math.max(insets.top, 0);
   const bottomInset = Math.max(insets.bottom, 0);
   const dockBottomInset = keyboardVisible ? 0 : bottomInset;
