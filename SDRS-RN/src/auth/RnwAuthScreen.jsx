@@ -31,8 +31,6 @@ const LOGIN_MEDIUM_FONT_FAMILY = 'PretendardGOV-Medium';
 const LOGIN_PLACEHOLDER_COLOR = '#94a3b8';
 const LOGIN_FORM_KEYBOARD_LIFT = 64;
 const ANDROID_BOTTOM_CHROME_FALLBACK = 24;
-const ANDROID_KEYBOARD_DOCK_CLEARANCE = 8;
-const IS_ANDROID = Platform.OS === 'android';
 const IS_WEB = Platform.OS === 'web';
 const ANIMATED_KEYBOARD_OPTIONS = {
   isStatusBarTranslucentAndroid: true,
@@ -138,12 +136,9 @@ export function RnwAuthScreen({
   }));
   const loginButtonDockAnimatedStyle = useAnimatedStyle(() => {
     const keyboardOffset = Math.max(0, animatedKeyboard.height.value);
-    const keyboardClearance = IS_ANDROID && keyboardOffset > 0
-      ? ANDROID_KEYBOARD_DOCK_CLEARANCE
-      : 0;
 
     return {
-      transform: [{ translateY: -(keyboardOffset + keyboardClearance) }],
+      transform: [{ translateY: -keyboardOffset }],
     };
   });
 
