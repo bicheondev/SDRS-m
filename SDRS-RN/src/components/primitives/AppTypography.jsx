@@ -20,6 +20,14 @@ const WEB_FONT_SMOOTHING_STYLE = Platform.OS === 'web'
       WebkitFontSmoothing: 'antialiased',
     }
   : null;
+const FONT_FEATURE_STYLE = Platform.select({
+  web: {
+    fontFeatureSettings: '"ss05"',
+  },
+  default: {
+    fontVariant: ['stylistic-five'],
+  },
+});
 const PRETENDARD_FONT_PATTERN = /Pretendard\s*GOV|PretendardGOV-/i;
 const NATIVE_PRETENDARD_FONT_FAMILIES = new Set([
   'PretendardGOV-Regular',
@@ -100,10 +108,12 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: APP_FONT_FAMILY,
     includeFontPadding: false,
+    ...FONT_FEATURE_STYLE,
   },
   textInput: {
     fontFamily: APP_FONT_FAMILY,
     includeFontPadding: false,
+    ...FONT_FEATURE_STYLE,
     textAlignVertical: 'center',
   },
 });

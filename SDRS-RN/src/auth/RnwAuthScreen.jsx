@@ -33,6 +33,14 @@ const LOGIN_FORM_KEYBOARD_LIFT = 64;
 const WEB_LOGIN_FONT_RENDERING_STYLE = Platform.OS === 'web'
   ? { fontSynthesis: 'none' }
   : null;
+const LOGIN_FONT_FEATURE_STYLE = Platform.select({
+  web: {
+    fontFeatureSettings: '"ss05"',
+  },
+  default: {
+    fontVariant: ['stylistic-five'],
+  },
+});
 
 export function RnwAuthScreen({
   focusedField,
@@ -385,6 +393,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '600',
     includeFontPadding: false,
+    ...LOGIN_FONT_FEATURE_STYLE,
   },
   loginTitleAccent: {
     color: 'var(--color-text-accent)',
@@ -424,6 +433,7 @@ const styles = StyleSheet.create({
     fontFamily: LOGIN_REGULAR_FONT_FAMILY,
     fontSize: 18,
     includeFontPadding: false,
+    ...LOGIN_FONT_FEATURE_STYLE,
   },
   loginInputFocused: {
     color: 'var(--color-text-accent)',
@@ -442,6 +452,7 @@ const styles = StyleSheet.create({
     fontFamily: LOGIN_REGULAR_FONT_FAMILY,
     fontSize: 18,
     includeFontPadding: false,
+    ...LOGIN_FONT_FEATURE_STYLE,
   },
   appVersion: {
     position: 'absolute',
@@ -453,6 +464,7 @@ const styles = StyleSheet.create({
     fontFamily: LOGIN_REGULAR_FONT_FAMILY,
     fontSize: 15,
     includeFontPadding: false,
+    ...LOGIN_FONT_FEATURE_STYLE,
     textAlign: 'center',
   },
   loginButton: {
@@ -498,6 +510,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '500',
     includeFontPadding: false,
+    ...LOGIN_FONT_FEATURE_STYLE,
   },
   loginButtonTextActive: {
     color: 'var(--color-text-on-accent)',
