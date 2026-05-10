@@ -80,6 +80,7 @@ export default function AnimatedScreen({
   children,
   currentScreen,
   fillMode = 'absolute',
+  keepMounted = false,
   navDir,
   reducedMotion = false,
   screenKey,
@@ -90,10 +91,12 @@ export default function AnimatedScreen({
   const isActive = currentScreen === screenKey;
   const previousActiveRef = useRef(null);
   const lastActiveChildrenRef = useRef(isActive ? children : null);
+  const transitionIdRef = useRef(0);
   const { width, height } = useWindowDimensions();
 
   const [interactive, setInteractive] = useState(isActive);
   const [rendered, setRendered] = useState(isActive);
+  const [transitioning, setTransitioning] = useState(false);
   const [zIndex, setZIndex] = useState(isActive ? 1 : 0);
 
   const opacity = useSharedValue(isActive ? visibleScreenState.opacity : hiddenScreenState.opacity);
@@ -122,6 +125,7 @@ export default function AnimatedScreen({
       overlayOpacity.value = 0;
       setInteractive(isActive);
       setRendered(isActive);
+      setTransitioning(false);
       setZIndex(isActive ? 1 : 0);
       return undefined;
     }
@@ -130,6 +134,8 @@ export default function AnimatedScreen({
       return undefined;
     }
     previousActiveRef.current = isActive;
+    const transitionId = transitionIdRef.current + 1;
+    transitionIdRef.current = transitionId;
 
     const phase = isActive ? 'enter' : 'exit';
     const fromState = isActive
@@ -152,6 +158,7 @@ export default function AnimatedScreen({
     const overlayEasing = toEasing(overlayTransition.ease);
 
     setRendered(true);
+    setTransitioning(true);
     setZIndex(getScreenZIndex(navDir, isActive));
     if (isActive) {
       setInteractive(true);
@@ -170,19 +177,28 @@ export default function AnimatedScreen({
       scale.value = toState.scale ?? 1;
       if (!isActive) {
         setInteractive(false);
-        setRendered(false);
+        setRendered(keepMounted);
+        setTransitioning(false);
         setZIndex(0);
+      } else {
+        setTransitioning(false);
       }
     } else {
-      const onFinishedJS = () => {
+      const onFinishedJS = (finishedTransitionId) => {
+        if (transitionIdRef.current !== finishedTransitionId) {
+          return;
+        }
+
         if (!isActive) {
           setInteractive(false);
-          setRendered(false);
+          setRendered(keepMounted);
+          setTransitioning(false);
           setZIndex(0);
           return;
         }
 
         setRendered(true);
+        setTransitioning(false);
         setZIndex(1);
       };
 
@@ -204,7 +220,7 @@ export default function AnimatedScreen({
         (finished) => {
           'worklet';
           if (finished) {
-            runOnJS(onFinishedJS)();
+            runOnJS(onFinishedJS)(transitionId);
           }
         },
       );
@@ -223,6 +239,7 @@ export default function AnimatedScreen({
   }, [
     height,
     isActive,
+    keepMounted,
     navDir,
     opacity,
     overlayOpacity,
@@ -253,10 +270,10 @@ export default function AnimatedScreen({
     previousActiveRef.current !== null && previousActiveRef.current !== isActive;
   const renderZIndex = hasExplicitTransitionRole
     ? getExplicitTransitionZIndex(navDir, isExplicitLeavingScreen, isExplicitEnteringScreen)
-    : isTransitionRender || isActive || interactive || rendered
+    : isTransitionRender || transitioning || isActive || interactive
       ? getScreenZIndex(navDir, isActive)
       : zIndex;
-  const renderedChildren = isActive ? children : lastActiveChildrenRef.current;
+  const renderedChildren = keepMounted || isActive ? children : lastActiveChildrenRef.current;
 
   return (
     <Animated.View

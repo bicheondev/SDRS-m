@@ -302,6 +302,7 @@ export default function RnwMainAppShell({
       <View style={styles.tabStack}>
         <AnimatedScreen
           fillMode="absolute"
+          keepMounted
           screenKey="db"
           currentScreen={appState.activeTab}
           navDir={appState.tabTransition}
@@ -341,6 +342,7 @@ export default function RnwMainAppShell({
 
         <AnimatedScreen
           fillMode="absolute"
+          keepMounted
           screenKey="manage"
           currentScreen={appState.activeTab}
           navDir={appState.tabTransition}
@@ -436,6 +438,7 @@ export default function RnwMainAppShell({
 
         <AnimatedScreen
           fillMode="absolute"
+          keepMounted
           screenKey="menu"
           currentScreen={appState.activeTab}
           navDir={appState.tabTransition}
