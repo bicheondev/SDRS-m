@@ -1,1 +1,1 @@
-export { downloadBlob } from '../platform/files.js';
+export { downloadBlob } from '../platform/fileDownload.js';

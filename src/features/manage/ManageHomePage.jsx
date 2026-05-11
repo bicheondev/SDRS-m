@@ -204,6 +204,36 @@ function ManageShipImportModal({
 }) {
   const reducedMotion = useReducedMotionSafe();
   const isPresented = useMountTransition(reducedMotion);
+  const [isClosing, setIsClosing] = useState(false);
+  const closeTimeoutRef = useRef(null);
+  const isVisible = isPresented && !isClosing;
+
+  useEffect(
+    () => () => {
+      if (closeTimeoutRef.current !== null) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+    },
+    [],
+  );
+
+  const handleDismiss = useCallback(() => {
+    if (isClosing) {
+      return;
+    }
+
+    if (reducedMotion) {
+      onDismiss?.();
+      return;
+    }
+
+    setIsClosing(true);
+    closeTimeoutRef.current = setTimeout(() => {
+      closeTimeoutRef.current = null;
+      onDismiss?.();
+    }, motionDurationsMs.normal);
+  }, [isClosing, onDismiss, reducedMotion]);
 
   return (
     <View className="manage-discard-modal">
@@ -211,10 +241,10 @@ function ManageShipImportModal({
         accessibilityLabel="선박 DB 불러오기 닫기"
         accessibilityRole="button"
         className="manage-discard-modal__scrim-button interaction-reset"
-        onPress={onDismiss}
+        onPress={handleDismiss}
         style={[
           {
-            opacity: isPresented ? 1 : 0,
+            opacity: isVisible ? 1 : 0,
             transitionDuration: `${motionDurationsMs.fast}ms`,
             transitionProperty: 'opacity',
             transitionTimingFunction: IOS_EASE,
@@ -225,10 +255,10 @@ function ManageShipImportModal({
         className="manage-discard-modal__card"
         style={[
           {
-            opacity: isPresented ? 1 : 0,
+            opacity: isVisible ? 1 : 0,
             transform: [
-              { translateY: reducedMotion || isPresented ? 0 : motionTokens.offset.modalLift },
-              { scale: reducedMotion || isPresented ? 1 : motionTokens.scale.modalEnter },
+              { translateY: reducedMotion || isVisible ? 0 : motionTokens.offset.modalLift },
+              { scale: reducedMotion || isVisible ? 1 : motionTokens.scale.modalEnter },
             ],
             transitionDuration: `${motionDurationsMs.normal}ms`,
             transitionProperty: 'opacity, transform',
@@ -250,18 +280,24 @@ function ManageShipImportModal({
           >
             <View
               className={joinClassNames(
-                'manage-ship-import-modal__checkbox-box',
-                replaceSameRegistration && 'manage-ship-import-modal__checkbox-box--checked',
+                'manage-ship-import-modal__checkbox-icon-wrap',
+                replaceSameRegistration
+                  ? 'manage-ship-import-modal__checkbox-icon-wrap--checked'
+                  : 'manage-ship-import-modal__checkbox-icon-wrap--unchecked',
               )}
             >
-              {replaceSameRegistration ? (
-                <AppIcon
-                  className="manage-ship-import-modal__checkbox-icon"
-                  name="check_small"
-                  preset="checkbox"
-                  tone="on-accent"
-                />
-              ) : null}
+              <AppIcon
+                className="manage-ship-import-modal__checkbox-icon manage-ship-import-modal__checkbox-icon--unchecked"
+                name="check_box_outline_blank"
+                preset="checkbox"
+                tone="muted"
+              />
+              <AppIcon
+                className="manage-ship-import-modal__checkbox-icon manage-ship-import-modal__checkbox-icon--checked"
+                name="check_box"
+                preset="checkbox"
+                tone="accent"
+              />
             </View>
             <Text className="manage-ship-import-modal__checkbox-label">어선정보가 같은 어선은 대체하기</Text>
           </Pressable>

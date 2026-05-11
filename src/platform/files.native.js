@@ -9,7 +9,7 @@ export async function pickFile() {
 }
 
 export async function downloadBlob() {
-  throw createNativeAdapterError('Database export', ['expo-file-system', 'expo-sharing']);
+  throw createNativeAdapterError('Database export', ['expo-file-system StorageAccessFramework']);
 }
 
 export async function readFileAsDataUrl() {

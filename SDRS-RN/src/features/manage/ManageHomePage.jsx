@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -20,10 +21,11 @@ import { motionDurationsMs, motionTokens } from '../../motion.js';
 import { pickFile } from '../../services/filePicker.js';
 
 const IOS_EASING = Easing.bezier(...motionTokens.ease.ios);
+const ANDROID_CHECKBOX_EASING = Easing.bezier(...motionTokens.ease.stack);
+const ANDROID_CHECKBOX_DURATION_MS = 160;
 const MODAL_HORIZONTAL_MARGIN = 25;
-const MODAL_CONTENT_WIDTH = 300;
+const MODAL_CARD_WIDTH = 340;
 const MODAL_PADDING = 20;
-const MODAL_TOTAL_WIDTH = MODAL_CONTENT_WIDTH + MODAL_PADDING * 2;
 
 function keepAllWordBreakText(value) {
   if (typeof value !== 'string') {
@@ -122,7 +124,26 @@ function useModalAnimatedStyles(reducedMotion) {
     ],
   }));
 
-  return { cardStyle, scrimStyle };
+  const close = useCallback(
+    (onClosed) => {
+      if (reducedMotion) {
+        onClosed?.();
+        return;
+      }
+
+      progress.value = withTiming(0, {
+        duration: motionDurationsMs.normal,
+        easing: IOS_EASING,
+      }, (finished) => {
+        if (finished && onClosed) {
+          runOnJS(onClosed)();
+        }
+      });
+    },
+    [progress, reducedMotion],
+  );
+
+  return { cardStyle, close, scrimStyle };
 }
 
 function SectionDivider() {
@@ -168,6 +189,49 @@ function DataManagementHomeRow({ label, onPress, tone = 'default', value }) {
   );
 }
 
+function ImportCheckboxIcon({ checked }) {
+  const reducedMotion = useReducedMotionSafe();
+  const progress = useSharedValue(checked ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(checked ? 1 : 0, {
+      duration: reducedMotion ? motionDurationsMs.instant : ANDROID_CHECKBOX_DURATION_MS,
+      easing: ANDROID_CHECKBOX_EASING,
+    });
+  }, [checked, progress, reducedMotion]);
+
+  const uncheckedStyle = useAnimatedStyle(() => ({
+    opacity: 1 - progress.value,
+    transform: [{ scale: 0.84 + 0.16 * (1 - progress.value) }],
+  }));
+
+  const checkedStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ scale: 0.84 + 0.16 * progress.value }],
+  }));
+
+  return (
+    <Animated.View style={styles.importCheckboxIcon}>
+      <Animated.View style={[styles.importCheckboxIconLayer, uncheckedStyle]}>
+        <AppIcon
+          name="check_box_outline_blank"
+          preset="checkbox"
+          style={styles.importCheckboxSymbol}
+          tone="muted"
+        />
+      </Animated.View>
+      <Animated.View style={[styles.importCheckboxIconLayer, checkedStyle]}>
+        <AppIcon
+          name="check_box"
+          preset="checkbox"
+          style={styles.importCheckboxSymbol}
+          tone="accent"
+        />
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 function ManageAlertModal({
   cancelLabel = '아니요',
   confirmLabel = '네',
@@ -181,9 +245,9 @@ function ManageAlertModal({
   const reducedMotion = useReducedMotionSafe();
   const { width: windowWidth } = useWindowDimensions();
   const modalAnimatedStyles = useModalAnimatedStyles(reducedMotion);
-  const modalCardContentWidth = Math.max(
+  const modalCardWidth = Math.max(
     0,
-    Math.min(MODAL_TOTAL_WIDTH, windowWidth - MODAL_HORIZONTAL_MARGIN * 2) - MODAL_PADDING * 2,
+    Math.min(MODAL_CARD_WIDTH, windowWidth - MODAL_HORIZONTAL_MARGIN * 2),
   );
 
   return (
@@ -197,7 +261,7 @@ function ManageAlertModal({
       <Animated.View
         style={[
           styles.modalCard,
-          { width: modalCardContentWidth },
+          { width: modalCardWidth },
           modalAnimatedStyles.cardStyle,
         ]}
       >
@@ -248,10 +312,19 @@ function ManageShipImportModal({
   const reducedMotion = useReducedMotionSafe();
   const { width: windowWidth } = useWindowDimensions();
   const modalAnimatedStyles = useModalAnimatedStyles(reducedMotion);
-  const modalCardContentWidth = Math.max(
+  const dismissingRef = useRef(false);
+  const modalCardWidth = Math.max(
     0,
-    Math.min(MODAL_TOTAL_WIDTH, windowWidth - MODAL_HORIZONTAL_MARGIN * 2) - MODAL_PADDING * 2,
+    Math.min(MODAL_CARD_WIDTH, windowWidth - MODAL_HORIZONTAL_MARGIN * 2),
   );
+  const handleDismiss = useCallback(() => {
+    if (dismissingRef.current) {
+      return;
+    }
+
+    dismissingRef.current = true;
+    modalAnimatedStyles.close(onDismiss);
+  }, [modalAnimatedStyles, onDismiss]);
 
   return (
     <View style={styles.modalShell}>
@@ -264,14 +337,14 @@ function ManageShipImportModal({
         <Pressable
           accessibilityLabel="선박 DB 불러오기 닫기"
           accessibilityRole="button"
-          onPress={onDismiss}
+          onPress={handleDismiss}
           style={styles.modalScrimPressable}
         />
       </Animated.View>
       <Animated.View
         style={[
           styles.modalCard,
-          { width: modalCardContentWidth },
+          { width: modalCardWidth },
           modalAnimatedStyles.cardStyle,
         ]}
       >
@@ -289,20 +362,7 @@ function ManageShipImportModal({
             onPress={() => onReplaceSameRegistrationChange(!replaceSameRegistration)}
             style={styles.importCheckboxRow}
           >
-            <View
-              style={[
-                styles.importCheckboxBox,
-                replaceSameRegistration && styles.importCheckboxBoxChecked,
-              ]}
-            >
-              {replaceSameRegistration ? (
-                <AppIcon
-                  name="check_small"
-                  preset="checkbox"
-                  tone="on-accent"
-                />
-              ) : null}
-            </View>
+            <ImportCheckboxIcon checked={replaceSameRegistration} />
             <Text style={styles.importCheckboxLabel}>
               {keepAllWordBreakText('어선정보가 같은 어선은 대체하기')}
             </Text>
@@ -547,7 +607,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     position: 'relative',
-    maxWidth: MODAL_CONTENT_WIDTH,
+    maxWidth: MODAL_CARD_WIDTH,
     borderRadius: 20,
     backgroundColor: 'var(--color-bg-modal)',
     shadowColor: 'var(--slate-700)',
@@ -599,26 +659,32 @@ const styles = StyleSheet.create({
     minHeight: 32,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 6,
   },
-  importCheckboxBox: {
+  importCheckboxIcon: {
     width: 24,
     height: 24,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'var(--color-border-subtle)',
-    backgroundColor: 'var(--color-bg-surface)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  importCheckboxBoxChecked: {
-    borderColor: 'var(--color-accent-solid)',
-    backgroundColor: 'var(--color-accent-solid)',
+  importCheckboxIconLayer: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  importCheckboxSymbol: {
+    height: 24,
+    lineHeight: 24,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   importCheckboxLabel: {
     flex: 1,
     color: 'var(--color-text-tertiary)',
     fontSize: 16,
+    lineHeight: 24,
     fontWeight: '600',
   },
   importOverwriteButton: {

@@ -5,7 +5,7 @@ These files are placeholders for a future Expo / pure React Native target. The c
 Expected native replacements:
 
 - `index.native.js`: React Native `Dimensions`, `Appearance`, measurement, and gesture helpers.
-- `files.native.js`: `expo-document-picker`, `expo-file-system`, and `expo-sharing`.
+- `files.native.js`: `expo-document-picker` and `expo-file-system` Storage Access Framework.
 - `storage.native.js`: Expo SQLite, AsyncStorage, or filesystem-backed persistence.
 - `bundledData.native.js`: Expo Asset loading for the default `ship.csv`, `images.zip`, and `no-image.svg`.
 

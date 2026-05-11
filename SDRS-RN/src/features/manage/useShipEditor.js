@@ -26,6 +26,7 @@ export function useShipEditor({
   const [manageImportAlert, setManageImportAlert] = useState(null);
   const [pendingShipImport, setPendingShipImport] = useState(null);
   const [manageSaveToast, setManageSaveToast] = useState(null);
+  const exportInProgressRef = useRef(false);
   const manageSaveToastTimeoutRef = useRef(null);
 
   const manageHomePrimaryRows = useMemo(
@@ -313,12 +314,27 @@ export function useShipEditor({
   }, [databaseState, setDatabaseState, showImportAlert, syncShipEditor]);
 
   const handleExportDatabase = useCallback(async () => {
-    const [{ buildDatabaseExportBlob }, { downloadBlob }] = await Promise.all([
-      import('../../domain/importExport/databaseExport.js'),
-      import('../../services/fileDownload.js'),
-    ]);
-    const exportBlob = await buildDatabaseExportBlob(databaseState);
-    downloadBlob(exportBlob, 'db_export.zip');
+    if (exportInProgressRef.current) {
+      return;
+    }
+
+    exportInProgressRef.current = true;
+
+    try {
+      const [{ buildDatabaseExportBlob }, { downloadBlob }] = await Promise.all([
+        import('../../domain/importExport/databaseExport.js'),
+        import('../../services/fileDownload.js'),
+      ]);
+      const exportBlob = await buildDatabaseExportBlob(databaseState);
+      await downloadBlob(exportBlob, 'db_export.zip');
+    } catch (error) {
+      setManageImportAlert({
+        title: '내보내기 실패',
+        copy: '저장 위치 선택 창을 열 수 없어요.\n다시 시도해 주세요.',
+      });
+    } finally {
+      exportInProgressRef.current = false;
+    }
   }, [databaseState]);
 
   return useMemo(() => ({

@@ -1,1 +1,1 @@
-export { downloadBlob } from '../platform/files';
+export { downloadBlob } from '../platform/fileDownload';

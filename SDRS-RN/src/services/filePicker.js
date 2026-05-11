@@ -1,1 +1,1 @@
-export { pickFile } from '../platform/files';
+export { pickFile } from '../platform/filePicker';
